@@ -1,15 +1,15 @@
-import { drizzle } from 'drizzle-orm/postgres-js'
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import postgres, { Sql } from 'postgres'
 import { DATABASE_URL } from '@/config'
 
 class DBClient {
   private static instance: DBClient
   private client: Sql
-  public db: ReturnType<typeof drizzle>
+  public db: PostgresJsDatabase
 
   private constructor() {
     this.client = postgres(DATABASE_URL!)
-    this.db = drizzle(this.client)
+    this.db = drizzle(this.client, { casing: 'snake_case' })
   }
 
   static getInstance(): DBClient {
@@ -19,7 +19,7 @@ class DBClient {
     return DBClient.instance
   }
 
-  getDrizzle() {
+  getDrizzle(): PostgresJsDatabase {
     return this.db
   }
 
@@ -28,4 +28,5 @@ class DBClient {
   }
 }
 
-export default DBClient.getInstance()
+export const db = DBClient.getInstance().getDrizzle()
+export const client = DBClient.getInstance().getRawClient()
