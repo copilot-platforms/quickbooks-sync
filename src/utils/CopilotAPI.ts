@@ -67,7 +67,9 @@ export class CopilotAPI {
   async _getTokenPayload(): Promise<Token | null> {
     const getTokenPayload = this.copilot.getTokenPayload
     if (!getTokenPayload) {
-      console.error(`CopilotAPI#getTokenPayload | Could not parse token payload for token ${this.token}`)
+      console.error(
+        `CopilotAPI#getTokenPayload | Could not parse token payload for token ${this.token}`,
+      )
       return null
     }
 
@@ -109,9 +111,14 @@ export class CopilotAPI {
     return IUTokenSchema.parse(tokenPayload)
   }
 
-  async _createClient(requestBody: ClientRequest, sendInvite: boolean = false): Promise<ClientResponse> {
+  async _createClient(
+    requestBody: ClientRequest,
+    sendInvite: boolean = false,
+  ): Promise<ClientResponse> {
     console.info('CopilotAPI#createClient | token =', this.token)
-    return ClientResponseSchema.parse(await this.copilot.createClient({ sendInvite, requestBody }))
+    return ClientResponseSchema.parse(
+      await this.copilot.createClient({ sendInvite, requestBody }),
+    )
   }
 
   async _getClient(id: string): Promise<ClientResponse> {
@@ -124,9 +131,14 @@ export class CopilotAPI {
     return ClientsResponseSchema.parse(await this.copilot.listClients(args))
   }
 
-  async _updateClient(id: string, requestBody: ClientRequest): Promise<ClientResponse> {
+  async _updateClient(
+    id: string,
+    requestBody: ClientRequest,
+  ): Promise<ClientResponse> {
     console.info('CopilotAPI#updateClient | token =', this.token)
-    return ClientResponseSchema.parse(await this.copilot.updateClient({ id, requestBody }))
+    return ClientResponseSchema.parse(
+      await this.copilot.updateClient({ id, requestBody }),
+    )
   }
 
   async _deleteClient(id: string) {
@@ -136,12 +148,16 @@ export class CopilotAPI {
 
   async _createCompany(requestBody: CompanyCreateRequest) {
     console.info('CopilotAPI#createCompany | token =', this.token)
-    return CompanyResponseSchema.parse(await this.copilot.createCompany({ requestBody }))
+    return CompanyResponseSchema.parse(
+      await this.copilot.createCompany({ requestBody }),
+    )
   }
 
   async _getCompany(id: string): Promise<CompanyResponse> {
     console.info('CopilotAPI#getCompany | token =', this.token)
-    return CompanyResponseSchema.parse(await this.copilot.retrieveCompany({ id }))
+    return CompanyResponseSchema.parse(
+      await this.copilot.retrieveCompany({ id }),
+    )
   }
 
   async _getCompanies(args: CopilotListArgs = {}): Promise<CompaniesResponse> {
@@ -156,20 +172,30 @@ export class CopilotAPI {
 
   async _getCustomFields(): Promise<CustomFieldResponse> {
     console.info('CopilotAPI#getCustomFields | token =', this.token)
-    return CustomFieldResponseSchema.parse(await this.copilot.listCustomFields())
+    return CustomFieldResponseSchema.parse(
+      await this.copilot.listCustomFields(),
+    )
   }
 
-  async _getInternalUsers(args: CopilotListArgs = {}): Promise<InternalUsersResponse> {
+  async _getInternalUsers(
+    args: CopilotListArgs = {},
+  ): Promise<InternalUsersResponse> {
     console.info('CopilotAPI#getInternalUsers | token =', this.token)
-    return InternalUsersResponseSchema.parse(await this.copilot.listInternalUsers(args))
+    return InternalUsersResponseSchema.parse(
+      await this.copilot.listInternalUsers(args),
+    )
   }
 
   async _getInternalUser(id: string): Promise<InternalUsers> {
     console.info('CopilotAPI#getInternalUser | token =', this.token)
-    return InternalUsersSchema.parse(await this.copilot.retrieveInternalUser({ id }))
+    return InternalUsersSchema.parse(
+      await this.copilot.retrieveInternalUser({ id }),
+    )
   }
 
-  async _createNotification(requestBody: NotificationRequestBody): Promise<NotificationCreatedResponse> {
+  async _createNotification(
+    requestBody: NotificationRequestBody,
+  ): Promise<NotificationCreatedResponse> {
     console.info('CopilotAPI#createNotification | token =', this.token)
     return NotificationCreatedResponseSchema.parse(
       await this.copilot.createNotification({
@@ -194,7 +220,12 @@ export class CopilotAPI {
           .schedule(() => {
             return this.markNotificationAsRead(notification)
           })
-          .catch((err: unknown) => console.error(`Failed to delete notification with id ${notification}`, err)),
+          .catch((err: unknown) =>
+            console.error(
+              `Failed to delete notification with id ${notification}`,
+              err,
+            ),
+          ),
       )
     }
 
@@ -216,25 +247,42 @@ export class CopilotAPI {
           .schedule(() => {
             return this.deleteNotification(notification)
           })
-          .catch((err: unknown) => console.error(`Failed to delete notification with id ${notification}`, err)),
+          .catch((err: unknown) =>
+            console.error(
+              `Failed to delete notification with id ${notification}`,
+              err,
+            ),
+          ),
       )
     }
     await Promise.all(deletePromises)
   }
 
-  async getNotifications(recipientId: string, opts: { limit?: number } = { limit: 100 }) {
+  async getNotifications(
+    recipientId: string,
+    opts: { limit?: number } = { limit: 100 },
+  ) {
     const data = await this.manualFetch('notifications', {
       recipientId,
       limit: `${opts.limit}`,
     })
-    const notifications = z.array(NotificationCreatedResponseSchema).parse(data.data)
+    const notifications = z
+      .array(NotificationCreatedResponseSchema)
+      .parse(data.data)
     // Return only all notifications triggered by tasks-app
     return notifications.filter(
-      (notification) => notification.appId === z.string().min(1, { message: 'Missing AppID in environment' }).parse(APP_ID),
+      (notification) =>
+        notification.appId ===
+        z
+          .string()
+          .min(1, { message: 'Missing AppID in environment' })
+          .parse(APP_ID),
     )
   }
 
-  private wrapWithRetry<Args extends unknown[], R>(fn: (...args: Args) => Promise<R>): (...args: Args) => Promise<R> {
+  private wrapWithRetry<Args extends unknown[], R>(
+    fn: (...args: Args) => Promise<R>,
+  ): (...args: Args) => Promise<R> {
     return (...args: Args): Promise<R> => withRetry(fn.bind(this), args)
   }
 
@@ -258,7 +306,9 @@ export class CopilotAPI {
   getInternalUser = this.wrapWithRetry(this._getInternalUser)
   createNotification = this.wrapWithRetry(this._createNotification)
   markNotificationAsRead = this.wrapWithRetry(this._markNotificationAsRead)
-  bulkMarkNotificationsAsRead = this.wrapWithRetry(this._bulkMarkNotificationsAsRead)
+  bulkMarkNotificationsAsRead = this.wrapWithRetry(
+    this._bulkMarkNotificationsAsRead,
+  )
   bulkDeleteNotifications = this.wrapWithRetry(this._bulkDeleteNotifications)
   deleteNotification = this.wrapWithRetry(this._deleteNotification)
 }

@@ -2,7 +2,10 @@ import { StatusableError } from '@/type/CopilotApiError'
 import pRetry, { FailedAttemptError } from 'p-retry'
 import * as Sentry from '@sentry/nextjs'
 
-export const withRetry = async <T>(fn: (...args: any[]) => Promise<T>, args: any[]): Promise<T> => {
+export const withRetry = async <T>(
+  fn: (...args: any[]) => Promise<T>,
+  args: any[],
+): Promise<T> => {
   let isEventProcessorRegistered = false
 
   return await pRetry(
@@ -16,7 +19,11 @@ export const withRetry = async <T>(fn: (...args: any[]) => Promise<T>, args: any
 
           isEventProcessorRegistered = true
           scope.addEventProcessor((event) => {
-            if (event.level === 'error' && event.message && event.message.includes('An error occurred during retry')) {
+            if (
+              event.level === 'error' &&
+              event.message &&
+              event.message.includes('An error occurred during retry')
+            ) {
               return null // Discard the event as it occured during retry
             }
             return event

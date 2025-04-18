@@ -1,8 +1,10 @@
 import { z } from 'zod'
 
-export const HexColorSchema = z.string().refine((val) => /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(val), {
-  message: 'Invalid hex color code',
-})
+export const HexColorSchema = z
+  .string()
+  .refine((val) => /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(val), {
+    message: 'Invalid hex color code',
+  })
 
 export type CopilotListArgs = {
   limit?: number
@@ -70,7 +72,14 @@ export const ClientResponseSchema = z.object({
   status: z.string(),
   avatarImageUrl: z.string().nullable(),
   customFields: z
-    .record(z.string(), z.union([z.string().nullable(), z.array(z.string()).nullable(), z.object({}).nullable()]))
+    .record(
+      z.string(),
+      z.union([
+        z.string().nullable(),
+        z.array(z.string()).nullable(),
+        z.object({}).nullable(),
+      ]),
+    )
     .nullable(),
   fallbackColor: z.string().nullish(),
   createdAt: z.string().datetime(),
@@ -182,7 +191,9 @@ export const NotificationRequestBodySchema = z.object({
     .optional(),
 })
 
-export type NotificationRequestBody = z.infer<typeof NotificationRequestBodySchema>
+export type NotificationRequestBody = z.infer<
+  typeof NotificationRequestBodySchema
+>
 
 export const NotificationCreatedResponseSchema = z.object({
   id: z.string().uuid(),
@@ -195,4 +206,6 @@ export const NotificationCreatedResponseSchema = z.object({
   senderId: z.string().optional(),
   senderType: z.string().optional(),
 })
-export type NotificationCreatedResponse = z.infer<typeof NotificationCreatedResponseSchema>
+export type NotificationCreatedResponse = z.infer<
+  typeof NotificationCreatedResponseSchema
+>
