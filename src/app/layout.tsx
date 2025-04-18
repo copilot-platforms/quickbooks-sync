@@ -6,10 +6,14 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'QuickBooks Sync',
-  description: 'QuickBooks Sync Example',
+  description: 'QuickBooks Sync Description',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="en">
       <body className={[inter.className].join(' ')}>{children}</body>

@@ -61,10 +61,13 @@ export function useBreadcrumbs(
   },
 ) {
   const callbackRefs = useMemo(() => {
-    return breadcrumbs.reduce<Record<string, () => void>>((acc, { onClick }, idx) => {
-      if (onClick) acc[getBreadcrumbId(idx)] = onClick
-      return acc
-    }, {})
+    return breadcrumbs.reduce<Record<string, () => void>>(
+      (acc, { onClick }, idx) => {
+        if (onClick) acc[getBreadcrumbId(idx)] = onClick
+        return acc
+      },
+      {},
+    )
   }, [breadcrumbs])
 
   useEffect(() => {
@@ -100,7 +103,10 @@ export function useBreadcrumbs(
 
   useEffect(() => {
     const handleUnload = () => {
-      window.parent.postMessage({ type: 'header.breadcrumbs', items: [] }, 'https://dashboard.copilot.app')
+      window.parent.postMessage(
+        { type: 'header.breadcrumbs', items: [] },
+        'https://dashboard.copilot.app',
+      )
     }
     addEventListener('beforeunload', handleUnload)
     return () => {
@@ -109,16 +115,20 @@ export function useBreadcrumbs(
   }, [])
 }
 
-export function usePrimaryCta(primaryCta: Clickable | null, config?: { portalUrl?: string }) {
+export function usePrimaryCta(
+  primaryCta: Clickable | null,
+  config?: { portalUrl?: string },
+) {
   useEffect(() => {
-    const payload: PrimaryCtaPayload | Pick<PrimaryCtaPayload, 'type'> = !primaryCta
-      ? { type: 'header.primaryCta' }
-      : {
-          icon: primaryCta.icon,
-          label: primaryCta.label,
-          onClick: 'header.primaryCta.onClick',
-          type: 'header.primaryCta',
-        }
+    const payload: PrimaryCtaPayload | Pick<PrimaryCtaPayload, 'type'> =
+      !primaryCta
+        ? { type: 'header.primaryCta' }
+        : {
+            icon: primaryCta.icon,
+            label: primaryCta.label,
+            onClick: 'header.primaryCta.onClick',
+            type: 'header.primaryCta',
+          }
 
     window.parent.postMessage(payload, 'https://dashboard.copilot.app')
     if (config?.portalUrl) {
@@ -126,7 +136,11 @@ export function usePrimaryCta(primaryCta: Clickable | null, config?: { portalUrl
     }
 
     const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === 'header.primaryCta.onClick' && typeof event.data.id === 'string' && primaryCta?.onClick) {
+      if (
+        event.data.type === 'header.primaryCta.onClick' &&
+        typeof event.data.id === 'string' &&
+        primaryCta?.onClick
+      ) {
         primaryCta.onClick()
       }
     }
@@ -140,9 +154,15 @@ export function usePrimaryCta(primaryCta: Clickable | null, config?: { portalUrl
 
   useEffect(() => {
     const handleUnload = () => {
-      window.parent.postMessage({ type: 'header.primaryCta' }, 'https://dashboard.copilot.app')
+      window.parent.postMessage(
+        { type: 'header.primaryCta' },
+        'https://dashboard.copilot.app',
+      )
       if (config?.portalUrl) {
-        window.parent.postMessage({ type: 'header.primaryCta' }, ensureHttps(config.portalUrl))
+        window.parent.postMessage(
+          { type: 'header.primaryCta' },
+          ensureHttps(config.portalUrl),
+        )
       }
     }
     addEventListener('beforeunload', handleUnload)
@@ -152,16 +172,20 @@ export function usePrimaryCta(primaryCta: Clickable | null, config?: { portalUrl
   }, [config?.portalUrl])
 }
 
-export function useSecondaryCta(secondaryCta: Clickable | null, config?: { portalUrl?: string }) {
+export function useSecondaryCta(
+  secondaryCta: Clickable | null,
+  config?: { portalUrl?: string },
+) {
   useEffect(() => {
-    const payload: SecondaryCtaPayload | Pick<SecondaryCtaPayload, 'type'> = !secondaryCta
-      ? { type: 'header.secondaryCta' }
-      : {
-          type: 'header.secondaryCta',
-          icon: secondaryCta.icon,
-          label: secondaryCta.label,
-          onClick: 'header.secondaryCta.onClick',
-        }
+    const payload: SecondaryCtaPayload | Pick<SecondaryCtaPayload, 'type'> =
+      !secondaryCta
+        ? { type: 'header.secondaryCta' }
+        : {
+            type: 'header.secondaryCta',
+            icon: secondaryCta.icon,
+            label: secondaryCta.label,
+            onClick: 'header.secondaryCta.onClick',
+          }
 
     window.parent.postMessage(payload, 'https://dashboard.copilot.app')
     if (config?.portalUrl) {
@@ -169,7 +193,11 @@ export function useSecondaryCta(secondaryCta: Clickable | null, config?: { porta
     }
 
     const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === 'header.secondaryCta.onClick' && typeof event.data.id === 'string' && secondaryCta?.onClick) {
+      if (
+        event.data.type === 'header.secondaryCta.onClick' &&
+        typeof event.data.id === 'string' &&
+        secondaryCta?.onClick
+      ) {
         secondaryCta.onClick()
       }
     }
@@ -183,9 +211,15 @@ export function useSecondaryCta(secondaryCta: Clickable | null, config?: { porta
 
   useEffect(() => {
     const handleUnload = () => {
-      window.parent.postMessage({ type: 'header.secondaryCta' }, 'https://dashboard.copilot.app')
+      window.parent.postMessage(
+        { type: 'header.secondaryCta' },
+        'https://dashboard.copilot.app',
+      )
       if (config?.portalUrl) {
-        window.parent.postMessage({ type: 'header.secondaryCta' }, ensureHttps(config.portalUrl))
+        window.parent.postMessage(
+          { type: 'header.secondaryCta' },
+          ensureHttps(config.portalUrl),
+        )
       }
     }
     addEventListener('beforeunload', handleUnload)
@@ -202,10 +236,13 @@ export function useActionsMenu(
   },
 ) {
   const callbackRefs = useMemo(() => {
-    return actions.reduce<Record<string, () => void>>((acc, { onClick }, idx) => {
-      if (onClick) acc[getActionMenuItemId(idx)] = onClick
-      return acc
-    }, {})
+    return actions.reduce<Record<string, () => void>>(
+      (acc, { onClick }, idx) => {
+        if (onClick) acc[getActionMenuItemId(idx)] = onClick
+        return acc
+      },
+      {},
+    )
   }, [actions])
 
   useEffect(() => {
@@ -242,7 +279,10 @@ export function useActionsMenu(
 
   useEffect(() => {
     const handleUnload = () => {
-      window.parent.postMessage({ type: 'header.actionsMenu', items: [] }, 'https://dashboard.copilot.app')
+      window.parent.postMessage(
+        { type: 'header.actionsMenu', items: [] },
+        'https://dashboard.copilot.app',
+      )
     }
     addEventListener('beforeunload', handleUnload)
     return () => {

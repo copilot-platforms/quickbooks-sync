@@ -1,3 +1,3 @@
-import Home from './(home)/home'
+import Home from './(home)/Home'
 
 export default Home

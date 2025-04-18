@@ -1,3 +1,4 @@
+import { UserRole } from '@/app/api/core/types/user'
 import { Token } from '@/type/common'
 
 /**
@@ -6,6 +7,7 @@ import { Token } from '@/type/common'
  */
 class User {
   token: string
+  role: UserRole
   workspaceId: string
   clientId?: string
   companyId?: string
@@ -14,6 +16,7 @@ class User {
   // Instantiate a User from a request token & decrypted payload
   constructor(token: string, tokenPayload: Token) {
     this.token = token
+    this.role = tokenPayload.internalUserId ? UserRole.IU : UserRole.Client
     this.internalUserId = tokenPayload.internalUserId
     this.clientId = tokenPayload.clientId
     this.companyId = tokenPayload.companyId

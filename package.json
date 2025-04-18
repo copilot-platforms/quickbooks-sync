@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "@sentry/nextjs": "^9.13.0",
-    "axios": "^1.8.4",
     "bottleneck": "^2.19.5",
     "copilot-node-sdk": "^3.7.0",
     "drizzle-orm": "^0.42.0",
@@ -37,7 +36,7 @@
     "@eslint/js": "^9.24.0",
     "@ngrok/ngrok": "^1.4.1",
     "@tailwindcss/postcss": "^4.1.4",
-    "@types/node": "^20.11.1",
+    "@types/node": "^22.14.1",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
     "@types/react-linkify": "^1",
@@ -53,7 +52,7 @@
     "postcss": "^8.4.35",
     "prettier": "^3.5.3",
     "tailwindcss": "^4.1.4",
-    "typescript": "^5.3.3"
+    "typescript": "^5.8.3"
   },
   "packageManager": "yarn@4.9.1",
   "resolutions": {
