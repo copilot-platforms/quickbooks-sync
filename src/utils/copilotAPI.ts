@@ -1,5 +1,5 @@
 import { withRetry } from '@/app/api/core/utils/withRetry'
-import { copilotAPIKey as apiKey, APP_ID } from '@/config'
+import { copilotAPIKey as apiKey, appId } from '@/config'
 import {
   ClientRequest,
   ClientResponse,
@@ -40,11 +40,8 @@ import { API_DOMAIN } from '@/constant/domains'
 export class CopilotAPI {
   copilot: SDK
 
-  constructor(
-    private token: string,
-    customApiKey?: string,
-  ) {
-    this.copilot = copilotApi({ apiKey: customApiKey ?? apiKey, token })
+  constructor(private token: string) {
+    this.copilot = copilotApi({ apiKey: apiKey, token })
   }
 
   private async manualFetch(route: string, query?: Record<string, string>) {
@@ -276,7 +273,7 @@ export class CopilotAPI {
         z
           .string()
           .min(1, { message: 'Missing AppID in environment' })
-          .parse(APP_ID),
+          .parse(appId),
     )
   }
 

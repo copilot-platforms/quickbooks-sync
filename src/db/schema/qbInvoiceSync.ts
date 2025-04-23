@@ -2,7 +2,7 @@ import { timestamps } from '@/db/helper/column.helper'
 import { pgTable as table } from 'drizzle-orm/pg-core'
 import * as t from 'drizzle-orm/pg-core'
 
-export const qb_invoice_sync = table('qb_invoice_sync', {
+export const QBInvoiceSync = table('qb_invoice_sync', {
   id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
   portalId: t.varchar('portal_id', { length: 255 }).notNull(),
   invoiceNumber: t.varchar('invoice_number').notNull(),
