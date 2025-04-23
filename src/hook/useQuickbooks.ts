@@ -1,4 +1,4 @@
-import { appId, copilotDashboardUrl } from '@/config'
+import { copilotDashboardUrl } from '@/config'
 import { useState } from 'react'
 
 export const useQuickbooks = (token: string) => {
@@ -6,7 +6,7 @@ export const useQuickbooks = (token: string) => {
   const [hasConnection, setHasConnection] = useState<boolean>(false)
 
   const getAuthUrl = async () => {
-    const redirectUrl = `${copilotDashboardUrl}?id=${appId}`
+    const redirectUrl = `${copilotDashboardUrl}`
     setLoading(true)
     const response = await fetch(`/api/quickbooks/auth?token=${token}`, {
       method: 'POST',

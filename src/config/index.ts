@@ -1,4 +1,5 @@
-export const copilotDashboardUrl = process.env.COPILOT_DASHBOARD_URL || ''
+export const copilotDashboardUrl =
+  process.env.NEXT_PUBLIC_COPILOT_DASHBOARD_URL || ''
 export const copilotAPIKey = process.env.COPILOT_API_KEY || ''
 export const appId = process.env.COPILOT_APP_API_KEY || ''
 export const databaseUrl = process.env.DATABASE_URL
