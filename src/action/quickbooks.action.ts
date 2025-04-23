@@ -1,12 +1,13 @@
+import { QBTokenSelectSchemaType } from '@/db/schema/qbTokens'
 import { getPortalConnection } from '@/db/service/token.service'
 
 export async function checkPortalConnection(
   portalId: string,
-): Promise<object | null> {
+): Promise<QBTokenSelectSchemaType | null> {
   try {
-    const portalSync = await getPortalConnection(portalId)
+    const portalQBToken = await getPortalConnection(portalId)
 
-    return portalSync || null
+    return portalQBToken || null
   } catch (err) {
     console.error('getTokenPayload | Error =', err)
     return null
