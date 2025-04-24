@@ -1,8 +1,10 @@
 import { timestamps } from '@/db/helper/column.helper'
 import { pgTable as table } from 'drizzle-orm/pg-core'
+import { createInsertSchema } from 'drizzle-zod'
 import * as t from 'drizzle-orm/pg-core'
+import { z } from 'zod'
 
-export const qb_tokens = table(
+export const QBTokens = table(
   'qb_tokens',
   {
     id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -17,3 +19,9 @@ export const qb_tokens = table(
   },
   (table) => [t.uniqueIndex('uq_qb_tokens_portal_id_idx').on(table.portalId)],
 )
+
+export const QBTokenCreateSchema = createInsertSchema(QBTokens)
+export type QBTokenCreateSchemaType = z.infer<typeof QBTokenCreateSchema>
+
+export const QBTokenSelectSchema = createInsertSchema(QBTokens)
+export type QBTokenSelectSchemaType = z.infer<typeof QBTokenSelectSchema>
