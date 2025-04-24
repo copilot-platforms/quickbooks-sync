@@ -7,7 +7,7 @@ export async function checkPortalConnection(
   try {
     const portalQBToken = await getPortalConnection(portalId)
 
-    return portalQBToken || null
+    return portalQBToken
   } catch (err) {
     console.error('getTokenPayload | Error =', err)
     return null

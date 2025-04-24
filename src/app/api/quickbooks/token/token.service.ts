@@ -8,6 +8,6 @@ export class TokenService extends BaseService {
   ): Promise<QBTokenSelectSchemaType | null> {
     const portalConnection = await getPortalConnection(portalId)
 
-    return portalConnection || null
+    return portalConnection
   }
 }

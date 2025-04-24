@@ -8,7 +8,7 @@ import OAuthClient from 'intuit-oauth'
 
 export default class Intuit {
   private static instance: Intuit
-  private intuitQB: typeof OAuthClient
+  private intuitQB: OAuthClient
 
   constructor() {
     this.intuitQB = this.intializeSDK()
@@ -30,6 +30,10 @@ export default class Intuit {
     return Intuit.instance
   }
 
+  public static getSDK() {
+    return Intuit.instance.intuitQB
+  }
+
   public async authorizeUri(state: { token: string; originUrl?: string }) {
     // AuthorizationUri
     const authUri = await this.intuitQB.authorizeUri({
@@ -41,5 +45,9 @@ export default class Intuit {
 
   public async createToken(url: string) {
     return await this.intuitQB.createToken(url)
+  }
+
+  public async refreshAccessToken(refreshToken: string) {
+    return await this.intuitQB.refreshUsingToken(refreshToken)
   }
 }

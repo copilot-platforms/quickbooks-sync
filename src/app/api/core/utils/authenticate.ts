@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { TokenSchema } from '@/type/common'
 import APIError from '@/app/api/core/exceptions/api'
 import httpStatus from 'http-status'
-import { withRetry } from './withRetry'
+import { withRetry } from '@/app/api/core/utils/withRetry'
 
 export const _authenticateWithToken = async (token: string): Promise<User> => {
   const copilotClient = new CopilotAPI(token)

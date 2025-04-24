@@ -2,11 +2,11 @@ import { copilotDashboardUrl } from '@/config'
 import { useState } from 'react'
 
 export const useQuickbooks = (token: string) => {
-  const [loading, setLoading] = useState<boolean>(false)
-  const [hasConnection, setHasConnection] = useState<boolean>(false)
+  const [loading, setLoading] = useState(false)
+  const [hasConnection, setHasConnection] = useState(false)
 
   const getAuthUrl = async () => {
-    const redirectUrl = `${copilotDashboardUrl}`
+    const redirectUrl = copilotDashboardUrl
     setLoading(true)
     const response = await fetch(`/api/quickbooks/auth?token=${token}`, {
       method: 'POST',
@@ -35,7 +35,7 @@ export const useQuickbooks = (token: string) => {
 }
 
 export const useQuickbooksCallback = () => {
-  const [loading, setLoading] = useState<boolean>(true)
+  const [loading, setLoading] = useState(true)
   const [redirectUrl, setRedirectUrl] = useState<string>('')
 
   const handleTokenExchange = async (

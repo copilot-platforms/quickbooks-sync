@@ -41,7 +41,7 @@ export class CopilotAPI {
   copilot: SDK
 
   constructor(private token: string) {
-    this.copilot = copilotApi({ apiKey: apiKey, token })
+    this.copilot = copilotApi({ apiKey, token })
   }
 
   private async manualFetch(route: string, query?: Record<string, string>) {
@@ -266,7 +266,7 @@ export class CopilotAPI {
     const notifications = z
       .array(NotificationCreatedResponseSchema)
       .parse(data.data)
-    // Return only all notifications triggered by tasks-app
+    // Return only all notifications triggered by quickbooks-sync-app
     return notifications.filter(
       (notification) =>
         notification.appId ===

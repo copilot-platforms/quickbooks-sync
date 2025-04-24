@@ -1,7 +1,7 @@
-import { QBInvoiceSync } from './qbInvoiceSync'
-import { QBPaymentSync } from './qbPaymentSync'
-import { QBProductSync } from './qbProductSync'
-import { QBTokens } from './qbTokens'
+import { QBInvoiceSync } from '@/db/schema/qbInvoiceSync'
+import { QBPaymentSync } from '@/db/schema/qbPaymentSync'
+import { QBProductSync } from '@/db/schema/qbProductSync'
+import { QBTokens } from '@/db/schema/qbTokens'
 
 export const schema = {
   QBInvoiceSync,

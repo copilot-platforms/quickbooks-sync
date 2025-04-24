@@ -12,7 +12,7 @@ export default function HomeClient({
     useQuickbooks(token)
 
   return (
-    <div className="w-full h-screen flex items-center justify-center text-xl">
+    <div className="home-client-wrapper w-full h-screen flex items-center justify-center text-xl">
       {hasConnection || portalConnectionStatus ? (
         <>QuickBooks is connected</>
       ) : (

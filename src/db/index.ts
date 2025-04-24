@@ -23,7 +23,7 @@ class DBClient {
     return DBClient.instance
   }
 
-  getDrizzle(): PostgresJsDatabase<typeof schema> {
+  getDB(): PostgresJsDatabase<typeof schema> {
     return this.db
   }
 
@@ -32,5 +32,5 @@ class DBClient {
   }
 }
 
-export const db = DBClient.getInstance().getDrizzle()
+export const db = DBClient.getInstance().getDB()
 export const client = DBClient.getInstance().getRawClient()
