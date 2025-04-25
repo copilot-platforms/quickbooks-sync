@@ -1,0 +1,1 @@
+ALTER TABLE "qb_tokens" ADD COLUMN "token_type" varchar(255), ADD COLUMN "token_set_time" timestamp;--> statement-breakpoint

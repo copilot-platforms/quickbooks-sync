@@ -17,8 +17,10 @@
   },
   "dependencies": {
     "@sentry/nextjs": "^9.13.0",
+    "@supabase/supabase-js": "^2.49.4",
     "bottleneck": "^2.19.5",
     "copilot-node-sdk": "^3.7.0",
+    "dayjs": "^1.11.13",
     "drizzle-orm": "^0.42.0",
     "drizzle-zod": "^0.7.1",
     "http-status": "^2.1.0",
@@ -32,6 +34,7 @@
     "react-code-blocks": "^0.1.6",
     "react-dom": "^19.1.0",
     "react-linkify": "^1.0.0-alpha",
+    "supabase": "2.22.4",
     "zod": "^3.22.4"
   },
   "devDependencies": {

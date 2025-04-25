@@ -1,6 +1,10 @@
 import { getTokenPayload } from '@/action/copilot.action'
-import { checkPortalConnection } from '@/action/quickbooks.action'
+import {
+  checkPortalConnection,
+  checkSyncStatus,
+} from '@/action/quickbooks.action'
 import HomeClient from '@/app/(home)/HomeClient'
+import { SilentError } from '@/components/template/SilentError'
 import { z } from 'zod'
 
 export default async function Main({
@@ -10,26 +14,33 @@ export default async function Main({
 }) {
   const { token } = await searchParams
   if (!token) {
-    return <> No token available </>
+    return <SilentError message="No token available" />
   }
 
   const parsedToken = z.string().safeParse(token)
   if (!parsedToken.success) {
-    return <>Failed to parse token</>
+    return <SilentError message="Failed to parse token" />
   }
 
   const tokenPayload = await getTokenPayload(token)
   if (!tokenPayload) {
-    return <>Not a valid token</>
+    return <SilentError message="Not a valid token" />
   }
 
   const portalConnection = await checkPortalConnection(tokenPayload.workspaceId)
-  const portalStatus =
+  const portalConnectionStatus =
     portalConnection && Object.keys(portalConnection).length > 0 ? true : false
+
+  const syncFlag = await checkSyncStatus(tokenPayload.workspaceId)
 
   return (
     <>
-      <HomeClient token={token} portalConnectionStatus={portalStatus} />
+      <HomeClient
+        token={token}
+        portalConnectionStatus={portalConnectionStatus}
+        tokenPayload={tokenPayload}
+        syncFlag={syncFlag}
+      />
     </>
   )
 }

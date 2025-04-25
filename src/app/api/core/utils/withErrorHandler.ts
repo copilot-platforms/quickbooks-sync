@@ -7,6 +7,7 @@ import APIError from '@/app/api/core/exceptions/api'
 import httpStatus from 'http-status'
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError, ZodFormattedError } from 'zod'
+import { isAxiosError } from '@/app/api/core/exceptions/custom'
 
 type RequestHandler = (req: NextRequest, params: any) => Promise<NextResponse>
 
@@ -27,6 +28,7 @@ type RequestHandler = (req: NextRequest, params: any) => Promise<NextResponse>
  * @throws {ZodError} Captures and handles validation errors and responds with status 400 and the issue detail.
  * @throws {CopilotApiError} Captures and handles CopilotAPI errors, uses the error status, and message if available.
  * @throws {APIError} Captures and handles APIError
+ * @throws {AxiosError} Captures and handles AxiosError (Specially from Intuit SDK)
  */
 export const withErrorHandler = (handler: RequestHandler): RequestHandler => {
   return async (req: NextRequest, params: any) => {
@@ -62,6 +64,9 @@ export const withErrorHandler = (handler: RequestHandler): RequestHandler => {
         errors = error.errors
       } else if (error instanceof Error && error.message) {
         message = error.message
+      } else if (isAxiosError(error)) {
+        message = error.response.data.error
+        status = error.response.status
       }
 
       return NextResponse.json({ error: message, errors }, { status })

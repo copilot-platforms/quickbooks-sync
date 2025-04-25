@@ -12,3 +12,18 @@ export const getPortalConnection = async (
 
   return portalSync || null
 }
+
+export const getSyncedPortalConnection = async (
+  portalId: string,
+): Promise<QBTokenSelectSchemaType | null> => {
+  const portalSync = await db.query.QBTokens.findFirst({
+    where: (QBTokens, { eq }) =>
+      and(
+        isNull(QBTokens.deletedAt),
+        eq(QBTokens.portalId, portalId),
+        eq(QBTokens.syncFlag, true),
+      ),
+  })
+
+  return portalSync || null
+}
