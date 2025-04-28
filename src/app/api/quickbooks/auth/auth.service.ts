@@ -1,16 +1,14 @@
 import APIError from '@/app/api/core/exceptions/api'
 import { isAxiosError } from '@/app/api/core/exceptions/custom'
-import User from '@/app/api/core/models/User.model'
 import { BaseService } from '@/app/api/core/services/base.service'
 import { LogService } from '@/app/api/quickbooks/log/log.service'
+import { TokenService } from '@/app/api/quickbooks/token/token.service'
 import { intuitRedirectUri } from '@/config'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
 import {
   QBTokens,
-  QBTokenCreateSchema,
   QBTokenCreateSchemaType,
   QBTokenUpdateSchemaType,
-  QBTokenUpdateSchema,
 } from '@/db/schema/qbTokens'
 import { getSyncedPortalConnection } from '@/db/service/token.service'
 import {
@@ -21,58 +19,27 @@ import Intuit from '@/utils/intuit'
 import dayjs from 'dayjs'
 import { and, eq, SQL } from 'drizzle-orm'
 import httpStatus from 'http-status'
-
-type WhereClause = SQL<unknown>
-
 export class AuthService extends BaseService {
-  private logService: LogService
-
-  constructor(user: User) {
-    super(user)
-    this.logService = new LogService(user)
-  }
-
   async getAuthUrl(state: { token: string; originUrl?: string }) {
-    await this.logService.storeConnectionLog({
+    const logService = new LogService(this.user)
+    await logService.storeConnectionLog({
       portalId: this.user.workspaceId,
       connectionStatus: ConnectionStatus.PENDING,
     })
     return await Intuit.getInstance().authorizeUri(state)
   }
 
-  async createQBToken(payload: QBTokenCreateSchemaType) {
-    const parsedInsertPayload = QBTokenCreateSchema.parse(payload)
-
-    const [token] = await this.db
-      .insert(QBTokens)
-      .values(parsedInsertPayload)
-      .returning()
-
-    return token
-  }
-
-  async updateQBToken(
-    payload: QBTokenUpdateSchemaType,
-    conditions: WhereClause,
-  ) {
-    const parsedInsertPayload = QBTokenUpdateSchema.parse(payload)
-
-    return await this.db
-      .update(QBTokens)
-      .set(parsedInsertPayload)
-      .where(conditions)
-  }
-
   async handleTokenExchange(
     body: { code: string; realmId: string },
     portalId: string,
   ): Promise<boolean> {
+    const logService = new LogService(this.user)
     try {
       const { code, realmId } = body
       const requestUrl = `${intuitRedirectUri}?code=${code}&realmId=${realmId}`
       const authResponse = await Intuit.getInstance().createToken(requestUrl) // exchange authorization code for access token
       const tokenInfo = QBAuthTokenResponseSchema.parse(authResponse.token)
-      const tokenSetTime = dayjs().add(tokenInfo.expires_in, 'seconds').toDate()
+      const tokenSetTime = dayjs().toDate()
 
       const insertPayload: QBTokenCreateSchemaType = {
         intuitRealmId: realmId,
@@ -83,9 +50,11 @@ export class AuthService extends BaseService {
         portalId,
         tokenSetTime,
         tokenType: tokenInfo.token_type,
+        intiatedBy: this.user.internalUserId as string, // considering this is defined since we know this action is intiated by an IU
       }
 
-      const qbTokens = await this.createQBToken(insertPayload)
+      const tokenService = new TokenService(this.user)
+      const qbTokens = await tokenService.createQBToken(insertPayload, ['id'])
 
       if (!qbTokens) {
         throw new APIError(
@@ -95,14 +64,14 @@ export class AuthService extends BaseService {
       }
 
       // store success connection log
-      await this.logService.upsertConnectionLog({
+      await logService.upsertConnectionLog({
         portalId,
         connectionStatus: ConnectionStatus.SUCCESS,
       })
       return true
     } catch (error: unknown) {
       // store error connection log
-      await this.logService.upsertConnectionLog({
+      await logService.upsertConnectionLog({
         portalId,
         connectionStatus: ConnectionStatus.ERROR,
       })
@@ -111,35 +80,6 @@ export class AuthService extends BaseService {
         `Cannot complete token exchange for portal ${portalId}.`,
       )
     }
-  }
-
-  async turnOffSyncAndSendNotificationToIU(
-    portalId: string,
-    intuitRealmId: string,
-  ) {
-    // update db sync status for the defined portal
-    const whereConditions = and(
-      eq(QBTokens.intuitRealmId, intuitRealmId),
-      eq(QBTokens.portalId, portalId),
-    ) as SQL
-
-    const updateSyncPayload: QBTokenUpdateSchemaType = {
-      syncFlag: false,
-    }
-
-    const updateSync = await this.updateQBToken(
-      updateSyncPayload,
-      whereConditions,
-    )
-
-    if (!updateSync.count) {
-      throw new APIError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        `Cannot update sync status for portal ${portalId} and realmId ${intuitRealmId}.`,
-      )
-    }
-
-    // send notification to IU
   }
 
   async getQBAccessToken(portalId: string): Promise<string | null> {
@@ -151,19 +91,24 @@ export class AuthService extends BaseService {
       )
     }
 
-    const { accessToken, refreshToken, tokenSetTime, intuitRealmId } =
-      portalQBToken
-    const expiryTime = dayjs(tokenSetTime).add(1, 'hour')
+    const {
+      accessToken,
+      refreshToken,
+      tokenSetTime,
+      intuitRealmId,
+      intiatedBy,
+      expiresIn,
+    } = portalQBToken
+    const expiryTime = dayjs(tokenSetTime).add(expiresIn, 'seconds')
     let updatedAccessToken = accessToken
 
     // Refresh token if expired
     if (dayjs().isAfter(expiryTime)) {
+      const tokenService = new TokenService(this.user)
       try {
         const tokenInfo: QBAuthTokenResponse =
           await Intuit.getInstance().getRefreshedQBToken(refreshToken)
-        const tokenSetTime = dayjs()
-          .add(tokenInfo.expires_in, 'second')
-          .toDate()
+        const tokenSetTime = dayjs().toDate()
 
         updatedAccessToken = tokenInfo.access_token
 
@@ -181,12 +126,13 @@ export class AuthService extends BaseService {
           eq(QBTokens.portalId, portalId),
         ) as SQL
 
-        const updateSync = await this.updateQBToken(
+        const updateSync = await tokenService.updateQBToken(
           updatedPayload,
           whereConditions,
+          ['id'],
         )
 
-        if (!updateSync.count) {
+        if (!updateSync) {
           throw new APIError(
             httpStatus.INTERNAL_SERVER_ERROR,
             `Cannot update sync status for portal ${portalId} and realmId ${intuitRealmId}.`,
@@ -203,9 +149,9 @@ export class AuthService extends BaseService {
           if (error.response.data?.error === 'invalid_grant') {
             // indicates that the refresh token is invalid
             // turn off the sync and send notifications to IU (product and email)
-            await this.turnOffSyncAndSendNotificationToIU(
-              portalId,
+            await tokenService.turnOffSyncAndSendNotificationToIU(
               intuitRealmId,
+              intiatedBy,
             )
 
             throw new APIError(

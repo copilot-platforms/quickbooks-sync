@@ -75,7 +75,9 @@ export const useQuickbooks = (
   }
 
   const checkPortalConnection = async () => {
-    const response = await fetch(`/api/quickbooks/token?token=${token}`)
+    const response = await fetch(
+      `/api/quickbooks/token/check-connection?token=${token}`,
+    )
     const data = await response.json()
     setHasConnection(data && Object.keys(data).length > 0)
   }
