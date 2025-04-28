@@ -1,6 +1,5 @@
 import APIError from '@/app/api/core/exceptions/api'
 import { BaseService } from '@/app/api/core/services/base.service'
-import { NotificationService } from '@/app/api/notification/notification.service'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
 import {
   QBTokenCreateSchema,
