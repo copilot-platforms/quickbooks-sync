@@ -29,6 +29,13 @@
       "when": 1745564079517,
       "tag": "0003_sync_flag_not_null_constraint_at_qb_tokens_table",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1745768328573,
+      "tag": "0004_intiated_by_column_in_qb_tokens_table",
+      "breakpoints": true
     }
   ]
 }
