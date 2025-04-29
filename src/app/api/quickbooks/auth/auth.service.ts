@@ -19,6 +19,7 @@ import Intuit from '@/utils/intuit'
 import dayjs from 'dayjs'
 import { and, eq, SQL } from 'drizzle-orm'
 import httpStatus from 'http-status'
+
 export class AuthService extends BaseService {
   async getAuthUrl(state: { token: string; originUrl?: string }) {
     const logService = new LogService(this.user)
@@ -64,14 +65,14 @@ export class AuthService extends BaseService {
       }
 
       // store success connection log
-      await logService.upsertConnectionLog({
+      await logService.upsertLatestPendingConnectionLog({
         portalId,
         connectionStatus: ConnectionStatus.SUCCESS,
       })
       return true
     } catch (error: unknown) {
       // store error connection log
-      await logService.upsertConnectionLog({
+      await logService.upsertLatestPendingConnectionLog({
         portalId,
         connectionStatus: ConnectionStatus.ERROR,
       })
@@ -118,7 +119,7 @@ export class AuthService extends BaseService {
           expiresIn: tokenInfo.expires_in,
           XRefreshTokenExpiresIn: tokenInfo.x_refresh_token_expires_in,
           tokenSetTime,
-          updatedAt: new Date(),
+          updatedAt: dayjs().toDate(),
         }
 
         const whereConditions = and(
