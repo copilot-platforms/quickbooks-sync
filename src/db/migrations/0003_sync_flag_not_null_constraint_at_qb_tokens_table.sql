@@ -1,0 +1,1 @@
+ALTER TABLE "qb_tokens" ALTER COLUMN "sync_flag" SET NOT NULL;

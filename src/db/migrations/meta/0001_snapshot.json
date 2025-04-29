@@ -1,6 +1,6 @@
 {
-  "id": "189537a9-7ea2-4847-8366-cfe12d36ff85",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "0cef4869-161f-4253-b290-bc2d1c50baef",
+  "prevId": "189537a9-7ea2-4847-8366-cfe12d36ff85",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -295,6 +295,18 @@
           "primaryKey": false,
           "notNull": false,
           "default": false
+        },
+        "token_type": {
+          "name": "token_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token_set_time": {
+          "name": "token_set_time",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",

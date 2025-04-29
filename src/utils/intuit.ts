@@ -1,9 +1,14 @@
+import { withRetry } from '@/app/api/core/utils/withRetry'
 import {
   intuitClientId,
   intuitClientSecret,
   intuitEnvironment,
   intuitRedirectUri,
 } from '@/config'
+import {
+  QBAuthTokenResponse,
+  QBAuthTokenResponseSchema,
+} from '@/type/dto/qbAuthToken.dto'
 import OAuthClient from 'intuit-oauth'
 
 export default class Intuit {
@@ -23,18 +28,18 @@ export default class Intuit {
     })
   }
 
-  public static getInstance() {
+  static getInstance() {
     if (!Intuit.instance) {
       Intuit.instance = new Intuit()
     }
     return Intuit.instance
   }
 
-  public static getSDK() {
+  static getSDK() {
     return Intuit.instance.intuitQB
   }
 
-  public async authorizeUri(state: { token: string; originUrl?: string }) {
+  async _authorizeUri(state: { token: string; originUrl?: string }) {
     // AuthorizationUri
     const authUri = await this.intuitQB.authorizeUri({
       scope: [OAuthClient.scopes.Accounting, OAuthClient.scopes.OpenId],
@@ -43,11 +48,31 @@ export default class Intuit {
     return authUri
   }
 
-  public async createToken(url: string) {
+  async _createToken(url: string) {
     return await this.intuitQB.createToken(url)
   }
 
-  public async refreshAccessToken(refreshToken: string) {
+  async _refreshAccessToken(refreshToken: string) {
     return await this.intuitQB.refreshUsingToken(refreshToken)
   }
+
+  async getRefreshedQBToken(
+    refreshToken: string,
+  ): Promise<QBAuthTokenResponse> {
+    console.log('Refreshing QuickBooks token...')
+
+    const authResponse = await this.refreshAccessToken(refreshToken)
+    const tokenInfo = QBAuthTokenResponseSchema.parse(authResponse.token)
+    return tokenInfo
+  }
+
+  private wrapWithRetry<Args extends unknown[], R>(
+    fn: (...args: Args) => Promise<R>,
+  ): (...args: Args) => Promise<R> {
+    return (...args: Args): Promise<R> => withRetry(fn.bind(this), args)
+  }
+
+  authorizeUri = this.wrapWithRetry(this._authorizeUri)
+  refreshAccessToken = this.wrapWithRetry(this._refreshAccessToken)
+  createToken = this.wrapWithRetry(this._createToken)
 }
