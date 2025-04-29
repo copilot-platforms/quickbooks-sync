@@ -1,6 +1,6 @@
 import { copilotDashboardUrl } from '@/config'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
-import { supabase } from '@/lib/supabase'
+import SupabaseClient from '@/lib/supabase'
 import { Token } from '@/type/common'
 import { useEffect, useState } from 'react'
 
@@ -14,6 +14,7 @@ export const useQuickbooks = (
   const [isSyncOn, setIsSyncOn] = useState(syncFlag)
 
   useEffect(() => {
+    const supabase = SupabaseClient.getInstance()
     const realtimeSyncChannel = supabase
       .channel('realtime sync')
       .on(
@@ -47,6 +48,7 @@ export const useQuickbooks = (
                 ? false
                 : null
           setHasConnection(connectionStatus)
+          setIsSyncOn(connectionStatus || false)
         },
       )
       .subscribe()
