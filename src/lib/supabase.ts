@@ -1,4 +1,23 @@
 import { supabaseAnonKey, supabaseProjectUrl } from '@/config'
-import { createClient } from '@supabase/supabase-js'
+import {
+  createClient,
+  SupabaseClient as SupabaseJsClient,
+} from '@supabase/supabase-js'
 
-export const supabase = createClient(supabaseProjectUrl, supabaseAnonKey)
+class SupabaseClient {
+  private static instance: SupabaseJsClient
+
+  private constructor() {}
+
+  public static getInstance(): SupabaseJsClient {
+    if (!SupabaseClient.instance) {
+      SupabaseClient.instance = createClient(
+        supabaseProjectUrl,
+        supabaseAnonKey,
+      )
+    }
+    return SupabaseClient.instance
+  }
+}
+
+export default SupabaseClient
