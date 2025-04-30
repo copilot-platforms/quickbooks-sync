@@ -1,3 +1,4 @@
+import { AuthStatus } from '@/app/api/core/types/auth'
 import { copilotDashboardUrl } from '@/config'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
 import SupabaseClient from '@/lib/supabase'
@@ -8,10 +9,12 @@ export const useQuickbooks = (
   token: string,
   tokenPayload: Token,
   syncFlag: boolean,
+  reconnect: boolean,
 ) => {
   const [loading, setLoading] = useState(false)
   const [hasConnection, setHasConnection] = useState<boolean | null>(false) // null indicates error
   const [isSyncOn, setIsSyncOn] = useState(syncFlag)
+  const [isReconnecting, setIsReconnecting] = useState(reconnect)
 
   useEffect(() => {
     const supabase = SupabaseClient.getInstance()
@@ -48,6 +51,7 @@ export const useQuickbooks = (
                 ? false
                 : null
           setHasConnection(connectionStatus)
+          setIsReconnecting(!connectionStatus)
           setIsSyncOn(connectionStatus || false)
         },
       )
@@ -58,10 +62,18 @@ export const useQuickbooks = (
     }
   }, [])
 
-  const getAuthUrl = async () => {
+  // handle reconnect logic
+  useEffect(() => {
+    if (reconnect) {
+      handleConnect(AuthStatus.Reconnect)
+    }
+  }, [reconnect])
+
+  const getAuthUrl = async (type?: string) => {
     const redirectUrl = copilotDashboardUrl
+    const url = `/api/quickbooks/auth?token=${token}${type ? `&type=${type}` : ''}`
     setLoading(true)
-    const response = await fetch(`/api/quickbooks/auth?token=${token}`, {
+    const response = await fetch(url, {
       method: 'POST',
       body: JSON.stringify({ redirectUrl }),
     })
@@ -69,11 +81,11 @@ export const useQuickbooks = (
     return await response.json()
   }
 
-  const handleConnect = async () => {
+  const handleConnect = async (type?: string) => {
     setHasConnection(false)
     setLoading(true)
-    const authUrl = await getAuthUrl()
-    window.open(authUrl, '_blank')
+    const authUrl = await getAuthUrl(type)
+    if (authUrl) window.open(authUrl, '_blank')
   }
 
   const checkPortalConnection = async () => {
@@ -90,6 +102,7 @@ export const useQuickbooks = (
     hasConnection,
     checkPortalConnection,
     isSyncOn,
+    isReconnecting,
   }
 }
 

@@ -10,6 +10,7 @@ import {
   QBTokenUpdateSchemaType,
 } from '@/db/schema/qbTokens'
 import { getPortalConnection } from '@/db/service/token.service'
+import dayjs from 'dayjs'
 import { and, eq, SQL } from 'drizzle-orm'
 import httpStatus from 'http-status'
 
@@ -39,6 +40,27 @@ export class TokenService extends BaseService {
     return token
   }
 
+  async upsertQBToken(
+    payload: QBTokenCreateSchemaType,
+    returningFields?: (keyof typeof QBTokens)[],
+  ) {
+    const parsedInsertPayload = QBTokenCreateSchema.parse(payload)
+    const query = this.db
+      .insert(QBTokens)
+      .values(parsedInsertPayload)
+      .onConflictDoUpdate({
+        target: QBTokens.portalId,
+        set: { ...parsedInsertPayload, updatedAt: dayjs().toDate() },
+      })
+
+    const [token] =
+      returningFields && returningFields.length > 0
+        ? await query.returning(buildReturningFields(QBTokens, returningFields))
+        : await query
+
+    return token
+  }
+
   async updateQBToken(
     payload: QBTokenUpdateSchemaType,
     conditions: WhereClause,
@@ -59,10 +81,7 @@ export class TokenService extends BaseService {
     return token
   }
 
-  async turnOffSyncAndSendNotificationToIU(
-    intuitRealmId: string,
-    senderId: string,
-  ) {
+  async turnOffSync(intuitRealmId: string) {
     const portalId = this.user.workspaceId
     // update db sync status for the defined portal
     const whereConditions = and(
@@ -87,7 +106,6 @@ export class TokenService extends BaseService {
         `Cannot update sync status for portal ${portalId} and realmId ${intuitRealmId}.`,
       )
     }
-
-    // send notification to IU
+    return updateSync
   }
 }

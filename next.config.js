@@ -9,8 +9,9 @@ const nextConfig = {
         source: '/(.*)',
         headers: [
           {
-            key: 'X-Frame-Options',
-            value: '',
+            key: 'Content-Security-Policy',
+            value:
+              "frame-ancestors 'self' https://dashboard.copilot.app https://dashboard.copilot-staging.app;",
           },
           {
             key: 'X-Content-Type-Options',

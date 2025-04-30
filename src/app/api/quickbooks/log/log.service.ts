@@ -5,7 +5,7 @@ import {
   QBConnectionLogs,
   QBConnectionLogSelectSchemaType,
 } from '@/db/schema/qbConnectionLogs'
-import { and, eq, sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 export class LogService extends BaseService {
   async storeConnectionLog(

@@ -1,6 +1,9 @@
 import APIError from '@/app/api/core/exceptions/api'
 import { isAxiosError } from '@/app/api/core/exceptions/custom'
 import { BaseService } from '@/app/api/core/services/base.service'
+import { AuthStatus } from '@/app/api/core/types/auth'
+import { NotificationActions } from '@/app/api/core/types/notification'
+import { NotificationService } from '@/app/api/notification/notification.service'
 import { LogService } from '@/app/api/quickbooks/log/log.service'
 import { TokenService } from '@/app/api/quickbooks/token/token.service'
 import { intuitRedirectUri } from '@/config'
@@ -19,9 +22,19 @@ import Intuit from '@/utils/intuit'
 import dayjs from 'dayjs'
 import { and, eq, SQL } from 'drizzle-orm'
 import httpStatus from 'http-status'
+import { after } from 'next/server'
 
 export class AuthService extends BaseService {
-  async getAuthUrl(state: { token: string; originUrl?: string }) {
+  async getAuthUrl(
+    state: { token: string; originUrl?: string },
+    type?: string,
+  ): Promise<string | null> {
+    if (type && type === AuthStatus.Reconnect) {
+      const resStatus = await getSyncedPortalConnection(this.user.workspaceId)
+      const status = resStatus?.syncFlag || false
+      if (status) return null
+    }
+
     const logService = new LogService(this.user)
     await logService.storeConnectionLog({
       portalId: this.user.workspaceId,
@@ -52,10 +65,11 @@ export class AuthService extends BaseService {
         tokenSetTime,
         tokenType: tokenInfo.token_type,
         intiatedBy: this.user.internalUserId as string, // considering this is defined since we know this action is intiated by an IU
+        syncFlag: true,
       }
 
       const tokenService = new TokenService(this.user)
-      const qbTokens = await tokenService.createQBToken(insertPayload, ['id'])
+      const qbTokens = await tokenService.upsertQBToken(insertPayload, ['id'])
 
       if (!qbTokens) {
         throw new APIError(
@@ -71,6 +85,7 @@ export class AuthService extends BaseService {
       })
       return true
     } catch (error: unknown) {
+      console.log('AuthService#handleTokenExchange | Error =', error)
       // store error connection log
       await logService.upsertLatestPendingConnectionLog({
         portalId,
@@ -150,10 +165,16 @@ export class AuthService extends BaseService {
           if (error.response.data?.error === 'invalid_grant') {
             // indicates that the refresh token is invalid
             // turn off the sync and send notifications to IU (product and email)
-            await tokenService.turnOffSyncAndSendNotificationToIU(
-              intuitRealmId,
-              intiatedBy,
-            )
+            await tokenService.turnOffSync(intuitRealmId)
+
+            // send notification to IU
+            after(async () => {
+              const notificationService = new NotificationService(this.user)
+              await notificationService.sendNotificationToIU(
+                intiatedBy,
+                NotificationActions.AuthReconnect,
+              )
+            })
 
             throw new APIError(
               httpStatus.UNAUTHORIZED,

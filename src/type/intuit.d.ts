@@ -20,10 +20,7 @@ declare module 'intuit-oauth' {
 
   class OAuthClient {
     constructor(config: OAuthClientConfig)
-    authorizeUri(options: {
-      scope: string[]
-      state: string
-    }): Promise<{ url: string }>
+    authorizeUri(options: { scope: string[]; state: string }): Promise<string>
     createToken(code: string): Promise<{ token: TokenResponse }>
     refreshUsingToken(refreshToken: string): Promise<{ token: TokenResponse }>
   }

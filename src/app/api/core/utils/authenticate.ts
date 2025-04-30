@@ -15,6 +15,14 @@ export const _authenticateWithToken = async (token: string): Promise<User> => {
     throw new APIError(httpStatus.UNAUTHORIZED, 'Failed to authenticate token')
   }
 
+  // Access to IU only. The reason for not checking the IUID directly is for the webhook events to pass
+  if (payload.data.clientId || payload.data.companyId) {
+    throw new APIError(
+      httpStatus.UNAUTHORIZED,
+      'You do not have access to this resource',
+    )
+  }
+
   return new User(token, payload.data)
 }
 export const authenticateWithToken = (...args: unknown[]) =>
