@@ -123,7 +123,7 @@ export class AuthService extends BaseService {
       const tokenService = new TokenService(this.user)
       try {
         const tokenInfo: QBAuthTokenResponse =
-          await Intuit.getInstance().getRefreshedQBToken('refreshToken') // for testing purpose
+          await Intuit.getInstance().getRefreshedQBToken(refreshToken)
         const tokenSetTime = dayjs().toDate()
 
         updatedAccessToken = tokenInfo.access_token
