@@ -2,6 +2,7 @@ import { getTokenPayload } from '@/action/copilot.action'
 import {
   checkPortalConnection,
   checkSyncStatus,
+  reconnectIfCta,
 } from '@/action/quickbooks.action'
 import HomeClient from '@/app/(home)/HomeClient'
 import { SilentError } from '@/components/template/SilentError'
@@ -10,9 +11,9 @@ import { z } from 'zod'
 export default async function Main({
   searchParams,
 }: {
-  searchParams: Promise<{ token: string }>
+  searchParams: Promise<{ token: string; type?: string }>
 }) {
-  const { token } = await searchParams
+  const { token, type } = await searchParams
   if (!token) {
     return <SilentError message="No token available" />
   }
@@ -27,11 +28,24 @@ export default async function Main({
     return <SilentError message="Not a valid token" />
   }
 
+  if (!tokenPayload.internalUserId || tokenPayload.clientId) {
+    // only access for IU
+    return <SilentError message="No access to the user" />
+  }
+
   const portalConnection = await checkPortalConnection(tokenPayload.workspaceId)
   const portalConnectionStatus =
     portalConnection && Object.keys(portalConnection).length > 0 ? true : false
 
-  const syncFlag = await checkSyncStatus(tokenPayload.workspaceId)
+  let reconnect = false,
+    syncFlag = false
+  if (portalConnectionStatus) {
+    syncFlag = await checkSyncStatus(tokenPayload.workspaceId)
+
+    if (!syncFlag) {
+      reconnect = await reconnectIfCta(type)
+    }
+  }
 
   return (
     <>
@@ -40,6 +54,7 @@ export default async function Main({
         portalConnectionStatus={portalConnectionStatus}
         tokenPayload={tokenPayload}
         syncFlag={syncFlag}
+        reconnect={reconnect}
       />
     </>
   )

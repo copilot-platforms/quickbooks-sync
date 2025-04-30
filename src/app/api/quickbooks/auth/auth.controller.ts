@@ -7,11 +7,15 @@ export async function getAuthorizationUrl(req: NextRequest) {
   const token = user.token
   const body = await req.json()
   const redirectUrl = body?.redirectUrl || req.headers.get('referer')
+  const type = new URL(req.url).searchParams.get('type') || undefined
   const authService = new AuthService(user)
-  const authUrl = await authService.getAuthUrl({
-    token,
-    originUrl: redirectUrl,
-  })
+  const authUrl = await authService.getAuthUrl(
+    {
+      token,
+      originUrl: redirectUrl,
+    },
+    type,
+  )
   return NextResponse.json(authUrl)
 }
 

@@ -8,17 +8,16 @@ export default function HomeClient({
   tokenPayload,
   portalConnectionStatus,
   syncFlag,
+  reconnect,
 }: {
   token: string
   tokenPayload: Token
   portalConnectionStatus: boolean
   syncFlag: boolean
+  reconnect: boolean
 }) {
-  const { loading, handleConnect, hasConnection, isSyncOn } = useQuickbooks(
-    token,
-    tokenPayload,
-    syncFlag,
-  )
+  const { loading, handleConnect, hasConnection, isSyncOn, isReconnecting } =
+    useQuickbooks(token, tokenPayload, syncFlag, reconnect)
 
   if (hasConnection === null) {
     return (
@@ -33,12 +32,18 @@ export default function HomeClient({
     <div className="home-client-wrapper w-full h-screen flex items-center justify-center text-xl">
       {hasConnection || portalConnectionStatus ? (
         <div>
-          QuickBooks is connected
-          <div className="text-center text-sm">
+          {isReconnecting && 'Reconnecting to QuickBooks...'}
+          <div className="text-center">
             {isSyncOn ? (
-              <span className="text-green-700">Sync is on</span>
+              <>
+                QuickBooks is connected.{' '}
+                <span className="text-green-700">Sync is on</span>
+              </>
             ) : (
-              <span className="text-red-700">Sync is off</span>
+              <>
+                QuickBooks connection failed.{' '}
+                <span className="text-red-700">Sync is off</span>
+              </>
             )}
           </div>
         </div>
@@ -51,7 +56,7 @@ export default function HomeClient({
           ) : (
             <button
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm"
-              onClick={handleConnect}
+              onClick={() => handleConnect()}
               disabled={loading}
             >
               Connect to QuickBooks

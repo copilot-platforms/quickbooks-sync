@@ -1,8 +1,10 @@
+import { AuthStatus } from '@/app/api/core/types/auth'
 import { QBTokenSelectSchemaType } from '@/db/schema/qbTokens'
 import {
   getPortalConnection,
   getSyncedPortalConnection,
 } from '@/db/service/token.service'
+import { z } from 'zod'
 
 export async function checkPortalConnection(
   portalId: string,
@@ -24,4 +26,14 @@ export async function checkSyncStatus(portalId: string): Promise<boolean> {
     console.error('checkSyncStatus#getSyncedPortalConnection | Error =', err)
     return false
   }
+}
+
+export async function reconnectIfCta(type?: string) {
+  if (!type) {
+    return false
+  }
+  const parsedType = z.string().safeParse(type)
+  if (parsedType.success && parsedType?.data === AuthStatus.Reconnect)
+    return true
+  return false
 }
