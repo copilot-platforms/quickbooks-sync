@@ -35,18 +35,22 @@ export class NotificationService extends BaseService {
           : getIEmailNotificationDetail()[action]
 
         for (const party of parties.data) {
-          const triggerNotification = await copilot.createNotification({
-            recipientId: party.id,
-            senderId,
-            deliveryTargets: {
-              inProduct,
-              email,
-            },
-          })
-          if (!triggerNotification) {
-            console.error(
-              `Failed to trigger notification for IUID: ${party.id}`,
-            )
+          // for testing purpose
+          if (party.email === 'sandeep.bajracharya@outside.studio') {
+            const triggerNotification = await copilot.createNotification({
+              recipientId: party.id,
+              senderId,
+              deliveryTargets: {
+                inProduct,
+                email,
+              },
+            })
+            if (!triggerNotification) {
+              console.error(
+                `Failed to trigger notification for IUID: ${party.id}`,
+              )
+            }
+            break // for testing purpose
           }
         }
       }
