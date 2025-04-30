@@ -10,7 +10,8 @@ const nextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "frame-ancestors 'self' https://dashboard.copilot.app",
+            value:
+              "frame-ancestors 'self' https://dashboard.copilot.app https://dashboard.copilot-staging.app;",
           },
           {
             key: 'X-Content-Type-Options',
