@@ -23,6 +23,7 @@ import dayjs from 'dayjs'
 import { and, eq, SQL } from 'drizzle-orm'
 import httpStatus from 'http-status'
 import { after } from 'next/server'
+import { v4 as uuidv4 } from 'uuid'
 
 export class AuthService extends BaseService {
   async getAuthUrl(
@@ -56,6 +57,7 @@ export class AuthService extends BaseService {
       const tokenSetTime = dayjs().toDate()
 
       const insertPayload: QBTokenCreateSchemaType = {
+        UUID: uuidv4(),
         intuitRealmId: realmId,
         accessToken: tokenInfo.access_token,
         refreshToken: tokenInfo.refresh_token,
