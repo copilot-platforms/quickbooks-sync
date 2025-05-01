@@ -7,7 +7,7 @@ import { z } from 'zod'
 export const QBTokens = table(
   'qb_tokens',
   {
-    id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
+    id: t.uuid().defaultRandom().primaryKey(),
     portalId: t.varchar('portal_id', { length: 255 }).notNull(),
     intuitRealmId: t.varchar('intuit_realm_id', { length: 255 }).notNull(),
     accessToken: t.varchar('access_token').notNull(),

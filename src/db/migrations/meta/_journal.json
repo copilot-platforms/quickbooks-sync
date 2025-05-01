@@ -36,6 +36,13 @@
       "when": 1745768328573,
       "tag": "0004_intiated_by_column_in_qb_tokens_table",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1746077192684,
+      "tag": "0005_alter_id_value_as_uuid_in_qb_tokens",
+      "breakpoints": true
     }
   ]
 }
