@@ -57,7 +57,6 @@ export class AuthService extends BaseService {
       const tokenSetTime = dayjs().toDate()
 
       const insertPayload: QBTokenCreateSchemaType = {
-        UUID: uuidv4(),
         intuitRealmId: realmId,
         accessToken: tokenInfo.access_token,
         refreshToken: tokenInfo.refresh_token,

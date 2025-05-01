@@ -1,5 +1,5 @@
 {
-  "id": "3f65bcd3-1b79-4bed-88ac-b4f9f213103c",
+  "id": "1199429d-c63f-44ca-887d-68814caa85cd",
   "prevId": "047969f9-91b6-4ffd-bdb6-5df25ea07931",
   "version": "7",
   "dialect": "postgresql",
@@ -301,26 +301,10 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "qb_tokens_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "2147483647",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "uuid": {
-          "name": "uuid",
-          "type": "varchar(255)",
+          "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "gen_random_uuid()"
         },
         "portal_id": {
           "name": "portal_id",
