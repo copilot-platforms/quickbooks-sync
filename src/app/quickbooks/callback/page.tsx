@@ -8,7 +8,7 @@ export default function QuickBooksCallback() {
   // TODO: show 404 page if not relevant search
 
   return (
-    <div className="w-full h-screen flex items-center justify-center text-xl">
+    <div className="w-full h-full flex items-center justify-center text-xl">
       {error ? (
         `${error}!!!`
       ) : loading ? (
