@@ -5,6 +5,7 @@ import {
   reconnectIfCta,
 } from '@/action/quickbooks.action'
 import HomeClient from '@/app/(home)/HomeClient'
+import { AuthProvider } from '@/app/context/AuthContext'
 import { SilentError } from '@/components/template/SilentError'
 import { z } from 'zod'
 
@@ -49,13 +50,15 @@ export default async function Main({
 
   return (
     <>
-      <HomeClient
+      <AuthProvider
         token={token}
-        portalConnectionStatus={portalConnectionStatus}
         tokenPayload={tokenPayload}
         syncFlag={syncFlag}
         reconnect={reconnect}
-      />
+        portalConnectionStatus={portalConnectionStatus}
+      >
+        <HomeClient />
+      </AuthProvider>
     </>
   )
 }

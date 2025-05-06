@@ -1,23 +1,15 @@
 'use client'
+import { useAuth } from '@/app/context/AuthContext'
+import { Main as DashboardMain } from '@/components/dashboard/Main'
 import { SilentError } from '@/components/template/SilentError'
 import { useQuickbooks } from '@/hook/useQuickbooks'
-import { Token } from '@/type/common'
+import { Button, Spinner } from 'copilot-design-system'
 
-export default function HomeClient({
-  token,
-  tokenPayload,
-  portalConnectionStatus,
-  syncFlag,
-  reconnect,
-}: {
-  token: string
-  tokenPayload: Token
-  portalConnectionStatus: boolean
-  syncFlag: boolean
-  reconnect: boolean
-}) {
-  const { loading, handleConnect, hasConnection, isSyncOn, isReconnecting } =
-    useQuickbooks(token, tokenPayload, syncFlag, reconnect)
+export default function HomeClient() {
+  const { token, tokenPayload, reconnect, portalConnectionStatus } = useAuth()
+
+  const { loading, handleConnect, hasConnection, isReconnecting } =
+    useQuickbooks(token, tokenPayload, reconnect)
 
   if (hasConnection === null) {
     return (
@@ -29,40 +21,33 @@ export default function HomeClient({
   }
 
   return (
-    <div className="home-client-wrapper w-full h-screen flex items-center justify-center text-xl">
+    <div className="home-client-wrapper w-full h-full">
       {hasConnection || portalConnectionStatus ? (
         <div>
-          {isReconnecting && 'Reconnecting to QuickBooks...'}
-          <div className="text-center">
-            {isSyncOn ? (
-              <>
-                QuickBooks is connected.{' '}
-                <span className="text-green-700">Sync is on</span>
-              </>
-            ) : (
-              <>
-                QuickBooks connection failed.{' '}
-                <span className="text-red-700">Sync is off</span>
-              </>
-            )}
-          </div>
+          {isReconnecting && (
+            <div>
+              Reconnecting to QuickBooks <Spinner size={5} />
+            </div>
+          )}
+          <DashboardMain />
         </div>
       ) : (
-        <>
+        <div className="flex items-center justify-center h-full text-xl">
           {loading ? (
-            <div className="flex items-end">
-              Connecting to QuickBooks. Please wait...
+            <div className="flex items-center">
+              <span className="me-2">
+                Connecting to QuickBooks. Please wait
+              </span>{' '}
+              <Spinner size={5} />
             </div>
           ) : (
-            <button
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm"
+            <Button
+              label="Connect to QuickBooks"
               onClick={() => handleConnect()}
               disabled={loading}
-            >
-              Connect to QuickBooks
-            </button>
+            />
           )}
-        </>
+        </div>
       )}
     </div>
   )
