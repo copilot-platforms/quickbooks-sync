@@ -70,7 +70,7 @@ export class InvoiceService extends BaseService {
 
     let company
     if (!client) {
-      const company = await this.copilot.getCompany(invoiceResource.recipientId)
+      company = await this.copilot.getCompany(invoiceResource.recipientId)
 
       if (!company) {
         console.info(
