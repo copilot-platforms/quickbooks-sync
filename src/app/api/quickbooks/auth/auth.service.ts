@@ -19,6 +19,7 @@ import {
   QBAuthTokenResponseSchema,
 } from '@/type/dto/qbAuthToken.dto'
 import Intuit from '@/utils/intuit'
+import { IntuitAPITokensType } from '@/utils/intuitAPI'
 import dayjs from 'dayjs'
 import { and, eq, SQL } from 'drizzle-orm'
 import httpStatus from 'http-status'
@@ -98,7 +99,7 @@ export class AuthService extends BaseService {
     }
   }
 
-  async getQBAccessToken(portalId: string): Promise<string | null> {
+  async getQBToken(portalId: string): Promise<IntuitAPITokensType> {
     const portalQBToken = await getSyncedPortalConnection(portalId)
     if (!portalQBToken) {
       throw new APIError(
@@ -116,7 +117,11 @@ export class AuthService extends BaseService {
       expiresIn,
     } = portalQBToken
     const expiryTime = dayjs(tokenSetTime).add(expiresIn, 'seconds')
-    let updatedAccessToken = accessToken
+    let updatedTokenInfo = {
+      accessToken,
+      refreshToken,
+      intuitRealmId,
+    }
 
     // Refresh token if expired
     if (dayjs().isAfter(expiryTime)) {
@@ -126,11 +131,15 @@ export class AuthService extends BaseService {
           await Intuit.getInstance().getRefreshedQBToken(refreshToken)
         const tokenSetTime = dayjs().toDate()
 
-        updatedAccessToken = tokenInfo.access_token
+        updatedTokenInfo = {
+          ...updatedTokenInfo,
+          accessToken: tokenInfo.access_token,
+          refreshToken: tokenInfo.refresh_token,
+        }
 
         const updatedPayload: QBTokenUpdateSchemaType = {
-          accessToken: updatedAccessToken,
-          refreshToken: tokenInfo.refresh_token,
+          accessToken: updatedTokenInfo.accessToken,
+          refreshToken: updatedTokenInfo.refreshToken,
           expiresIn: tokenInfo.expires_in,
           XRefreshTokenExpiresIn: tokenInfo.x_refresh_token_expires_in,
           tokenSetTime,
@@ -176,16 +185,17 @@ export class AuthService extends BaseService {
               )
             })
 
-            throw new APIError(
-              httpStatus.UNAUTHORIZED,
-              'Refresh token is invalid or expired, reauthorization needed.',
-            )
+            return {
+              accessToken: '',
+              refreshToken: '',
+              intuitRealmId,
+            }
           }
         }
 
         throw error
       }
     }
-    return updatedAccessToken
+    return updatedTokenInfo
   }
 }

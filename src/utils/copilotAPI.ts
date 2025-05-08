@@ -36,6 +36,7 @@ import type { CopilotAPI as SDK } from 'copilot-node-sdk'
 import { copilotApi } from 'copilot-node-sdk'
 import { z } from 'zod'
 import { API_DOMAIN } from '@/constant/domains'
+import { CopilotApiError } from '@/type/CopilotApiError'
 
 export class CopilotAPI {
   copilot: SDK
@@ -118,14 +119,28 @@ export class CopilotAPI {
     )
   }
 
-  async _getClient(id: string): Promise<ClientResponse> {
-    console.info('CopilotAPI#getClient | token =', this.token)
-    return ClientResponseSchema.parse(await this.copilot.retrieveClient({ id }))
+  async _getClient(id: string): Promise<ClientResponse | undefined> {
+    try {
+      console.info('CopilotAPI#getClient | token =', this.token)
+      return ClientResponseSchema.parse(
+        await this.copilot.retrieveClient({ id }),
+      )
+    } catch (error: unknown) {
+      const tError = error as CopilotApiError
+      console.error('CopilotAPI#getClient | message =', tError.body.message)
+      return
+    }
   }
 
   async _getClients(args: CopilotListArgs & { companyId?: string } = {}) {
-    console.info('CopilotAPI#getClients | token =', this.token)
-    return ClientsResponseSchema.parse(await this.copilot.listClients(args))
+    try {
+      console.info('CopilotAPI#getClients | token =', this.token)
+      return ClientsResponseSchema.parse(await this.copilot.listClients(args))
+    } catch (error: unknown) {
+      const tError = error as CopilotApiError
+      console.error('CopilotAPI#getClients | message =', tError.body.message)
+      return
+    }
   }
 
   async _updateClient(
@@ -150,11 +165,17 @@ export class CopilotAPI {
     )
   }
 
-  async _getCompany(id: string): Promise<CompanyResponse> {
-    console.info('CopilotAPI#getCompany | token =', this.token)
-    return CompanyResponseSchema.parse(
-      await this.copilot.retrieveCompany({ id }),
-    )
+  async _getCompany(id: string): Promise<CompanyResponse | undefined> {
+    try {
+      console.info('CopilotAPI#getCompany | token =', this.token)
+      return CompanyResponseSchema.parse(
+        await this.copilot.retrieveCompany({ id }),
+      )
+    } catch (error: unknown) {
+      const tError = error as CopilotApiError
+      console.error('CopilotAPI#getCompany | message =', tError.body.message)
+      return
+    }
   }
 
   async _getCompanies(args: CopilotListArgs = {}): Promise<CompaniesResponse> {
@@ -164,7 +185,7 @@ export class CopilotAPI {
 
   async _getCompanyClients(companyId: string): Promise<ClientResponse[]> {
     console.info('CopilotAPI#getCompanyClients | token =', this.token)
-    return (await this.getClients({ limit: 10000, companyId })).data || []
+    return (await this.getClients({ limit: 10000, companyId }))?.data || []
   }
 
   async _getCustomFields(): Promise<CustomFieldResponse> {

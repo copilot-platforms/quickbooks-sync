@@ -22,7 +22,12 @@ export const intuitClientSecret = process.env.INTUIT_CLIENT_SECRET || ''
 export const intuitRedirectUri = apiUrl + process.env.INTUIT_REDIRECT_URI_PATH
 export const intuitEnvironment = (process.env.INTUIT_ENVIRONMENT ||
   'sandbox') as EnvironmentType
-export const intuitIntuitCompanyId = process.env.INTUIT_COMPANY_ID || ''
+export const intuitBaseUrl =
+  process.env.COPILOT_ENV === 'production'
+    ? process.env.INTUIT_PRODUCTION_API_URL
+    : process.env.INTUIT_SANDBOX_API_URL
+export const intuitApiMinorVersion =
+  process.env.INTUIT_API_MINOR_VERSION || '75'
 
 // Supabase
 export const supabaseProjectUrl =

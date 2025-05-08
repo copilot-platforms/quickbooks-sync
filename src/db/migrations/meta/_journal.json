@@ -43,6 +43,20 @@
       "when": 1746077192684,
       "tag": "0005_alter_id_value_as_uuid_in_qb_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1746616683784,
+      "tag": "0006_removed_not_null_constraints_from_qb_invoice_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1746683033545,
+      "tag": "0007_uuid_datatype_for_id_in_invoice_sync",
+      "breakpoints": true
     }
   ]
 }
