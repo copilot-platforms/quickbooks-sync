@@ -5,7 +5,7 @@ export const buildReturningFields = <T>(
 ) => {
   return fields.reduce(
     (acc, field) => {
-      acc[field as string] = bool ? true : table[field]
+      acc[field as string] = bool || table[field]
       return acc
     },
     {} as Record<string, any>,

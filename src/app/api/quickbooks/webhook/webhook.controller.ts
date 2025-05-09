@@ -4,7 +4,7 @@ import { WebhookService } from '@/app/api/quickbooks/webhook/webhook.service'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function captureWebhookEvent(req: NextRequest) {
-  console.log('\n\n####### Webhook triggered #######')
+  console.info('\n\n####### Webhook triggered #######')
   const user = await authenticate(req)
   const authService = new AuthService(user)
   const payload = await req.json()
