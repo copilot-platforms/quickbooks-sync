@@ -13,7 +13,8 @@
     "lint:fix": "npm run lint:check -- --fix",
     "prettier:fix": "prettier --write .",
     "lint-staged": "npx lint-staged",
-    "prepare": "husky"
+    "prepare": "husky",
+    "supabase:dev": "supabase start --ignore-health-check"
   },
   "dependencies": {
     "@sentry/nextjs": "^9.13.0",
