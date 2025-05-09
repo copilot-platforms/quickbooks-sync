@@ -93,12 +93,39 @@ export class InvoiceService extends BaseService {
     const intuitApi = new IntuitAPI(qbTokenInfo)
     const customerQuery = `SELECT id FROM Customer WHERE GivenName = '${client.givenName}' AND FamilyName = '${client.familyName}' AND Active = true`
     const qbCustomers = await intuitApi.customQuery(customerQuery)
-    const customer = qbCustomers?.QueryResponse?.Customer?.[0] || null
+    let customer = qbCustomers?.QueryResponse?.Customer?.[0]
 
     // 3. if not found, create a new client in the QB
     if (!customer) {
-      // TODO: create a new customer in QB
-      console.log('InvoiceService#handleInvoiceCreated | Created customer')
+      if (!company) {
+        // Case when client is retrieved directly from recipientId
+        company = await this.copilot.getCompany(client.companyId)
+
+        if (!company) {
+          // Indicates company is not available in any case. This only logs as error and allows to create customer in QB since company name is optional
+          console.error(
+            'InvoiceService#handleInvoiceCreated | Could not retrieve company for client = ',
+            client.id,
+          )
+        }
+      }
+
+      // Create a new customer in QB
+      const customerPayload = {
+        GivenName: client.givenName,
+        FamilyName: client.familyName,
+        CompanyName: company?.name,
+        PrimaryEmailAddr: {
+          Address: client.email,
+        },
+      }
+
+      const customerRes = await intuitApi.createCustomer(customerPayload)
+      customer = customerRes.Customer
+
+      if (!customer) {
+        throw new Error('Failed to create customer')
+      }
     }
 
     // 4. prepare payload for invoice with lineItems
