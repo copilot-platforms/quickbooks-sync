@@ -62,7 +62,7 @@ export class NotificationService extends BaseService {
     action: NotificationActions,
   ): Promise<InternalUsersResponse | null> {
     switch (action) {
-      case NotificationActions.AuthReconnect:
+      case NotificationActions.AUTH_RECONNECT:
         return await copilot.getInternalUsers()
       default:
         return null

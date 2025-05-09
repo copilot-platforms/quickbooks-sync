@@ -1,3 +1,3 @@
 export enum WebhookEvents {
-  InvoiceCreated = 'invoice.created',
+  INVOICE_CREATED = 'invoice.created',
 }
