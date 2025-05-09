@@ -24,3 +24,16 @@ export const QBInvoiceCreatePayloadSchema = z.object({
 export type QBInvoiceCreatePayloadType = z.infer<
   typeof QBInvoiceCreatePayloadSchema
 >
+
+export const QBCustomerCreatePayloadSchema = z.object({
+  GivenName: z.string(),
+  FamilyName: z.string(),
+  CompanyName: z.string().optional(),
+  PrimaryEmailAddr: z.object({
+    Address: z.string(),
+  }),
+})
+
+export type QBCustomerCreatePayloadType = z.infer<
+  typeof QBCustomerCreatePayloadSchema
+>
