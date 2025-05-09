@@ -1,4 +1,5 @@
 import { AuthStatus } from '@/app/api/core/types/auth'
+import { useAuth } from '@/app/context/AuthContext'
 import { copilotDashboardUrl } from '@/config'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
 import SupabaseClient from '@/lib/supabase'
@@ -8,13 +9,12 @@ import { useEffect, useState } from 'react'
 export const useQuickbooks = (
   token: string,
   tokenPayload: Token,
-  syncFlag: boolean,
   reconnect: boolean,
 ) => {
   const [loading, setLoading] = useState(false)
   const [hasConnection, setHasConnection] = useState<boolean | null>(false) // null indicates error
-  const [isSyncOn, setIsSyncOn] = useState(syncFlag)
   const [isReconnecting, setIsReconnecting] = useState(reconnect)
+  const { setAuthParams } = useAuth()
 
   useEffect(() => {
     const supabase = SupabaseClient.getInstance()
@@ -31,7 +31,10 @@ export const useQuickbooks = (
         (payload) => {
           // TODO: parsing payload using drizzle-zod throwing error
           // const parsedPayload = QBTokenSelectSchema.parse(payload.new)
-          setIsSyncOn(payload.new.sync_flag)
+          setAuthParams((prev) => ({
+            ...prev,
+            syncFlag: payload.new.sync_flag,
+          }))
         },
       )
       .on(
@@ -52,7 +55,10 @@ export const useQuickbooks = (
                 : null
           setHasConnection(connectionStatus)
           setIsReconnecting(!connectionStatus)
-          setIsSyncOn(connectionStatus || false)
+          setAuthParams((prev) => ({
+            ...prev,
+            syncFlag: connectionStatus || false,
+          }))
         },
       )
       .subscribe()
@@ -101,7 +107,6 @@ export const useQuickbooks = (
     handleConnect,
     hasConnection,
     checkPortalConnection,
-    isSyncOn,
     isReconnecting,
   }
 }

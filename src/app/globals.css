@@ -5,3 +5,13 @@
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
 }
+
+@theme {
+  --color-text-primary: #212b36;
+  --color-success-primary: #115b3b;
+  --color-success-background: #dfffeb;
+  --color-warning-primary: #863805;
+  --color-warning-background: #fef6d0;
+  --color-failed-primary: #991a00;
+  --color-failed-background: #ffede8;
+}
