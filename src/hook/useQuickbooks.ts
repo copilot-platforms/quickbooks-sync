@@ -71,7 +71,7 @@ export const useQuickbooks = (
   // handle reconnect logic
   useEffect(() => {
     if (reconnect) {
-      handleConnect(AuthStatus.Reconnect)
+      handleConnect(AuthStatus.RECONNECT)
     }
   }, [reconnect])
 

@@ -24,7 +24,7 @@ export const useDashboardMain = () => {
     } else {
       setCallOutStatus(CalloutStatus.Failed)
     }
-    setButtonAction(() => () => handleConnect(AuthStatus.Reconnect))
+    setButtonAction(() => () => handleConnect(AuthStatus.RECONNECT))
     setIsLoading(false)
   }, [syncFlag])
 

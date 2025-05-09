@@ -1,4 +1,4 @@
 export enum ClientStatus {
-  Active = 'active',
-  Invited = 'invited',
+  ACTIVE = 'active',
+  INVITED = 'invited',
 }

@@ -14,7 +14,7 @@ export class WebhookService extends BaseService {
     qbTokenInfo: IntuitAPITokensType,
   ) {
     switch (payload.eventType) {
-      case WebhookEvents.InvoiceCreated:
+      case WebhookEvents.INVOICE_CREATED:
         const parsedPayload = InvoiceCreatedResponseSchema.safeParse(payload)
         if (!parsedPayload.success || !parsedPayload.data) {
           console.error(
@@ -25,7 +25,7 @@ export class WebhookService extends BaseService {
         const parsedInvoiceResource = parsedPayload.data
 
         // Check if invoice is in draft status
-        if (parsedInvoiceResource.data.status === InvoiceStatus.Draft) {
+        if (parsedInvoiceResource.data.status === InvoiceStatus.DRAFT) {
           console.log(
             'WebhookService#handleWebhookEvent#draft | Invoice is in draft status',
           )

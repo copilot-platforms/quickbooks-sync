@@ -3,7 +3,7 @@ import { ClientResponse } from '@/type/common'
 
 export function getLatestActiveClient(clients: ClientResponse[]) {
   const filteredClients = clients.filter((client) => {
-    return client.status === ClientStatus.Active
+    return client.status === ClientStatus.ACTIVE
   })
 
   const sortedClients = sortClientsByDate(filteredClients)

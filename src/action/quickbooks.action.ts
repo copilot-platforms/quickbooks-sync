@@ -33,7 +33,7 @@ export async function reconnectIfCta(type?: string) {
     return false
   }
   const parsedType = z.string().safeParse(type)
-  if (parsedType.success && parsedType?.data === AuthStatus.Reconnect)
+  if (parsedType.success && parsedType?.data === AuthStatus.RECONNECT)
     return true
   return false
 }

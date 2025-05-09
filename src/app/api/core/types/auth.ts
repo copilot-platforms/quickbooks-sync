@@ -1,3 +1,3 @@
 export enum AuthStatus {
-  Reconnect = 'reconnect',
+  RECONNECT = 'reconnect',
 }

@@ -30,7 +30,7 @@ export class AuthService extends BaseService {
     state: { token: string; originUrl?: string },
     type?: string,
   ): Promise<string | null> {
-    if (type && type === AuthStatus.Reconnect) {
+    if (type && type === AuthStatus.RECONNECT) {
       const resStatus = await getSyncedPortalConnection(this.user.workspaceId)
       const status = resStatus?.syncFlag || false
       if (status) return null
@@ -181,7 +181,7 @@ export class AuthService extends BaseService {
               const notificationService = new NotificationService(this.user)
               await notificationService.sendNotificationToIU(
                 intiatedBy,
-                NotificationActions.AuthReconnect,
+                NotificationActions.AUTH_RECONNECT,
               )
             })
 
