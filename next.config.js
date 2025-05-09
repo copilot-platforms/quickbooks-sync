@@ -30,8 +30,8 @@ const nextConfig = {
 }
 
 module.exports = withSentryConfig(nextConfig, {
-  org: 'outside-dy',
-  project: 'quickBooks-sync',
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
 
   // Only print logs for uploading source maps in CI
   // Set to `true` to suppress logs
