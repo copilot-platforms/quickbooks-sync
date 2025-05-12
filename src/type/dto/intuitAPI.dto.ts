@@ -37,3 +37,7 @@ export const QBCustomerCreatePayloadSchema = z.object({
 export type QBCustomerCreatePayloadType = z.infer<
   typeof QBCustomerCreatePayloadSchema
 >
+
+export type QBCustomerFullUpdatePayloadType = z.infer<
+  typeof QBCustomerCreatePayloadSchema
+> & { Id: string; SyncToken: string }

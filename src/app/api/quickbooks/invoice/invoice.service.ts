@@ -1,7 +1,9 @@
 import User from '@/app/api/core/models/User.model'
 import { BaseService } from '@/app/api/core/services/base.service'
+import { CustomerService } from '@/app/api/quickbooks/customer/customer.service'
 import { getLatestActiveClient } from '@/app/api/quickbooks/invoice/invoice.helper'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
+import { QBCustomers } from '@/db/schema/qbCustomers'
 import {
   QBInvoiceSync,
   QBInvoiceCreateSchema,
@@ -13,7 +15,7 @@ import {
 } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
-import { and, isNull } from 'drizzle-orm'
+import { and, eq, isNull, SQL } from 'drizzle-orm'
 
 export class InvoiceService extends BaseService {
   private copilot: CopilotAPI
@@ -89,42 +91,108 @@ export class InvoiceService extends BaseService {
       client = getLatestActiveClient(clients.data)
     }
 
-    // 2. search client in qb using client's given name and family name
+    // 2. search client in our mapping table
+    const customerService = new CustomerService(this.user)
+    const existingCustomer = await customerService.getByClientId(client.id, [
+      'id',
+      'qbCustomerId',
+      'qbSyncToken',
+      'familyName',
+      'givenName',
+      'email',
+    ])
+
+    let customer
     const intuitApi = new IntuitAPI(qbTokenInfo)
-    const customerQuery = `SELECT id FROM Customer WHERE GivenName = '${client.givenName}' AND FamilyName = '${client.familyName}' AND Active = true`
-    const qbCustomers = await intuitApi.customQuery(customerQuery)
-    let customer = qbCustomers?.QueryResponse?.Customer?.[0]
 
-    // 3. if not found, create a new client in the QB
-    if (!customer) {
-      if (!company) {
-        // Case when client is retrieved directly from recipientId
-        company = await this.copilot.getCompany(client.companyId)
+    if (!existingCustomer) {
+      // 2.1. search client in qb using client's given name and family name
+      const customerQuery = `SELECT id, SyncToken FROM Customer WHERE GivenName = '${client.givenName}' AND FamilyName = '${client.familyName}' AND Active = true`
+      const qbCustomers = await intuitApi.customQuery(customerQuery)
+      customer = qbCustomers?.QueryResponse?.Customer?.[0]
 
+      // 3. if not found, create a new client in the QB
+      if (!customer) {
         if (!company) {
-          // Indicates company is not available in any case. This only logs as error and allows to create customer in QB since company name is optional
-          console.error(
-            'InvoiceService#handleInvoiceCreated | Could not retrieve company for client = ',
-            client.id,
-          )
+          // Case when client is retrieved directly from recipientId
+          company = await this.copilot.getCompany(client.companyId)
+
+          if (!company) {
+            // Indicates company is not available in any case. This only logs as error and allows to create customer in QB since company name is optional
+            console.error(
+              'InvoiceService#handleInvoiceCreated | Could not retrieve company for client = ',
+              client.id,
+            )
+          }
+        }
+
+        // Create a new customer in QB
+        const customerPayload = {
+          GivenName: client.givenName,
+          FamilyName: client.familyName,
+          CompanyName: company?.name,
+          PrimaryEmailAddr: {
+            Address: client.email,
+          },
+        }
+
+        const customerRes = await intuitApi.createCustomer(customerPayload)
+        customer = customerRes.Customer
+
+        if (!customer) {
+          throw new Error('Failed to create customer')
         }
       }
-
-      // Create a new customer in QB
-      const customerPayload = {
-        GivenName: client.givenName,
-        FamilyName: client.familyName,
-        CompanyName: company?.name,
-        PrimaryEmailAddr: {
-          Address: client.email,
-        },
+      // create map for customer into our table
+      const customerSyncPayload = {
+        portalId: qbTokenInfo.intuitRealmId,
+        clientId: client.id,
+        givenName: client.givenName,
+        familyName: client.familyName,
+        email: client.email,
+        companyName: company?.name,
+        qbSyncToken: customer.SyncToken,
+        qbCustomerId: customer.Id,
       }
 
-      const customerRes = await intuitApi.createCustomer(customerPayload)
-      customer = customerRes.Customer
+      await customerService.createQBCustomer(customerSyncPayload)
+    } else {
+      // update the customer in qb
+      if (
+        existingCustomer.familyName !== client.familyName ||
+        existingCustomer.givenName !== client.givenName ||
+        existingCustomer.email !== client.email
+      ) {
+        const updateCustomerPaylaod = {
+          Id: existingCustomer.qbCustomerId,
+          GivenName: client.givenName,
+          FamilyName: client.familyName,
+          CompanyName: company?.name,
+          PrimaryEmailAddr: {
+            Address: client.email,
+          },
+          SyncToken: existingCustomer.qbSyncToken,
+        }
+        const customerRes = await intuitApi.fullUpdateCustomer(
+          updateCustomerPaylaod,
+        )
+        customer = customerRes.Customer
 
-      if (!customer) {
-        throw new Error('Failed to create customer')
+        // update the customer map in our table
+        const customerSyncUpPayload = {
+          givenName: client.givenName,
+          familyName: client.familyName,
+          email: client.email,
+          companyName: company?.name,
+          qbSyncToken: customer.SyncToken,
+        }
+
+        const updateCondition = eq(QBCustomers.id, existingCustomer.id) as SQL
+
+        await customerService.updateQBCustomer(
+          customerSyncUpPayload,
+          updateCondition,
+        )
       }
     }
 
@@ -151,7 +219,7 @@ export class InvoiceService extends BaseService {
     const qbInvoicePayload = {
       Line: lineItems,
       CustomerRef: {
-        value: customer.Id,
+        value: customer?.Id || existingCustomer?.qbCustomerId,
       },
     }
 

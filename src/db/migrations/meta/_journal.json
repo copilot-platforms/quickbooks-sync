@@ -57,6 +57,13 @@
       "when": 1746683033545,
       "tag": "0007_uuid_datatype_for_id_in_invoice_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1747050395682,
+      "tag": "0008_qb_customers_table",
+      "breakpoints": true
     }
   ]
 }
