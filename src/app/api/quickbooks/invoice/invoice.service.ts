@@ -13,6 +13,7 @@ import {
 } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
+import dayjs from 'dayjs'
 import { and, isNull } from 'drizzle-orm'
 
 export class InvoiceService extends BaseService {
@@ -142,6 +143,9 @@ export class InvoiceService extends BaseService {
             },
             Qty: lineItem.quantity,
             UnitPrice: actualAmount,
+            TaxCodeRef: {
+              value: 'TAX',
+            },
           },
           Description: lineItem.description,
         }
@@ -157,6 +161,40 @@ export class InvoiceService extends BaseService {
 
     // 5. create invoice in QB
     const invoiceRes = await intuitApi.createInvoice(qbInvoicePayload)
+
+    // 6. update tax
+    const invoiceUpdateBody = {
+      ...(invoiceResource?.taxAmount && {
+        TxnTaxDetail: {
+          TotalTax: Number((invoiceResource.taxAmount / 100).toFixed(2)),
+          TxnTaxCodeRef: {
+            value: 'TAX',
+          },
+        },
+      }),
+      ...(invoiceResource?.sentDate && {
+        TxnDate: dayjs(invoiceResource.sentDate).format('yyyy/MM/dd'),
+      }),
+      ...(invoiceResource?.dueDate && {
+        DueDate: dayjs(invoiceResource.dueDate).format('YYYY-MM-DD'),
+      }),
+    }
+
+    if (Object.keys(invoiceUpdateBody).length > 0) {
+      const invoiceSparseUpdatePayload = {
+        Id: invoiceRes.Invoice.Id,
+        sparse: true,
+        SyncToken: invoiceRes.Invoice.SyncToken,
+        ...invoiceUpdateBody,
+      }
+
+      console.log({ invoiceSparseUpdatePayload })
+
+      const inv = await intuitApi.invoiceSparseUpdate(
+        invoiceSparseUpdatePayload,
+      )
+      console.log({ inv })
+    }
 
     const invoicePayload = {
       portalId: qbTokenInfo.intuitRealmId,
