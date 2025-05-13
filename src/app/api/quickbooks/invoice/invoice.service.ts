@@ -157,19 +157,10 @@ export class InvoiceService extends BaseService {
       CustomerRef: {
         value: customer.Id,
       },
-    }
-
-    // 5. create invoice in QB
-    const invoiceRes = await intuitApi.createInvoice(qbInvoicePayload)
-
-    // 6. update tax
-    const invoiceUpdateBody = {
+      // include tax and dates
       ...(invoiceResource?.taxAmount && {
         TxnTaxDetail: {
           TotalTax: Number((invoiceResource.taxAmount / 100).toFixed(2)),
-          TxnTaxCodeRef: {
-            value: 'TAX',
-          },
         },
       }),
       ...(invoiceResource?.sentDate && {
@@ -180,21 +171,8 @@ export class InvoiceService extends BaseService {
       }),
     }
 
-    if (Object.keys(invoiceUpdateBody).length > 0) {
-      const invoiceSparseUpdatePayload = {
-        Id: invoiceRes.Invoice.Id,
-        sparse: true,
-        SyncToken: invoiceRes.Invoice.SyncToken,
-        ...invoiceUpdateBody,
-      }
-
-      console.log({ invoiceSparseUpdatePayload })
-
-      const inv = await intuitApi.invoiceSparseUpdate(
-        invoiceSparseUpdatePayload,
-      )
-      console.log({ inv })
-    }
+    // 6. create invoice in QB
+    const invoiceRes = await intuitApi.createInvoice(qbInvoicePayload)
 
     const invoicePayload = {
       portalId: qbTokenInfo.intuitRealmId,
