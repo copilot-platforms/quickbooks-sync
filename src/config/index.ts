@@ -23,7 +23,7 @@ export const intuitRedirectUri = apiUrl + process.env.INTUIT_REDIRECT_URI_PATH
 export const intuitEnvironment = (process.env.INTUIT_ENVIRONMENT ||
   'sandbox') as EnvironmentType
 export const intuitBaseUrl =
-  process.env.COPILOT_ENV === 'production'
+  intuitEnvironment === 'production'
     ? process.env.INTUIT_PRODUCTION_API_URL
     : process.env.INTUIT_SANDBOX_API_URL
 export const intuitApiMinorVersion =

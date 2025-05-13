@@ -13,6 +13,7 @@ import {
 } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
+import dayjs from 'dayjs'
 import { and, isNull } from 'drizzle-orm'
 
 export class InvoiceService extends BaseService {
@@ -142,6 +143,9 @@ export class InvoiceService extends BaseService {
             },
             Qty: lineItem.quantity,
             UnitPrice: actualAmount,
+            TaxCodeRef: {
+              value: 'TAX',
+            },
           },
           Description: lineItem.description,
         }
@@ -153,9 +157,21 @@ export class InvoiceService extends BaseService {
       CustomerRef: {
         value: customer.Id,
       },
+      // include tax and dates
+      ...(invoiceResource?.taxAmount && {
+        TxnTaxDetail: {
+          TotalTax: Number((invoiceResource.taxAmount / 100).toFixed(2)),
+        },
+      }),
+      ...(invoiceResource?.sentDate && {
+        TxnDate: dayjs(invoiceResource.sentDate).format('yyyy/MM/dd'),
+      }),
+      ...(invoiceResource?.dueDate && {
+        DueDate: dayjs(invoiceResource.dueDate).format('YYYY-MM-DD'),
+      }),
     }
 
-    // 5. create invoice in QB
+    // 6. create invoice in QB
     const invoiceRes = await intuitApi.createInvoice(qbInvoicePayload)
 
     const invoicePayload = {

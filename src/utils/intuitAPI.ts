@@ -5,6 +5,7 @@ import { getFetcher, postFetcher } from '@/helper/fetch.helper'
 import {
   QBCustomerCreatePayloadType,
   QBInvoiceCreatePayloadType,
+  QBInvoiceSparseUpdatePayloadType,
 } from '@/type/dto/intuitAPI.dto'
 
 export type IntuitAPITokensType = Pick<
@@ -42,7 +43,7 @@ export default class IntuitAPI {
     return response
   }
 
-  private async manualGETFetch(
+  private async manualGetFetch(
     url: string,
     customHeaders?: Record<string, string>,
   ) {
@@ -57,7 +58,7 @@ export default class IntuitAPI {
   async _customQuery(query: string) {
     console.log('IntuitAPI#customQuery')
     const url = `${intuitBaseUrl}/v3/company/${IntuitAPI.tokens.intuitRealmId}/query?query=${query}&minorversion=${intuitApiMinorVersion}`
-    return await this.manualGETFetch(url)
+    return await this.manualGetFetch(url)
   }
 
   async _createInvoice(payload: QBInvoiceCreatePayloadType) {
@@ -82,6 +83,17 @@ export default class IntuitAPI {
     return customer
   }
 
+  async _invoiceSparseUpdate(payload: QBInvoiceSparseUpdatePayloadType) {
+    console.log('IntuitAPI#InvoiceSparseUpdate | invoice sparse update start')
+    const url = `${intuitBaseUrl}/v3/company/${IntuitAPI.tokens.intuitRealmId}/invoice?minorversion=${intuitApiMinorVersion}`
+    const invoice = await this.manualPostFetch(url, payload)
+    console.log(
+      'IntuitAPI#InvoiceSparseUpdate | invoice sparse updated for doc number=',
+      invoice?.Invoice.DocNumber,
+    )
+    return invoice
+  }
+
   private wrapWithRetry<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
   ): (...args: Args) => Promise<R> {
@@ -91,4 +103,5 @@ export default class IntuitAPI {
   customQuery = this.wrapWithRetry(this._customQuery)
   createInvoice = this.wrapWithRetry(this._createInvoice)
   createCustomer = this.wrapWithRetry(this._createCustomer)
+  invoiceSparseUpdate = this.wrapWithRetry(this._invoiceSparseUpdate)
 }
