@@ -9,6 +9,7 @@ import {
   QBInvoiceCreateSchema,
   QBInvoiceCreateSchemaType,
 } from '@/db/schema/qbInvoiceSync'
+import { QBCustomerParseUpdatePayloadType } from '@/type/dto/intuitAPI.dto'
 import {
   InvoiceCreatedResponseType,
   InvoiceLineItemSchemaType,
@@ -158,23 +159,37 @@ export class InvoiceService extends BaseService {
       await customerService.createQBCustomer(customerSyncPayload)
     } else {
       // update the customer in qb
-      if (
-        existingCustomer.familyName !== client.familyName ||
-        existingCustomer.givenName !== client.givenName ||
-        existingCustomer.email !== client.email
-      ) {
-        const updateCustomerPaylaod = {
-          Id: existingCustomer.qbCustomerId,
-          GivenName: client.givenName,
-          FamilyName: client.familyName,
-          CompanyName: company?.name,
-          PrimaryEmailAddr: {
-            Address: client.email,
-          },
-          SyncToken: existingCustomer.qbSyncToken,
+      const sparseUpdatePayload: Omit<
+        QBCustomerParseUpdatePayloadType,
+        'Id' | 'SyncToken'
+      > = {}
+
+      if (existingCustomer.familyName !== client.familyName) {
+        sparseUpdatePayload.FamilyName = client.familyName
+      }
+      if (existingCustomer.givenName !== client.givenName) {
+        sparseUpdatePayload.GivenName = client.givenName
+      }
+      if (existingCustomer.email !== client.email) {
+        sparseUpdatePayload.PrimaryEmailAddr = {
+          Address: client.email,
         }
-        const customerRes = await intuitApi.fullUpdateCustomer(
-          updateCustomerPaylaod,
+      }
+      if (Object.keys(sparseUpdatePayload).length > 0) {
+        const customerSparsePayload = {
+          ...sparseUpdatePayload,
+          Id: existingCustomer.qbCustomerId,
+          SyncToken: existingCustomer.qbSyncToken,
+          DisplayName: `${client.givenName} ${client.familyName}`,
+          BillAddr: {
+            Line1: `${existingCustomer.givenName} ${existingCustomer.familyName}`,
+            Line2: existingCustomer.companyName,
+          },
+          sparse: true,
+        } as QBCustomerParseUpdatePayloadType
+
+        const customerRes = await intuitApi.parseUpdateCustomer(
+          customerSparsePayload,
         )
         customer = customerRes.Customer
 

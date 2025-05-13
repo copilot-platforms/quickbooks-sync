@@ -38,6 +38,5 @@ export type QBCustomerCreatePayloadType = z.infer<
   typeof QBCustomerCreatePayloadSchema
 >
 
-export type QBCustomerFullUpdatePayloadType = z.infer<
-  typeof QBCustomerCreatePayloadSchema
-> & { Id: string; SyncToken: string }
+export type QBCustomerParseUpdatePayloadType =
+  Partial<QBCustomerCreatePayloadType> & { Id: string; SyncToken: string }

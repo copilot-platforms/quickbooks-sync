@@ -38,10 +38,7 @@ export class CustomerService extends BaseService {
     conditions: WhereClause,
     returningFields?: (keyof typeof QBCustomers)[],
   ) {
-    console.log(
-      'CustomerService#updateQBCustomer | For client with Id =',
-      payload?.clientId,
-    )
+    console.log('CustomerService#updateQBCustomer')
     const parsedInsertPayload = QBCustomerUpdateSchema.parse(payload)
 
     const query = this.db
