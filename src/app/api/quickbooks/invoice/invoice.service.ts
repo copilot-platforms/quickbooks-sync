@@ -1,19 +1,24 @@
+import APIError from '@/app/api/core/exceptions/api'
 import User from '@/app/api/core/models/User.model'
 import { BaseService } from '@/app/api/core/services/base.service'
+import { CustomerService } from '@/app/api/quickbooks/customer/customer.service'
 import { getLatestActiveClient } from '@/app/api/quickbooks/invoice/invoice.helper'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
+import { QBCustomers } from '@/db/schema/qbCustomers'
 import {
   QBInvoiceSync,
   QBInvoiceCreateSchema,
   QBInvoiceCreateSchemaType,
 } from '@/db/schema/qbInvoiceSync'
+import { QBCustomerParseUpdatePayloadType } from '@/type/dto/intuitAPI.dto'
 import {
   InvoiceCreatedResponseType,
   InvoiceLineItemSchemaType,
 } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
-import { and, isNull } from 'drizzle-orm'
+import { and, eq, isNull, SQL } from 'drizzle-orm'
+import httpStatus from 'http-status'
 
 export class InvoiceService extends BaseService {
   private copilot: CopilotAPI
@@ -76,7 +81,10 @@ export class InvoiceService extends BaseService {
         console.info(
           'InvoiceService#handleInvoiceCreated | Could not retrieve client or company',
         )
-        throw new Error('Could not find client or company')
+        throw new APIError(
+          httpStatus.NOT_FOUND,
+          'Could not find client or company',
+        )
       }
 
       const clients = await this.copilot.getClients({
@@ -84,47 +92,123 @@ export class InvoiceService extends BaseService {
       })
 
       if (!clients?.data || clients.data.length === 0) {
-        throw new Error('No clients found')
+        throw new APIError(httpStatus.NOT_FOUND, 'No clients found')
       }
       client = getLatestActiveClient(clients.data)
     }
 
-    // 2. search client in qb using client's given name and family name
+    // 2. search client in our mapping table
+    const customerService = new CustomerService(this.user)
+    const existingCustomer = await customerService.getByClientId(client.id, [
+      'id',
+      'qbCustomerId',
+      'qbSyncToken',
+      'familyName',
+      'givenName',
+      'email',
+    ])
+
+    let customer
     const intuitApi = new IntuitAPI(qbTokenInfo)
-    const customerQuery = `SELECT id FROM Customer WHERE GivenName = '${client.givenName}' AND FamilyName = '${client.familyName}' AND Active = true`
-    const qbCustomers = await intuitApi.customQuery(customerQuery)
-    let customer = qbCustomers?.QueryResponse?.Customer?.[0]
 
-    // 3. if not found, create a new client in the QB
-    if (!customer) {
-      if (!company) {
-        // Case when client is retrieved directly from recipientId
-        company = await this.copilot.getCompany(client.companyId)
+    if (!existingCustomer) {
+      // 2.1. search client in qb using client's given name and family name
+      const customerQuery = `SELECT id, SyncToken FROM Customer WHERE GivenName = '${client.givenName}' AND FamilyName = '${client.familyName}' AND Active = true`
+      const qbCustomers = await intuitApi.customQuery(customerQuery)
+      customer = qbCustomers?.QueryResponse?.Customer?.[0]
 
+      // 3. if not found, create a new client in the QB
+      if (!customer) {
         if (!company) {
-          // Indicates company is not available in any case. This only logs as error and allows to create customer in QB since company name is optional
-          console.error(
-            'InvoiceService#handleInvoiceCreated | Could not retrieve company for client = ',
-            client.id,
-          )
+          // Case when client is retrieved directly from recipientId
+          company = await this.copilot.getCompany(client.companyId)
+
+          if (!company) {
+            // Indicates company is not available in any case. This only logs as error and allows to create customer in QB since company name is optional
+            console.error(
+              'InvoiceService#handleInvoiceCreated | Could not retrieve company for client = ',
+              client.id,
+            )
+          }
+        }
+
+        // Create a new customer in QB
+        const customerPayload = {
+          GivenName: client.givenName,
+          FamilyName: client.familyName,
+          CompanyName: company?.name,
+          PrimaryEmailAddr: {
+            Address: client.email,
+          },
+        }
+
+        const customerRes = await intuitApi.createCustomer(customerPayload)
+        customer = customerRes.Customer
+      }
+      // create map for customer into mapping table
+      const customerSyncPayload = {
+        portalId: qbTokenInfo.intuitRealmId,
+        clientId: client.id,
+        givenName: client.givenName,
+        familyName: client.familyName,
+        email: client.email,
+        companyName: company?.name,
+        qbSyncToken: customer.SyncToken,
+        qbCustomerId: customer.Id,
+      }
+
+      await customerService.createQBCustomer(customerSyncPayload)
+    } else {
+      // update the customer in qb
+      const sparseUpdatePayload: Omit<
+        QBCustomerParseUpdatePayloadType,
+        'Id' | 'SyncToken'
+      > = {}
+
+      if (existingCustomer.familyName !== client.familyName) {
+        sparseUpdatePayload.FamilyName = client.familyName
+      }
+      if (existingCustomer.givenName !== client.givenName) {
+        sparseUpdatePayload.GivenName = client.givenName
+      }
+      if (existingCustomer.email !== client.email) {
+        sparseUpdatePayload.PrimaryEmailAddr = {
+          Address: client.email,
         }
       }
+      if (Object.keys(sparseUpdatePayload).length > 0) {
+        const customerSparsePayload = {
+          ...sparseUpdatePayload,
+          Id: existingCustomer.qbCustomerId,
+          SyncToken: existingCustomer.qbSyncToken,
+          DisplayName: `${client.givenName} ${client.familyName}`,
+          BillAddr: {
+            Line1: `${existingCustomer.givenName} ${existingCustomer.familyName}`,
+            Line2: existingCustomer.companyName,
+          },
+          sparse: true,
+        } as QBCustomerParseUpdatePayloadType
 
-      // Create a new customer in QB
-      const customerPayload = {
-        GivenName: client.givenName,
-        FamilyName: client.familyName,
-        CompanyName: company?.name,
-        PrimaryEmailAddr: {
-          Address: client.email,
-        },
-      }
+        const customerRes = await intuitApi.parseUpdateCustomer(
+          customerSparsePayload,
+        )
+        customer = customerRes.Customer
 
-      const customerRes = await intuitApi.createCustomer(customerPayload)
-      customer = customerRes.Customer
+        // update the customer map in our table
+        const customerSyncUpPayload = {
+          givenName: client.givenName,
+          familyName: client.familyName,
+          email: client.email,
+          companyName: company?.name,
+          qbSyncToken: customer.SyncToken,
+        }
 
-      if (!customer) {
-        throw new Error('Failed to create customer')
+        const updateCondition = eq(QBCustomers.id, existingCustomer.id)
+
+        await customerService.updateQBCustomer(
+          customerSyncUpPayload,
+          updateCondition,
+        )
       }
     }
 
@@ -151,7 +235,7 @@ export class InvoiceService extends BaseService {
     const qbInvoicePayload = {
       Line: lineItems,
       CustomerRef: {
-        value: customer.Id,
+        value: customer?.Id || existingCustomer?.qbCustomerId,
       },
     }
 
