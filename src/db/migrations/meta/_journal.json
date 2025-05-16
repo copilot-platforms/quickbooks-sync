@@ -64,6 +64,13 @@
       "when": 1747050395682,
       "tag": "0008_qb_customers_table",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1747391234740,
+      "tag": "0009_datatype_change_for_client_id",
+      "breakpoints": true
     }
   ]
 }

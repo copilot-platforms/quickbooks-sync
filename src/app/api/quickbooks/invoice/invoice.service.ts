@@ -1,3 +1,4 @@
+import APIError from '@/app/api/core/exceptions/api'
 import User from '@/app/api/core/models/User.model'
 import { BaseService } from '@/app/api/core/services/base.service'
 import { CustomerService } from '@/app/api/quickbooks/customer/customer.service'
@@ -17,6 +18,7 @@ import {
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import { and, eq, isNull, SQL } from 'drizzle-orm'
+import httpStatus from 'http-status'
 
 export class InvoiceService extends BaseService {
   private copilot: CopilotAPI
@@ -79,7 +81,10 @@ export class InvoiceService extends BaseService {
         console.info(
           'InvoiceService#handleInvoiceCreated | Could not retrieve client or company',
         )
-        throw new Error('Could not find client or company')
+        throw new APIError(
+          httpStatus.NOT_FOUND,
+          'Could not find client or company',
+        )
       }
 
       const clients = await this.copilot.getClients({
@@ -87,7 +92,7 @@ export class InvoiceService extends BaseService {
       })
 
       if (!clients?.data || clients.data.length === 0) {
-        throw new Error('No clients found')
+        throw new APIError(httpStatus.NOT_FOUND, 'No clients found')
       }
       client = getLatestActiveClient(clients.data)
     }
@@ -139,12 +144,8 @@ export class InvoiceService extends BaseService {
 
         const customerRes = await intuitApi.createCustomer(customerPayload)
         customer = customerRes.Customer
-
-        if (!customer) {
-          throw new Error('Failed to create customer')
-        }
       }
-      // create map for customer into our table
+      // create map for customer into mapping table
       const customerSyncPayload = {
         portalId: qbTokenInfo.intuitRealmId,
         clientId: client.id,
@@ -202,7 +203,7 @@ export class InvoiceService extends BaseService {
           qbSyncToken: customer.SyncToken,
         }
 
-        const updateCondition = eq(QBCustomers.id, existingCustomer.id) as SQL
+        const updateCondition = eq(QBCustomers.id, existingCustomer.id)
 
         await customerService.updateQBCustomer(
           customerSyncUpPayload,

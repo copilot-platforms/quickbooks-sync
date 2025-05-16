@@ -7,7 +7,7 @@ import { z } from 'zod'
 export const QBCustomers = table('qb_customers', {
   id: t.uuid().defaultRandom().primaryKey(),
   portalId: t.varchar('portal_id', { length: 255 }).notNull(),
-  clientId: t.varchar('client_id', { length: 255 }).notNull(),
+  clientId: t.uuid('client_id').notNull(),
   givenName: t.varchar('given_name', { length: 255 }),
   familyName: t.varchar('family_name', { length: 255 }),
   email: t.varchar('email', { length: 255 }),
