@@ -4,6 +4,7 @@ import { QBTokenSelectSchemaType } from '@/db/schema/qbTokens'
 import { getFetcher, postFetcher } from '@/helper/fetch.helper'
 import {
   QBCustomerCreatePayloadType,
+  QBCustomerParseUpdatePayloadType,
   QBInvoiceCreatePayloadType,
   QBInvoiceSparseUpdatePayloadType,
 } from '@/type/dto/intuitAPI.dto'
@@ -94,6 +95,18 @@ export default class IntuitAPI {
     return invoice
   }
 
+  async _parseUpdateCustomer(payload: QBCustomerParseUpdatePayloadType) {
+    console.log('IntuitAPI#parseUpdateCustomer | customer sparse update start')
+    const url = `${intuitBaseUrl}/v3/company/${IntuitAPI.tokens.intuitRealmId}/customer?minorversion=${intuitApiMinorVersion}`
+    const customer = await this.manualPostFetch(url, payload)
+
+    console.log(
+      'IntuitAPI#parseUpdateCustomer | customer sparse updated with name=',
+      customer?.Customer?.FullyQualifiedName,
+    )
+    return customer
+  }
+
   private wrapWithRetry<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
   ): (...args: Args) => Promise<R> {
@@ -104,4 +117,5 @@ export default class IntuitAPI {
   createInvoice = this.wrapWithRetry(this._createInvoice)
   createCustomer = this.wrapWithRetry(this._createCustomer)
   invoiceSparseUpdate = this.wrapWithRetry(this._invoiceSparseUpdate)
+  parseUpdateCustomer = this.wrapWithRetry(this._parseUpdateCustomer)
 }
