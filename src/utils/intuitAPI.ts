@@ -5,6 +5,7 @@ import { QBTokenSelectSchemaType } from '@/db/schema/qbTokens'
 import { getFetcher, postFetcher } from '@/helper/fetch.helper'
 import {
   QBCustomerCreatePayloadType,
+  QBCustomerParseUpdatePayloadType,
   QBInvoiceCreatePayloadType,
   QBItemCreatePayloadType,
 } from '@/type/dto/intuitAPI.dto'
@@ -130,7 +131,7 @@ export default class IntuitAPI {
   }
 
   async _getACustomer(givenName: string, familyName: string) {
-    const customerQuery = `SELECT Id FROM Customer WHERE GivenName = '${givenName}' AND FamilyName = '${familyName}' AND Active = true`
+    const customerQuery = `SELECT Id, SyncToken FROM Customer WHERE GivenName = '${givenName}' AND FamilyName = '${familyName}' AND Active = true`
     const qbCustomers = await this.customQuery(customerQuery)
     return qbCustomers?.Customer?.[0]
   }
@@ -139,6 +140,18 @@ export default class IntuitAPI {
     const customerQuery = `select Id, SyncToken from Item where Name = '${name}' maxresults 1`
     const qbItem = await this.customQuery(customerQuery)
     return qbItem?.Item?.[0]
+  }
+
+  async _parseUpdateCustomer(payload: QBCustomerParseUpdatePayloadType) {
+    console.log('IntuitAPI#parseUpdateCustomer | customer sparse update start')
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/customer?minorversion=${intuitApiMinorVersion}`
+    const customer = await this.manualPostFetch(url, payload)
+
+    console.log(
+      'IntuitAPI#parseUpdateCustomer | customer sparse updated with name=',
+      customer?.Customer?.FullyQualifiedName,
+    )
+    return customer
   }
 
   private wrapWithRetry<Args extends unknown[], R>(
@@ -154,4 +167,5 @@ export default class IntuitAPI {
   getSingleIncomeAccount = this.wrapWithRetry(this._getSingleIncomeAccount)
   getACustomer = this.wrapWithRetry(this._getACustomer)
   getAnItem = this.wrapWithRetry(this._getAnItem)
+  parseUpdateCustomer = this.wrapWithRetry(this._parseUpdateCustomer)
 }

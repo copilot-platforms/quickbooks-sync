@@ -93,8 +93,7 @@ export class TokenService extends BaseService {
       syncFlag: false,
     }
 
-    const tokenService = new TokenService(this.user)
-    const updateSync = await tokenService.updateQBToken(
+    const updateSync = await this.updateQBToken(
       updateSyncPayload,
       whereConditions,
       ['id'],

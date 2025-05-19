@@ -1,6 +1,6 @@
 {
-  "id": "49b8237f-337b-45b9-89b4-34f63d3a566d",
-  "prevId": "8214eda4-3486-4b98-a8f9-92589ec8c39b",
+  "id": "4563f920-9b1d-4fb9-a420-4adaf12bcac2",
+  "prevId": "49b8237f-337b-45b9-89b4-34f63d3a566d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -305,20 +305,10 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "qb_product_sync_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "2147483647",
-            "cache": "1",
-            "cycle": false
-          }
+          "default": "gen_random_uuid()"
         },
         "portal_id": {
           "name": "portal_id",
@@ -341,6 +331,12 @@
         "qb_item_id": {
           "name": "qb_item_id",
           "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qb_sync_token": {
+          "name": "qb_sync_token",
+          "type": "varchar(100)",
           "primaryKey": false,
           "notNull": false
         },
@@ -442,6 +438,12 @@
         "intiated_by": {
           "name": "intiated_by",
           "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "income_account_ref": {
+          "name": "income_account_ref",
+          "type": "varchar(100)",
           "primaryKey": false,
           "notNull": true
         },

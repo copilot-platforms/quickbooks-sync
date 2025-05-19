@@ -1,5 +1,5 @@
 {
-  "id": "a85ad85c-5db1-4286-b7b0-e5e99f482ac6",
+  "id": "8214eda4-3486-4b98-a8f9-92589ec8c39b",
   "prevId": "3251949a-853d-4b56-b052-56e7deed8122",
   "version": "7",
   "dialect": "postgresql",
@@ -37,6 +37,94 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'pending'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.qb_customers": {
+      "name": "qb_customers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "portal_id": {
+          "name": "portal_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "client_id": {
+          "name": "client_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "given_name": {
+          "name": "given_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "family_name": {
+          "name": "family_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "company_name": {
+          "name": "company_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qb_sync_token": {
+          "name": "qb_sync_token",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qb_customer_id": {
+          "name": "qb_customer_id",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
@@ -217,10 +305,20 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "uuid",
+          "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "identity": {
+            "type": "always",
+            "name": "qb_product_sync_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "portal_id": {
           "name": "portal_id",
@@ -243,12 +341,6 @@
         "qb_item_id": {
           "name": "qb_item_id",
           "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "qb_sync_token": {
-          "name": "qb_sync_token",
-          "type": "varchar(100)",
           "primaryKey": false,
           "notNull": false
         },
@@ -403,7 +495,11 @@
     "public.connection_statuses": {
       "name": "connection_statuses",
       "schema": "public",
-      "values": ["pending", "success", "error"]
+      "values": [
+        "pending",
+        "success",
+        "error"
+      ]
     }
   },
   "schemas": {},
