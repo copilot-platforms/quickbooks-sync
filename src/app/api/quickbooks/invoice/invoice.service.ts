@@ -17,7 +17,7 @@ import { QBCustomerParseUpdatePayloadType } from '@/type/dto/intuitAPI.dto'
 import { InvoiceCreatedResponseType } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
-import { and, eq, isNull, SQL } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import httpStatus from 'http-status'
 
 export class InvoiceService extends BaseService {
