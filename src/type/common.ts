@@ -1,3 +1,4 @@
+import { ProductStatus } from '@/app/api/core/types/product'
 import { z } from 'zod'
 
 export const HexColorSchema = z
@@ -209,3 +210,27 @@ export const NotificationCreatedResponseSchema = z.object({
 export type NotificationCreatedResponse = z.infer<
   typeof NotificationCreatedResponseSchema
 >
+
+export const ProductResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  imageUrls: z.array(z.string()),
+  description: z.string(),
+  status: z.nativeEnum(ProductStatus),
+  object: z.string(),
+  createdAt: z.string().datetime(),
+})
+export type ProductResponse = z.infer<typeof ProductResponseSchema>
+
+export const PriceResponseSchema = z.object({
+  id: z.string(),
+  amount: z.number(),
+  currency: z.string(),
+  interval: z.string().nullish(),
+  intervalCount: z.number().min(1).nullish(),
+  productId: z.string(),
+  type: z.string(),
+  object: z.string(),
+  createdAt: z.string().datetime(),
+})
+export type PriceResponse = z.infer<typeof PriceResponseSchema>

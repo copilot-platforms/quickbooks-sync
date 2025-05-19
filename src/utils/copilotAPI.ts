@@ -26,6 +26,10 @@ import {
   NotificationCreatedResponse,
   NotificationCreatedResponseSchema,
   NotificationRequestBody,
+  PriceResponse,
+  PriceResponseSchema,
+  ProductResponse,
+  ProductResponseSchema,
   Token,
   TokenSchema,
   WorkspaceResponse,
@@ -298,6 +302,31 @@ export class CopilotAPI {
     )
   }
 
+  async _getProduct(id: string): Promise<ProductResponse | undefined> {
+    try {
+      console.info('CopilotAPI#getProduct | token =', this.token)
+      return ProductResponseSchema.parse(
+        await this.copilot.retrieveProduct({ id }),
+      )
+    } catch (error: unknown) {
+      const tError = error as CopilotApiError
+      console.error('CopilotAPI#getProduct | message =', tError.body.message)
+      return
+    }
+  }
+
+  async _getPrice(id: string): Promise<PriceResponse | undefined> {
+    try {
+      console.info('CopilotAPI#getPrice | token =', this.token)
+      return PriceResponseSchema.parse(await this.copilot.retrievePrice({ id }))
+    } catch (error: unknown) {
+      console.log({ error })
+      const tError = error as CopilotApiError
+      console.error('CopilotAPI#getPrice | message =', tError.body.message)
+      return
+    }
+  }
+
   private wrapWithRetry<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
   ): (...args: Args) => Promise<R> {
@@ -329,4 +358,6 @@ export class CopilotAPI {
   )
   bulkDeleteNotifications = this.wrapWithRetry(this._bulkDeleteNotifications)
   deleteNotification = this.wrapWithRetry(this._deleteNotification)
+  getProduct = this.wrapWithRetry(this._getProduct)
+  getPrice = this.wrapWithRetry(this._getPrice)
 }

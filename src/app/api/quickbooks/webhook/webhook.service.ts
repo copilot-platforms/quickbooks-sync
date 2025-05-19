@@ -47,7 +47,7 @@ export class WebhookService extends BaseService {
           break
         }
 
-        // TODO: case when there is error from any portion of the code. Need to create the invoice in invoice_sync table for any error case
+        // case when there is no accessToken (refreshToken fail)
         if (qbTokenInfo.accessToken === '') {
           // store invoice info in db. Later update the record when sync is back on
           const invoicePayload = {
@@ -56,6 +56,7 @@ export class WebhookService extends BaseService {
           }
           await invoiceService.createQBInvoice(invoicePayload)
         } else {
+          // TODO: when error while creating invoice
           await invoiceService.webhookInvoiceCreated(
             parsedInvoiceResource,
             qbTokenInfo,

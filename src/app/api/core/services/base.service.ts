@@ -15,4 +15,12 @@ export class BaseService {
   constructor(user: User) {
     this.user = user
   }
+
+  setTransaction(tx: PostgresJsDatabase<typeof schema>) {
+    this.db = tx
+  }
+
+  unsetTransaction() {
+    this.db = db
+  }
 }

@@ -5,6 +5,6 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function checkPortalConnection(req: NextRequest) {
   const user = await authenticate(req)
   const tokenService = new TokenService(user)
-  const portalSync = await tokenService.checkPortalConnection(user.workspaceId)
+  const portalSync = await tokenService.getOneByPortalId(user.workspaceId)
   return NextResponse.json(portalSync)
 }

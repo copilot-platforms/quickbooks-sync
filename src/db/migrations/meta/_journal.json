@@ -57,6 +57,20 @@
       "when": 1746683033545,
       "tag": "0007_uuid_datatype_for_id_in_invoice_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1747397228634,
+      "tag": "0008_sync_token_in_product_sync_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1747399664839,
+      "tag": "0009_add_income_acc_ref_column",
+      "breakpoints": true
     }
   ]
 }

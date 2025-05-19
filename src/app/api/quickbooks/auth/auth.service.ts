@@ -19,7 +19,7 @@ import {
   QBAuthTokenResponseSchema,
 } from '@/type/dto/qbAuthToken.dto'
 import Intuit from '@/utils/intuit'
-import { IntuitAPITokensType } from '@/utils/intuitAPI'
+import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import dayjs from 'dayjs'
 import { and, eq, SQL } from 'drizzle-orm'
 import httpStatus from 'http-status'
@@ -67,9 +67,25 @@ export class AuthService extends BaseService {
         tokenType: tokenInfo.token_type,
         intiatedBy: this.user.internalUserId as string, // considering this is defined since we know this action is intiated by an IU
         syncFlag: true,
+        incomeAccountRef: '',
       }
 
       const tokenService = new TokenService(this.user)
+      // set income acc ref here in qbtokens table
+      const existingToken = await tokenService.getOneByPortalId(portalId)
+      if (!existingToken || !existingToken.incomeAccountRef) {
+        // get income acc ref from intuit and store in qbtokens table
+        const intuitApi = new IntuitAPI({
+          accessToken: tokenInfo.access_token,
+          refreshToken: tokenInfo.refresh_token,
+          intuitRealmId: realmId,
+          incomeAccountRef: '',
+        })
+        // query income acc ref from intuit
+        const incomeAccRef = await intuitApi.getSingleIncomeAccount()
+        insertPayload.incomeAccountRef = incomeAccRef.Id
+      }
+
       const qbTokens = await tokenService.upsertQBToken(insertPayload, ['id'])
 
       if (!qbTokens) {
@@ -115,12 +131,14 @@ export class AuthService extends BaseService {
       intuitRealmId,
       intiatedBy,
       expiresIn,
+      incomeAccountRef,
     } = portalQBToken
     const expiryTime = dayjs(tokenSetTime).add(expiresIn, 'seconds')
     let updatedTokenInfo = {
       accessToken,
       refreshToken,
       intuitRealmId,
+      incomeAccountRef,
     }
 
     // Refresh token if expired
@@ -189,6 +207,7 @@ export class AuthService extends BaseService {
               accessToken: '',
               refreshToken: '',
               intuitRealmId,
+              incomeAccountRef: '',
             }
           }
         }
