@@ -27,7 +27,7 @@ export type QBInvoiceCreatePayloadType = z.infer<
 
 export const QBInvoiceSparseUpdatePayloadSchema = z.object({
   Id: z.string(),
-  sparse: z.boolean(),
+  sparse: z.literal(true),
   SyncToken: z.string(),
   TxnTaxDetail: z
     .object({
