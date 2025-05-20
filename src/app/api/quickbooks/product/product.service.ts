@@ -7,6 +7,8 @@ import {
   QBProductSync,
   QBProductSelectSchemaType,
 } from '@/db/schema/qbProductSync'
+import RedisClient from '@/lib/redis'
+import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI from '@/utils/intuitAPI'
 import { and, isNull } from 'drizzle-orm'
 
@@ -71,5 +73,39 @@ export class ProductService extends BaseService {
       Description: opts.productDescription,
     }
     return await intuitApi.createItem(qbItemPayload)
+  }
+
+  async getFlattenProductList(limit: number, nextToken?: string) {
+    // 1. check in redis. key (${workspaceId}_productList) if exists, return the value
+    const redisKey = `${this.user.workspaceId}-productList`
+    const redisClient = RedisClient.getInstance()
+
+    const cachedProducts = await redisClient.get(redisKey)
+    if (cachedProducts) {
+      return cachedProducts // auto deserialization by default
+    }
+
+    // 2. if not exists, get all the products from copilot and store in redis
+    const copilot = new CopilotAPI(this.user.token)
+    const products = await copilot.getProducts(undefined, nextToken, limit)
+    const flattenProductsPrice = (
+      await Promise.all(
+        (products?.data ?? []).map(async (product) => {
+          const prices = await copilot.getPrices(product.id)
+          return (prices?.data ?? []).map((price) => ({
+            ...product,
+            priceId: price.id,
+            amount: price.amount,
+            type: price.type,
+            interval: price.interval,
+            currency: price.currency,
+          }))
+        }),
+      )
+    ).flat()
+
+    await redisClient.set(redisKey, JSON.stringify(flattenProductsPrice))
+
+    return flattenProductsPrice
   }
 }

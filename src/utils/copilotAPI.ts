@@ -28,8 +28,12 @@ import {
   NotificationRequestBody,
   PriceResponse,
   PriceResponseSchema,
+  PricesResponse,
+  PricesResponseSchema,
   ProductResponse,
   ProductResponseSchema,
+  ProductsResponse,
+  ProductsResponseSchema,
   Token,
   TokenSchema,
   WorkspaceResponse,
@@ -315,6 +319,23 @@ export class CopilotAPI {
     }
   }
 
+  async _getProducts(
+    name?: string,
+    nextToken?: string,
+    limit?: number,
+  ): Promise<ProductsResponse | undefined> {
+    try {
+      console.info('CopilotAPI#getProducts | token =', this.token)
+      return ProductsResponseSchema.parse(
+        await this.copilot.listProducts({ name, nextToken, limit }),
+      )
+    } catch (error: unknown) {
+      const tError = error as CopilotApiError
+      console.error('CopilotAPI#getProducts | message =', tError.body.message)
+      return
+    }
+  }
+
   async _getPrice(id: string): Promise<PriceResponse | undefined> {
     try {
       console.info('CopilotAPI#getPrice | token =', this.token)
@@ -323,6 +344,23 @@ export class CopilotAPI {
       console.log({ error })
       const tError = error as CopilotApiError
       console.error('CopilotAPI#getPrice | message =', tError.body.message)
+      return
+    }
+  }
+
+  async _getPrices(
+    productId?: string,
+    nextToken?: string,
+    limit?: string,
+  ): Promise<PricesResponse | undefined> {
+    try {
+      console.info('CopilotAPI#getPrices | token =', this.token)
+      return PricesResponseSchema.parse(
+        await this.copilot.listPrices({ productId, nextToken, limit }),
+      )
+    } catch (error: unknown) {
+      const tError = error as CopilotApiError
+      console.error('CopilotAPI#getPrices | message =', tError.body.message)
       return
     }
   }
@@ -359,5 +397,7 @@ export class CopilotAPI {
   bulkDeleteNotifications = this.wrapWithRetry(this._bulkDeleteNotifications)
   deleteNotification = this.wrapWithRetry(this._deleteNotification)
   getProduct = this.wrapWithRetry(this._getProduct)
+  getProducts = this.wrapWithRetry(this._getProducts)
   getPrice = this.wrapWithRetry(this._getPrice)
+  getPrices = this.wrapWithRetry(this._getPrices)
 }

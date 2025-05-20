@@ -1,0 +1,1 @@
+export const MAX_PRODUCT_LIST_LIMIT = 100
