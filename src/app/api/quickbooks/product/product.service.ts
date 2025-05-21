@@ -6,6 +6,7 @@ import {
   QBProductCreateSchemaType,
   QBProductSync,
   QBProductSelectSchemaType,
+  QBProductCreateArraySchemaType,
 } from '@/db/schema/qbProductSync'
 import RedisClient from '@/lib/redis'
 import { CopilotAPI } from '@/utils/copilotAPI'
@@ -35,14 +36,52 @@ export class ProductService extends BaseService {
     })
   }
 
+  /**
+   * Creates the map of product and price with QB item
+   *
+   * @async
+   * @param {QBProductCreateSchemaType} payload
+   * @param {?(keyof typeof QBProductSync)[]} [returningFields]
+   * @returns {(Promise<Partial<QBProductSelectSchemaType> | undefined>)}
+   */
   async createQBProduct(
     payload: QBProductCreateSchemaType,
     returningFields?: (keyof typeof QBProductSync)[],
-  ) {
+  ): Promise<Partial<QBProductSelectSchemaType> | undefined> {
     const parsedInsertPayload = QBProductCreateSchema.parse(payload)
     const query = this.db.insert(QBProductSync).values(parsedInsertPayload)
 
     const [product] =
+      returningFields && returningFields.length > 0
+        ? await query.returning(
+            buildReturningFields(QBProductSync, returningFields),
+          )
+        : await query.returning()
+
+    return product
+  }
+
+  /**
+   * Bulk creates the map between product, price with QB item
+   *
+   * @async
+   * @param {QBProductCreateArraySchemaType} payload
+   * @param {?(keyof typeof QBProductSync)[]} [returningFields]
+   * @returns {Promise<Partial<QBProductSelectSchemaType>[] | undefined>}
+   */
+  async bulkCreateQBProduct(
+    payload: QBProductCreateArraySchemaType,
+    returningFields?: (keyof typeof QBProductSync)[],
+  ): Promise<Partial<QBProductSelectSchemaType>[] | undefined> {
+    const formattedPaylaod = payload.map((item) => {
+      return {
+        ...item,
+        portalId: this.user.workspaceId,
+      }
+    })
+    const query = this.db.insert(QBProductSync).values(formattedPaylaod)
+
+    const product =
       returningFields && returningFields.length > 0
         ? await query.returning(
             buildReturningFields(QBProductSync, returningFields),
