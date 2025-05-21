@@ -18,6 +18,9 @@ export const QBTokens = table(
     tokenType: t.varchar('token_type', { length: 255 }),
     tokenSetTime: t.timestamp('token_set_time'),
     intiatedBy: t.varchar('intiated_by', { length: 255 }).notNull(),
+    incomeAccountRef: t
+      .varchar('income_account_ref', { length: 100 })
+      .notNull(),
     ...timestamps,
   },
   (table) => [t.uniqueIndex('uq_qb_tokens_portal_id_idx').on(table.portalId)],

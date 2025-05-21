@@ -17,7 +17,7 @@ import httpStatus from 'http-status'
 type WhereClause = SQL<unknown>
 
 export class TokenService extends BaseService {
-  async checkPortalConnection(
+  async getOneByPortalId(
     portalId: string,
   ): Promise<QBTokenSelectSchemaType | null> {
     const portalConnection = await getPortalConnection(portalId)
@@ -35,7 +35,7 @@ export class TokenService extends BaseService {
     const [token] =
       returningFields && returningFields.length > 0
         ? await query.returning(buildReturningFields(QBTokens, returningFields))
-        : await query
+        : await query.returning()
 
     return token
   }
@@ -56,7 +56,7 @@ export class TokenService extends BaseService {
     const [token] =
       returningFields && returningFields.length > 0
         ? await query.returning(buildReturningFields(QBTokens, returningFields))
-        : await query
+        : await query.returning()
 
     return token
   }
@@ -76,7 +76,7 @@ export class TokenService extends BaseService {
     const [token] =
       returningFields && returningFields.length > 0
         ? await query.returning(buildReturningFields(QBTokens, returningFields))
-        : await query
+        : await query.returning()
 
     return token
   }

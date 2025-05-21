@@ -71,6 +71,13 @@
       "when": 1747391234740,
       "tag": "0009_datatype_change_for_client_id",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1747640463020,
+      "tag": "0010_sync_token_in_product_sync_table",
+      "breakpoints": true
     }
   ]
 }

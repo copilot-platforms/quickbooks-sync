@@ -3,6 +3,7 @@ import User from '@/app/api/core/models/User.model'
 import { BaseService } from '@/app/api/core/services/base.service'
 import { CustomerService } from '@/app/api/quickbooks/customer/customer.service'
 import { getLatestActiveClient } from '@/app/api/quickbooks/invoice/invoice.helper'
+import { ProductService } from '@/app/api/quickbooks/product/product.service'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
 import { QBCustomers } from '@/db/schema/qbCustomers'
 import {
@@ -10,11 +11,10 @@ import {
   QBInvoiceCreateSchema,
   QBInvoiceCreateSchemaType,
 } from '@/db/schema/qbInvoiceSync'
+import { QBNameValueSchemaType } from '@/type/dto/intuitAPI.dto'
+import { convert } from 'html-to-text'
 import { QBCustomerParseUpdatePayloadType } from '@/type/dto/intuitAPI.dto'
-import {
-  InvoiceCreatedResponseType,
-  InvoiceLineItemSchemaType,
-} from '@/type/dto/webhook.dto'
+import { InvoiceCreatedResponseType } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import dayjs from 'dayjs'
@@ -65,10 +65,76 @@ export class InvoiceService extends BaseService {
     })
   }
 
+  /**
+   * Returns the invoice item reference (QB) for the given product and price
+   */
+  async getInvoiceItemRef(
+    productId: string,
+    priceId: string,
+    intuitApi: IntuitAPI,
+  ): Promise<QBNameValueSchemaType> {
+    const productService = new ProductService(this.user)
+    const mapping = await productService.getMappingByProductPriceId(
+      productId,
+      priceId,
+    )
+    if (mapping && mapping.qbItemId) {
+      console.info('InvoiceService#getInvoiceItemRef | Product map found')
+      return {
+        value: mapping.qbItemId,
+      }
+    }
+
+    // 2. create a new product in QB company
+    const productInfo = await this.copilot.getProduct(productId)
+    const priceInfo = await this.copilot.getPrice(priceId)
+    if (!productInfo) {
+      throw new APIError(httpStatus.NOT_FOUND, 'Product not found')
+    }
+    if (!priceInfo) {
+      throw new APIError(httpStatus.NOT_FOUND, 'Price not found')
+    }
+
+    const productDescription = convert(productInfo.description)
+    const incomeAccRefVal = intuitApi.tokens.incomeAccountRef
+
+    // check if item exist with name in QB. If yes, map in mapping table
+    let qbItem = await intuitApi.getAnItem(productInfo.name)
+
+    if (!qbItem) {
+      // create item in QB
+      qbItem = await productService.createItemInQB(
+        {
+          productName: productInfo.name,
+          unitPrice: priceInfo.amount,
+          incomeAccRefVal,
+          productDescription,
+        },
+        intuitApi,
+      )
+    }
+
+    // create a new product mapping in qb_product_sync table
+    const productMappingPayload = {
+      portalId: this.user.workspaceId,
+      productId,
+      priceId,
+      qbItemId: qbItem.Id,
+      qbSyncToken: qbItem.SyncToken,
+    }
+    await productService.createQBProduct(productMappingPayload)
+
+    return { value: qbItem.Id }
+  }
+
+  /**
+   * This function is executed when invoice.created event is triggered
+   * Handles the invoice creation in QuickBooks
+   */
   async webhookInvoiceCreated(
     payload: InvoiceCreatedResponseType,
     qbTokenInfo: IntuitAPITokensType,
-  ) {
+  ): Promise<void> {
     const invoiceResource = payload.data
 
     // 1. get client (retrieve receipentId from invoice resource). Copilot: Retrieve client. If not found, retrieve company and get first client from the company
@@ -109,14 +175,14 @@ export class InvoiceService extends BaseService {
       'email',
     ])
 
-    let customer
     const intuitApi = new IntuitAPI(qbTokenInfo)
-
+    let customer
     if (!existingCustomer) {
       // 2.1. search client in qb using client's given name and family name
-      const customerQuery = `SELECT id, SyncToken FROM Customer WHERE GivenName = '${client.givenName}' AND FamilyName = '${client.familyName}' AND Active = true`
-      const qbCustomers = await intuitApi.customQuery(customerQuery)
-      customer = qbCustomers?.QueryResponse?.Customer?.[0]
+      customer = await intuitApi.getACustomer(
+        client.givenName,
+        client.familyName,
+      )
 
       // 3. if not found, create a new client in the QB
       if (!customer) {
@@ -190,7 +256,7 @@ export class InvoiceService extends BaseService {
           sparse: true,
         } as QBCustomerParseUpdatePayloadType
 
-        const customerRes = await intuitApi.sparseUpdateCustomer(
+        const customerRes = await intuitApi.customerSparseUpdate(
           customerSparsePayload,
         )
         customer = customerRes.Customer
@@ -203,7 +269,6 @@ export class InvoiceService extends BaseService {
           companyName: company?.name,
           qbSyncToken: customer.SyncToken,
         }
-
         const updateCondition = eq(QBCustomers.id, existingCustomer.id)
 
         await customerService.updateQBCustomer(
@@ -214,17 +279,26 @@ export class InvoiceService extends BaseService {
     }
 
     // 4. prepare payload for invoice with lineItems
-    const lineItems = invoiceResource.lineItems.map(
-      (lineItem: InvoiceLineItemSchemaType) => {
+    const lineItems = await Promise.all(
+      invoiceResource.lineItems.map(async (lineItem) => {
         const actualAmount = lineItem.amount / 100 // Convert to dollar. amount received in cents.
+
+        let itemRef: QBNameValueSchemaType = {
+          name: 'Services', // for one-off items
+          value: '1',
+        }
+        if (lineItem.productId && lineItem.priceId) {
+          itemRef = await this.getInvoiceItemRef(
+            lineItem.productId,
+            lineItem.priceId,
+            intuitApi,
+          )
+        }
         return {
           DetailType: 'SalesItemLineDetail',
           Amount: actualAmount * lineItem.quantity,
           SalesItemLineDetail: {
-            ItemRef: {
-              name: 'Services', // hardcoding Services. Need to change this when we map the product
-              value: '1',
-            },
+            ItemRef: itemRef,
             Qty: lineItem.quantity,
             UnitPrice: actualAmount,
             TaxCodeRef: {
@@ -235,9 +309,10 @@ export class InvoiceService extends BaseService {
           },
           Description: lineItem.description,
         }
-      },
+      }),
     )
 
+    // 5. create invoice in QB
     const qbInvoicePayload = {
       Line: lineItems,
       CustomerRef: {
