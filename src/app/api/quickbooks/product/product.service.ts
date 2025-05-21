@@ -6,7 +6,10 @@ import {
   QBProductCreateSchemaType,
   QBProductSync,
   QBProductSelectSchemaType,
+  QBProductCreateArraySchemaType,
 } from '@/db/schema/qbProductSync'
+import RedisClient from '@/lib/redis'
+import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI from '@/utils/intuitAPI'
 import { and, isNull } from 'drizzle-orm'
 
@@ -33,14 +36,52 @@ export class ProductService extends BaseService {
     })
   }
 
+  /**
+   * Creates the map of product and price with QB item
+   *
+   * @async
+   * @param {QBProductCreateSchemaType} payload
+   * @param {?(keyof typeof QBProductSync)[]} [returningFields]
+   * @returns {(Promise<Partial<QBProductSelectSchemaType> | undefined>)}
+   */
   async createQBProduct(
     payload: QBProductCreateSchemaType,
     returningFields?: (keyof typeof QBProductSync)[],
-  ) {
+  ): Promise<Partial<QBProductSelectSchemaType> | undefined> {
     const parsedInsertPayload = QBProductCreateSchema.parse(payload)
     const query = this.db.insert(QBProductSync).values(parsedInsertPayload)
 
     const [product] =
+      returningFields && returningFields.length > 0
+        ? await query.returning(
+            buildReturningFields(QBProductSync, returningFields),
+          )
+        : await query.returning()
+
+    return product
+  }
+
+  /**
+   * Bulk creates the map between product, price with QB item
+   *
+   * @async
+   * @param {QBProductCreateArraySchemaType} payload
+   * @param {?(keyof typeof QBProductSync)[]} [returningFields]
+   * @returns {Promise<Partial<QBProductSelectSchemaType>[] | undefined>}
+   */
+  async bulkCreateQBProduct(
+    payload: QBProductCreateArraySchemaType,
+    returningFields?: (keyof typeof QBProductSync)[],
+  ): Promise<Partial<QBProductSelectSchemaType>[] | undefined> {
+    const formattedPaylaod = payload.map((item) => {
+      return {
+        ...item,
+        portalId: this.user.workspaceId,
+      }
+    })
+    const query = this.db.insert(QBProductSync).values(formattedPaylaod)
+
+    const product =
       returningFields && returningFields.length > 0
         ? await query.returning(
             buildReturningFields(QBProductSync, returningFields),
@@ -71,5 +112,39 @@ export class ProductService extends BaseService {
       Description: opts.productDescription,
     }
     return await intuitApi.createItem(qbItemPayload)
+  }
+
+  async getFlattenProductList(limit: number, nextToken?: string) {
+    // 1. check in redis. key (${workspaceId}_productList) if exists, return the value
+    const redisKey = `${this.user.workspaceId}-productList`
+    const redisClient = RedisClient.getInstance()
+
+    const cachedProducts = await redisClient.get(redisKey)
+    if (cachedProducts) {
+      return cachedProducts // auto deserialization by default
+    }
+
+    // 2. if not exists, get all the products from copilot and store in redis
+    const copilot = new CopilotAPI(this.user.token)
+    const products = await copilot.getProducts(undefined, nextToken, limit)
+    const flattenProductsPrice = (
+      await Promise.all(
+        (products?.data ?? []).map(async (product) => {
+          const prices = await copilot.getPrices(product.id)
+          return (prices?.data ?? []).map((price) => ({
+            ...product,
+            priceId: price.id,
+            amount: price.amount,
+            type: price.type,
+            interval: price.interval,
+            currency: price.currency,
+          }))
+        }),
+      )
+    ).flat()
+
+    await redisClient.set(redisKey, JSON.stringify(flattenProductsPrice))
+
+    return flattenProductsPrice
   }
 }

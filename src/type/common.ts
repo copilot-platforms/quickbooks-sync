@@ -222,6 +222,12 @@ export const ProductResponseSchema = z.object({
 })
 export type ProductResponse = z.infer<typeof ProductResponseSchema>
 
+export const ProductsResponseSchema = z.object({
+  nextToken: z.string().optional(),
+  data: z.array(ProductResponseSchema).nullable(),
+})
+export type ProductsResponse = z.infer<typeof ProductsResponseSchema>
+
 export const PriceResponseSchema = z.object({
   id: z.string(),
   amount: z.number(),
@@ -234,3 +240,9 @@ export const PriceResponseSchema = z.object({
   createdAt: z.string().datetime(),
 })
 export type PriceResponse = z.infer<typeof PriceResponseSchema>
+
+export const PricesResponseSchema = z.object({
+  nextToken: z.string().optional(),
+  data: z.array(PriceResponseSchema).nullable(),
+})
+export type PricesResponse = z.infer<typeof PricesResponseSchema>
