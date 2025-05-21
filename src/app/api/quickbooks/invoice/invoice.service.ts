@@ -67,12 +67,6 @@ export class InvoiceService extends BaseService {
 
   /**
    * Returns the invoice item reference (QB) for the given product and price
-   *
-   * @async
-   * @param {string} productId
-   * @param {string} priceId
-   * @param {IntuitAPI} intuitApi
-   * @returns {Promise<QBNameValueSchemaType>}
    */
   async getInvoiceItemRef(
     productId: string,
@@ -136,11 +130,6 @@ export class InvoiceService extends BaseService {
   /**
    * This function is executed when invoice.created event is triggered
    * Handles the invoice creation in QuickBooks
-   *
-   * @async
-   * @param {InvoiceCreatedResponseType} payload
-   * @param {IntuitAPITokensType} qbTokenInfo
-   * @returns {Promise<void>}
    */
   async webhookInvoiceCreated(
     payload: InvoiceCreatedResponseType,
