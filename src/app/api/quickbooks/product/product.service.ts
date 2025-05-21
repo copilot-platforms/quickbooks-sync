@@ -1,3 +1,4 @@
+import { MAX_PRODUCT_LIST_LIMIT } from '@/app/api/core/constants/limit'
 import { BaseService } from '@/app/api/core/services/base.service'
 import { QBItemType } from '@/app/api/core/types/product'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
@@ -9,6 +10,8 @@ import {
   QBProductCreateArraySchemaType,
 } from '@/db/schema/qbProductSync'
 import RedisClient from '@/lib/redis'
+import { ProductsResponse } from '@/type/common'
+import { ProductCreatedResponseType } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI from '@/utils/intuitAPI'
 import { and, isNull } from 'drizzle-orm'
@@ -37,12 +40,31 @@ export class ProductService extends BaseService {
   }
 
   /**
+   * Get all the mapped products by product id
+   */
+  async getAllByProductId(
+    productId: string,
+    returningFields?: (keyof typeof QBProductSync)[],
+  ): Promise<QBProductSelectSchemaType[] | undefined> {
+    let columns = null
+    if (returningFields && returningFields.length > 0) {
+      columns = buildReturningFields(QBProductSync, returningFields, true)
+    }
+
+    console.log({ productId, ws: this.user.workspaceId })
+
+    return await this.db.query.QBProductSync.findMany({
+      where: (QBProductSync, { eq }) =>
+        and(
+          eq(QBProductSync.productId, productId),
+          eq(QBProductSync.portalId, this.user.workspaceId),
+        ),
+      ...(columns && { columns }),
+    })
+  }
+
+  /**
    * Creates the map of product and price with QB item
-   *
-   * @async
-   * @param {QBProductCreateSchemaType} payload
-   * @param {?(keyof typeof QBProductSync)[]} [returningFields]
-   * @returns {(Promise<Partial<QBProductSelectSchemaType> | undefined>)}
    */
   async createQBProduct(
     payload: QBProductCreateSchemaType,
@@ -63,11 +85,6 @@ export class ProductService extends BaseService {
 
   /**
    * Bulk creates the map between product, price with QB item
-   *
-   * @async
-   * @param {QBProductCreateArraySchemaType} payload
-   * @param {?(keyof typeof QBProductSync)[]} [returningFields]
-   * @returns {Promise<Partial<QBProductSelectSchemaType>[] | undefined>}
    */
   async bulkCreateQBProduct(
     payload: QBProductCreateArraySchemaType,
@@ -114,12 +131,19 @@ export class ProductService extends BaseService {
     return await intuitApi.createItem(qbItemPayload)
   }
 
-  async getFlattenProductList(limit: number, nextToken?: string) {
+  /**
+   * Flattens the product list with price: one product with one price and stores the result in redis
+   */
+  async getFlattenProductList(
+    limit: number,
+    nextToken?: string,
+  ): Promise<ProductsResponse> {
     // 1. check in redis. key (${workspaceId}_productList) if exists, return the value
-    const redisKey = `${this.user.workspaceId}-productList`
+    const redisKey = `${this.user.workspaceId}-productList${nextToken ? '-' + nextToken : ''}`
     const redisClient = RedisClient.getInstance()
 
-    const cachedProducts = await redisClient.get(redisKey)
+    const cachedProducts: ProductsResponse | null =
+      await redisClient.get(redisKey)
     if (cachedProducts) {
       return cachedProducts // auto deserialization by default
     }
@@ -143,8 +167,53 @@ export class ProductService extends BaseService {
       )
     ).flat()
 
-    await redisClient.set(redisKey, JSON.stringify(flattenProductsPrice))
+    const formattedData = {
+      data: flattenProductsPrice,
+      ...(products?.nextToken && { nextToken: products.nextToken }),
+    }
 
-    return flattenProductsPrice
+    await redisClient.set(redisKey, JSON.stringify(formattedData))
+    console.info('WebhookService#getFlattenProductList | Data cached in Redis')
+
+    return formattedData
+  }
+
+  async refreshCachedProductList() {
+    // remove all the cached products in redis to add fresh one
+    const redisKey = `${this.user.workspaceId}-productList`
+    const redisClient = RedisClient.getInstance()
+
+    let cursor = '0'
+    do {
+      const [newCursor, keys] = await redisClient.scan(cursor, {
+        match: `${redisKey}*`, // uses globs pattern. match all keys with given redisKey to remove paginated products
+        count: MAX_PRODUCT_LIST_LIMIT, // keys count to fetch at a time
+      })
+
+      cursor = newCursor
+      if (keys.length) {
+        await redisClient.del(...keys)
+      }
+    } while (cursor !== '0') // cursor 0 means complete
+    console.info('WebhookService#webhookProductUpdated | Redis cache cleared')
+
+    // store fresh data in redis
+    await this.getFlattenProductList(MAX_PRODUCT_LIST_LIMIT)
+  }
+
+  /**
+   * Updates the cached product list in redis
+   */
+  async webhookProductUpdated(
+    resource: ProductCreatedResponseType,
+  ): Promise<void> {
+    const productResource = resource.data
+
+    // TODO
+    // 01. get all the mapped product ids with qb id
+    // 02. for each QB item id, sparse update the item
+
+    // 03. refresh cache data
+    await this.refreshCachedProductList()
   }
 }
