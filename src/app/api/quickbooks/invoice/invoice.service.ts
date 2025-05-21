@@ -17,7 +17,8 @@ import {
 } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
-import { and, eq, isNull, SQL } from 'drizzle-orm'
+import dayjs from 'dayjs'
+import { and, eq, isNull } from 'drizzle-orm'
 import httpStatus from 'http-status'
 
 export class InvoiceService extends BaseService {
@@ -189,7 +190,7 @@ export class InvoiceService extends BaseService {
           sparse: true,
         } as QBCustomerParseUpdatePayloadType
 
-        const customerRes = await intuitApi.parseUpdateCustomer(
+        const customerRes = await intuitApi.sparseUpdateCustomer(
           customerSparsePayload,
         )
         customer = customerRes.Customer
@@ -221,11 +222,16 @@ export class InvoiceService extends BaseService {
           Amount: actualAmount * lineItem.quantity,
           SalesItemLineDetail: {
             ItemRef: {
-              name: 'Services', // TODO: hardcoding Services. Need to change this when we map the product
+              name: 'Services', // hardcoding Services. Need to change this when we map the product
               value: '1',
             },
             Qty: lineItem.quantity,
             UnitPrice: actualAmount,
+            TaxCodeRef: {
+              // required to enable tax for the product.
+              // Doc reference: https://developer.intuit.com/app/developer/qbo/docs/workflows/manage-sales-tax-for-us-locales#specifying-sales-tax
+              value: 'TAX',
+            },
           },
           Description: lineItem.description,
         }
@@ -237,9 +243,21 @@ export class InvoiceService extends BaseService {
       CustomerRef: {
         value: customer?.Id || existingCustomer?.qbCustomerId,
       },
+      // include tax and dates
+      ...(invoiceResource?.taxAmount && {
+        TxnTaxDetail: {
+          TotalTax: Number((invoiceResource.taxAmount / 100).toFixed(2)),
+        },
+      }),
+      ...(invoiceResource?.sentDate && {
+        TxnDate: dayjs(invoiceResource.sentDate).format('yyyy/MM/dd'), // Valid date format for TxnDate is yyyy/MM/dd. For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice#the-invoice-object
+      }),
+      ...(invoiceResource?.dueDate && {
+        DueDate: dayjs(invoiceResource.dueDate).format('YYYY-MM-DD'), // the date format for due date follows XML Schema standard (YYYY-MM-DD). For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice#the-invoice-object
+      }),
     }
 
-    // 5. create invoice in QB
+    // 6. create invoice in QB
     const invoiceRes = await intuitApi.createInvoice(qbInvoicePayload)
 
     const invoicePayload = {
