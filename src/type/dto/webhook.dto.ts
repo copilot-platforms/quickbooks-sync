@@ -32,6 +32,9 @@ export const InvoiceCreatedResponseSchema = z.object({
     recipientId: z.string(),
     status: z.nativeEnum(InvoiceStatus),
     total: z.number(),
+    taxAmount: z.number().optional(),
+    sentDate: z.string().datetime().nullish(),
+    dueDate: z.string().datetime().nullish(),
   }),
 })
 
