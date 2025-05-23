@@ -14,12 +14,16 @@ import {
 import { QBNameValueSchemaType } from '@/type/dto/intuitAPI.dto'
 import { convert } from 'html-to-text'
 import { QBCustomerParseUpdatePayloadType } from '@/type/dto/intuitAPI.dto'
-import { InvoiceCreatedResponseType } from '@/type/dto/webhook.dto'
+import {
+  InvoiceCreatedResponseType,
+  InvoiceLineItemSchemaType,
+} from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import dayjs from 'dayjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import httpStatus from 'http-status'
+import { bottleneck } from '@/utils/bottleneck'
 
 export class InvoiceService extends BaseService {
   private copilot: CopilotAPI
@@ -125,6 +129,40 @@ export class InvoiceService extends BaseService {
     await productService.createQBProduct(productMappingPayload)
 
     return { value: qbItem.Id }
+  }
+
+  async prepareLineItemPayload(
+    lineItem: InvoiceLineItemSchemaType,
+    intuitApi: IntuitAPI,
+  ) {
+    const actualAmount = lineItem.amount / 100 // Convert to dollar. amount received in cents.
+
+    let itemRef: QBNameValueSchemaType = {
+      name: 'Services', // for one-off items
+      value: '1',
+    }
+    if (lineItem.productId && lineItem.priceId) {
+      itemRef = await this.getInvoiceItemRef(
+        lineItem.productId,
+        lineItem.priceId,
+        intuitApi,
+      )
+    }
+    return {
+      DetailType: 'SalesItemLineDetail',
+      Amount: actualAmount * lineItem.quantity,
+      SalesItemLineDetail: {
+        ItemRef: itemRef,
+        Qty: lineItem.quantity,
+        UnitPrice: actualAmount,
+        TaxCodeRef: {
+          // required to enable tax for the product.
+          // Doc reference: https://developer.intuit.com/app/developer/qbo/docs/workflows/manage-sales-tax-for-us-locales#specifying-sales-tax
+          value: 'TAX',
+        },
+      },
+      Description: lineItem.description,
+    }
   }
 
   /**
@@ -278,39 +316,17 @@ export class InvoiceService extends BaseService {
       }
     }
 
-    // 4. prepare payload for invoice with lineItems
-    const lineItems = await Promise.all(
-      invoiceResource.lineItems.map(async (lineItem) => {
-        const actualAmount = lineItem.amount / 100 // Convert to dollar. amount received in cents.
+    // bottleneck implementation (rate limiting)
+    const lineItemPromises = []
+    for (const lineItem of invoiceResource.lineItems) {
+      lineItemPromises.push(
+        bottleneck.schedule(() => {
+          return this.prepareLineItemPayload(lineItem, intuitApi)
+        }),
+      )
+    }
 
-        let itemRef: QBNameValueSchemaType = {
-          name: 'Services', // for one-off items
-          value: '1',
-        }
-        if (lineItem.productId && lineItem.priceId) {
-          itemRef = await this.getInvoiceItemRef(
-            lineItem.productId,
-            lineItem.priceId,
-            intuitApi,
-          )
-        }
-        return {
-          DetailType: 'SalesItemLineDetail',
-          Amount: actualAmount * lineItem.quantity,
-          SalesItemLineDetail: {
-            ItemRef: itemRef,
-            Qty: lineItem.quantity,
-            UnitPrice: actualAmount,
-            TaxCodeRef: {
-              // required to enable tax for the product.
-              // Doc reference: https://developer.intuit.com/app/developer/qbo/docs/workflows/manage-sales-tax-for-us-locales#specifying-sales-tax
-              value: 'TAX',
-            },
-          },
-          Description: lineItem.description,
-        }
-      }),
-    )
+    const lineItems = await Promise.all(lineItemPromises)
 
     // 5. create invoice in QB
     const qbInvoicePayload = {
