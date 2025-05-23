@@ -7,6 +7,10 @@ import {
   QBProductSync,
   QBProductSelectSchemaType,
 } from '@/db/schema/qbProductSync'
+import { ProductResponse } from '@/type/common'
+import { ProductFlattenArrayResponseType } from '@/type/dto/api.dto'
+import { bottleneck } from '@/utils/bottleneck'
+import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI from '@/utils/intuitAPI'
 import { and, isNull } from 'drizzle-orm'
 
@@ -71,5 +75,43 @@ export class ProductService extends BaseService {
       Description: opts.productDescription,
     }
     return await intuitApi.createItem(qbItemPayload)
+  }
+
+  async getFlatMapforAProduct(product: ProductResponse, copilot: CopilotAPI) {
+    const prices = await copilot.getPrices(product.id)
+    return (prices?.data ?? []).map((price) => ({
+      ...product,
+      priceId: price.id,
+      amount: price.amount,
+      type: price.type,
+      interval: price.interval,
+      currency: price.currency,
+    }))
+  }
+
+  async getFlattenProductList(
+    limit: number,
+    nextToken?: string,
+  ): Promise<ProductFlattenArrayResponseType> {
+    // get all the products from copilot
+    const copilot = new CopilotAPI(this.user.token)
+    const products = await copilot.getProducts(undefined, nextToken, limit)
+    let flattenProductsPrice: ProductFlattenArrayResponseType = {
+      products: [],
+    }
+    const flatmapProductPrice = []
+    if (products?.data) {
+      for (const product of products.data) {
+        flatmapProductPrice.push(
+          bottleneck.schedule(() => {
+            return this.getFlatMapforAProduct(product, copilot)
+          }),
+        )
+      }
+      flattenProductsPrice = {
+        products: (await Promise.all(flatmapProductPrice)).flat(),
+      }
+    }
+    return flattenProductsPrice
   }
 }
