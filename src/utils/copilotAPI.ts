@@ -150,7 +150,7 @@ export class CopilotAPI {
           error.status === httpStatus.NOT_FOUND
         ) {
           const errorBody = (error as { body: any }).body
-          console.error('CopilotAPI#getClient | message =', errorBody.message)
+          console.info('CopilotAPI#getClient | message =', errorBody.message)
           return
         }
       }
@@ -179,7 +179,7 @@ export class CopilotAPI {
           error.status === httpStatus.NOT_FOUND
         ) {
           const errorBody = (error as { body: any }).body
-          console.error('CopilotAPI#getClients | message =', errorBody.message)
+          console.info('CopilotAPI#getClients | message =', errorBody.message)
           return
         }
       }
@@ -232,7 +232,7 @@ export class CopilotAPI {
           error.status === httpStatus.NOT_FOUND
         ) {
           const errorBody = (error as { body: any }).body
-          console.error('CopilotAPI#getCompany | message =', errorBody.message)
+          console.info('CopilotAPI#getCompany | message =', errorBody.message)
           return
         }
       }
