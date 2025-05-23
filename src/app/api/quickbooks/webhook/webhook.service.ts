@@ -5,7 +5,9 @@ import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
 import {
   InvoiceCreatedResponseSchema,
+  PriceCreatedResponseSchema,
   ProductCreatedResponseSchema,
+  ProductUpdatedResponseSchema,
   WebhookEventResponseType,
 } from '@/type/dto/webhook.dto'
 import { IntuitAPITokensType } from '@/utils/intuitAPI'
@@ -15,6 +17,7 @@ export class WebhookService extends BaseService {
     payload: WebhookEventResponseType,
     qbTokenInfo: IntuitAPITokensType,
   ) {
+    let productService: ProductService
     switch (payload.eventType) {
       case WebhookEvents.INVOICE_CREATED:
         const parsedPayload = InvoiceCreatedResponseSchema.safeParse(payload)
@@ -67,17 +70,50 @@ export class WebhookService extends BaseService {
         break
 
       case WebhookEvents.PRODUCT_UPDATED:
-        const parsedProduct = ProductCreatedResponseSchema.safeParse(payload)
+        const parsedProduct = ProductUpdatedResponseSchema.safeParse(payload)
         if (!parsedProduct.success || !parsedProduct.data) {
           console.error(
-            'WebhookService#handleWebhookEvent | Could not parse invoice response',
+            'WebhookService#handleWebhookEvent | Could not parse product updated resource',
           )
           break
         }
         const parsedProductResource = parsedProduct.data
-        const productService = new ProductService(this.user)
+        productService = new ProductService(this.user)
         await productService.webhookProductUpdated(
           parsedProductResource,
+          qbTokenInfo,
+        )
+        break
+
+      case WebhookEvents.PRODUCT_CREATED:
+        const parsedCreatedProduct =
+          ProductCreatedResponseSchema.safeParse(payload)
+        if (!parsedCreatedProduct.success || !parsedCreatedProduct.data) {
+          console.error(
+            'WebhookService#handleWebhookEvent | Could not parse product created resource',
+          )
+          break
+        }
+        const parsedCreatedProductResource = parsedCreatedProduct.data
+        productService = new ProductService(this.user)
+        await productService.webhookProductCreated(
+          parsedCreatedProductResource,
+          qbTokenInfo,
+        )
+        break
+
+      case WebhookEvents.PRICE_CREATED:
+        const parsedCreatedPrice = PriceCreatedResponseSchema.safeParse(payload)
+        if (!parsedCreatedPrice.success || !parsedCreatedPrice.data) {
+          console.error(
+            'WebhookService#handleWebhookEvent | Could not parse price created resource',
+          )
+          break
+        }
+        const parsedCreatedPriceResource = parsedCreatedPrice.data
+        productService = new ProductService(this.user)
+        await productService.webhookPriceCreated(
+          parsedCreatedPriceResource,
           qbTokenInfo,
         )
         break

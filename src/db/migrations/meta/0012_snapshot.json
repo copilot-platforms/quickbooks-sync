@@ -1,6 +1,6 @@
 {
-  "id": "80e46239-ac9e-4a28-a2a2-a46649a40745",
-  "prevId": "4563f920-9b1d-4fb9-a420-4adaf12bcac2",
+  "id": "7f80e66b-2083-44c4-a4cc-4004d98fbe82",
+  "prevId": "80e46239-ac9e-4a28-a2a2-a46649a40745",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -320,13 +320,13 @@
           "name": "product_id",
           "type": "varchar",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "price_id": {
           "name": "price_id",
           "type": "varchar",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "name": {
           "name": "name",
@@ -350,13 +350,13 @@
           "name": "qb_item_id",
           "type": "varchar",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "qb_sync_token": {
           "name": "qb_sync_token",
           "type": "varchar(100)",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",

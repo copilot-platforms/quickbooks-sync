@@ -7,13 +7,13 @@ import { z } from 'zod'
 export const QBProductSync = table('qb_product_sync', {
   id: t.uuid().defaultRandom().primaryKey(),
   portalId: t.varchar('portal_id', { length: 255 }).notNull(),
-  productId: t.varchar('product_id').notNull(),
-  priceId: t.varchar('price_id').notNull(),
+  productId: t.varchar('product_id'),
+  priceId: t.varchar('price_id'),
   name: t.varchar({ length: 100 }),
   description: t.varchar({ length: 255 }),
   unitPrice: t.decimal('unit_price'),
-  qbItemId: t.varchar('qb_item_id').notNull(),
-  qbSyncToken: t.varchar('qb_sync_token', { length: 100 }).notNull(),
+  qbItemId: t.varchar('qb_item_id'),
+  qbSyncToken: t.varchar('qb_sync_token', { length: 100 }),
   ...timestamps,
 })
 
