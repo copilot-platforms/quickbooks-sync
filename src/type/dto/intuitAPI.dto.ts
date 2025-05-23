@@ -56,14 +56,22 @@ export const QBCustomerCreatePayloadSchema = z.object({
   PrimaryEmailAddr: z.object({
     Address: z.string(),
   }),
+  DisplayName: z.string().optional(),
+  BillAddr: z.object({}).optional(),
 })
-
 export type QBCustomerCreatePayloadType = z.infer<
   typeof QBCustomerCreatePayloadSchema
 >
 
-export type QBCustomerParseUpdatePayloadType =
-  Partial<QBCustomerCreatePayloadType> & { Id: string; SyncToken: string }
+export const QBCustomerSparseUpdatePayloadSchema =
+  QBCustomerCreatePayloadSchema.partial().extend({
+    Id: z.string(),
+    SyncToken: z.string(),
+    sparse: z.literal(true).default(true),
+  })
+export type QBCustomerSparseUpdatePayloadType = z.infer<
+  typeof QBCustomerSparseUpdatePayloadSchema
+>
 
 export const QBItemCreatePayloadSchema = z.object({
   Name: z.string(),
@@ -73,5 +81,13 @@ export const QBItemCreatePayloadSchema = z.object({
   Taxable: z.boolean(),
   Description: z.string().optional(),
 })
-
 export type QBItemCreatePayloadType = z.infer<typeof QBItemCreatePayloadSchema>
+
+export const QBItemFullUpdatePayloadSchema =
+  QBItemCreatePayloadSchema.partial().extend({
+    Id: z.string(),
+    SyncToken: z.string(),
+  })
+export type QBItemFullUpdatePayloadType = z.infer<
+  typeof QBItemFullUpdatePayloadSchema
+>

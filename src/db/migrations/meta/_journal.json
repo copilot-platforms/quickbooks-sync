@@ -78,6 +78,13 @@
       "when": 1747640463020,
       "tag": "0010_sync_token_in_product_sync_table",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1747908390598,
+      "tag": "0011_add_name_description_price_to_product_sync",
+      "breakpoints": true
     }
   ]
 }
