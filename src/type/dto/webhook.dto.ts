@@ -1,4 +1,5 @@
 import { InvoiceStatus } from '@/app/api/core/types/invoice'
+import { ProductStatus } from '@/app/api/core/types/product'
 import { z } from 'zod'
 
 export const WebhookEventResponseSchema = z.object({
@@ -40,4 +41,44 @@ export const InvoiceCreatedResponseSchema = z.object({
 
 export type InvoiceCreatedResponseType = z.infer<
   typeof InvoiceCreatedResponseSchema
+>
+
+/** Product */
+export const ProductCreatedResponseSchema = z.object({
+  eventType: z.string(),
+  data: z.object({
+    id: z.string(),
+    name: z.string(),
+    status: z.nativeEnum(ProductStatus),
+    description: z.string(),
+  }),
+})
+export type ProductCreatedResponseType = z.infer<
+  typeof ProductCreatedResponseSchema
+>
+
+export const ProductUpdatedResponseSchema = z.object({
+  eventType: z.string(),
+  data: z.object({
+    id: z.string(),
+    name: z.string(),
+    status: z.nativeEnum(ProductStatus),
+    description: z.string(),
+  }),
+})
+export type ProductUpdatedResponseType = z.infer<
+  typeof ProductUpdatedResponseSchema
+>
+
+export const PriceCreatedResponseSchema = z.object({
+  eventType: z.string(),
+  data: z.object({
+    id: z.string(),
+    productId: z.string(),
+    amount: z.number(),
+    type: z.string(),
+  }),
+})
+export type PriceCreatedResponseType = z.infer<
+  typeof PriceCreatedResponseSchema
 >
