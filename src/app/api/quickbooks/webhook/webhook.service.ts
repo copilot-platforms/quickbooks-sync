@@ -76,7 +76,10 @@ export class WebhookService extends BaseService {
         }
         const parsedProductResource = parsedProduct.data
         const productService = new ProductService(this.user)
-        await productService.webhookProductUpdated(parsedProductResource)
+        await productService.webhookProductUpdated(
+          parsedProductResource,
+          qbTokenInfo,
+        )
         break
 
       default:

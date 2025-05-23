@@ -5,10 +5,11 @@ import { QBTokenSelectSchemaType } from '@/db/schema/qbTokens'
 import { getFetcher, postFetcher } from '@/helper/fetch.helper'
 import {
   QBCustomerCreatePayloadType,
-  QBCustomerParseUpdatePayloadType,
+  QBCustomerSparseUpdatePayloadType,
   QBInvoiceCreatePayloadType,
   QBItemCreatePayloadType,
   QBInvoiceSparseUpdatePayloadType,
+  QBItemFullUpdatePayloadType,
 } from '@/type/dto/intuitAPI.dto'
 import httpStatus from 'http-status'
 
@@ -142,7 +143,7 @@ export default class IntuitAPI {
     if (!item)
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#createInvoice | message = no response',
+        'IntuitAPI#createItem | message = no response',
       )
 
     if (item?.Fault)
@@ -212,7 +213,7 @@ export default class IntuitAPI {
     return invoice
   }
 
-  async _customerSparseUpdate(payload: QBCustomerParseUpdatePayloadType) {
+  async _customerSparseUpdate(payload: QBCustomerSparseUpdatePayloadType) {
     console.log('IntuitAPI#customerSparseUpdate | customer sparse update start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/customer?minorversion=${intuitApiMinorVersion}`
     const customer = await this.postFetchWithHeaders(url, payload)
@@ -230,6 +231,31 @@ export default class IntuitAPI {
     return customer
   }
 
+  async _itemFullUpdate(payload: QBItemFullUpdatePayloadType) {
+    console.info('IntuitAPI#itemFullUpdate | item full update start')
+    const url = `${intuitBaseUrl}/v3/company/123/item?minorversion=${intuitApiMinorVersion}`
+    const item = await this.postFetchWithHeaders(url, payload)
+
+    if (!item)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#itemFullUpdate | message = no response',
+      )
+
+    if (item?.Fault)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#itemFullUpdate | Error while item full update',
+        item.Fault?.Error,
+      )
+
+    console.info(
+      'IntuitAPI#itemFullUpdate | item full updated with Id =',
+      item.Item?.Id,
+    )
+    return item
+  }
+
   private wrapWithRetry<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
   ): (...args: Args) => Promise<R> {
@@ -245,4 +271,5 @@ export default class IntuitAPI {
   getAnItem = this.wrapWithRetry(this._getAnItem)
   invoiceSparseUpdate = this.wrapWithRetry(this._invoiceSparseUpdate)
   customerSparseUpdate = this.wrapWithRetry(this._customerSparseUpdate)
+  itemFullUpdate = this.wrapWithRetry(this._itemFullUpdate)
 }

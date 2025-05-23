@@ -8,14 +8,19 @@ import {
   QBProductSync,
   QBProductSelectSchemaType,
   QBProductCreateArraySchemaType,
+  QBProductUpdateSchemaType,
+  QBProductUpdateSchema,
 } from '@/db/schema/qbProductSync'
 import RedisClient from '@/lib/redis'
 import { ProductsResponse } from '@/type/common'
+import { QBItemFullUpdatePayloadType } from '@/type/dto/intuitAPI.dto'
 import { ProductCreatedResponseType } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
-import IntuitAPI from '@/utils/intuitAPI'
-import { and, isNull } from 'drizzle-orm'
+import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
+import { and, eq, isNull, SQL } from 'drizzle-orm'
+import { convert } from 'html-to-text'
 
+type WhereClause = SQL<unknown>
 export class ProductService extends BaseService {
   async getMappingByProductPriceId(
     productId: string,
@@ -50,8 +55,6 @@ export class ProductService extends BaseService {
     if (returningFields && returningFields.length > 0) {
       columns = buildReturningFields(QBProductSync, returningFields, true)
     }
-
-    console.log({ productId, ws: this.user.workspaceId })
 
     return await this.db.query.QBProductSync.findMany({
       where: (QBProductSync, { eq }) =>
@@ -99,6 +102,27 @@ export class ProductService extends BaseService {
     const query = this.db.insert(QBProductSync).values(formattedPaylaod)
 
     const product =
+      returningFields && returningFields.length > 0
+        ? await query.returning(
+            buildReturningFields(QBProductSync, returningFields),
+          )
+        : await query.returning()
+
+    return product
+  }
+  async updateQBToken(
+    payload: QBProductUpdateSchemaType,
+    conditions: WhereClause,
+    returningFields?: (keyof typeof QBProductSync)[],
+  ) {
+    const parsedInsertPayload = QBProductUpdateSchema.parse(payload)
+
+    const query = this.db
+      .update(QBProductSync)
+      .set(parsedInsertPayload)
+      .where(conditions)
+
+    const [product] =
       returningFields && returningFields.length > 0
         ? await query.returning(
             buildReturningFields(QBProductSync, returningFields),
@@ -206,14 +230,76 @@ export class ProductService extends BaseService {
    */
   async webhookProductUpdated(
     resource: ProductCreatedResponseType,
+    qbTokenInfo: IntuitAPITokensType,
   ): Promise<void> {
     const productResource = resource.data
 
-    // TODO
     // 01. get all the mapped product ids with qb id
-    // 02. for each QB item id, sparse update the item
+    const mappedProducts = await this.getAllByProductId(productResource.id, [
+      'id',
+      'qbItemId',
+      'qbSyncToken',
+      'name',
+      'description',
+      'unitPrice',
+    ])
+
+    if (!mappedProducts || !mappedProducts.length) {
+      console.info(
+        'WebhookService#webhookProductUpdated | No mapped products found',
+      )
+      return
+    }
+
+    let updateCount = 0
+    await Promise.all(
+      mappedProducts.map(async (product) => {
+        // 02. track change and sparse update the each item
+        if (
+          productResource.name !== product.name ||
+          productResource.description !== product.description
+        ) {
+          console.info(
+            `WebhookService#webhookProductUpdated | Update item in QB for QB Id = ${product.qbItemId}`,
+          )
+          let productDescription = ''
+          if (productResource.description) {
+            productDescription = convert(productResource.description)
+          }
+
+          const fullUpdatePayload: QBItemFullUpdatePayloadType = {
+            Id: product.qbItemId,
+            SyncToken: product.qbSyncToken,
+            Name: productResource.name,
+            ...(productDescription && { Description: productDescription }),
+            ...(product.unitPrice
+              ? { UnitPrice: parseFloat(product.unitPrice) / 100 }
+              : {}),
+            IncomeAccountRef: {
+              value: qbTokenInfo.incomeAccountRef,
+            },
+            Taxable: true,
+            Type: QBItemType.SERVICE,
+          }
+
+          const intuitApi = new IntuitAPI(qbTokenInfo)
+          const itemRes = await intuitApi.itemFullUpdate(fullUpdatePayload)
+
+          // update the product map in db
+          const mapUpdatePayload = {
+            qbSyncToken: itemRes.Item.SyncToken,
+            name: productResource.name,
+            description: productDescription,
+          }
+          const whereConditions = eq(QBProductSync.id, product.id)
+          await this.updateQBToken(mapUpdatePayload, whereConditions)
+
+          updateCount++
+        }
+      }),
+    )
 
     // 03. refresh cache data
-    await this.refreshCachedProductList()
+    if (updateCount > 0) await this.refreshCachedProductList()
   }
 }
