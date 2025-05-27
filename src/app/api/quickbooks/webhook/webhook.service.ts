@@ -2,8 +2,10 @@ import { BaseService } from '@/app/api/core/services/base.service'
 import { InvoiceStatus } from '@/app/api/core/types/invoice'
 import { WebhookEvents } from '@/app/api/core/types/webhook'
 import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
+import { ProductService } from '@/app/api/quickbooks/product/product.service'
 import {
   InvoiceCreatedResponseSchema,
+  ProductCreatedResponseSchema,
   WebhookEventResponseType,
 } from '@/type/dto/webhook.dto'
 import { IntuitAPITokensType } from '@/utils/intuitAPI'
@@ -62,6 +64,22 @@ export class WebhookService extends BaseService {
             qbTokenInfo,
           )
         }
+        break
+
+      case WebhookEvents.PRODUCT_UPDATED:
+        const parsedProduct = ProductCreatedResponseSchema.safeParse(payload)
+        if (!parsedProduct.success || !parsedProduct.data) {
+          console.error(
+            'WebhookService#handleWebhookEvent | Could not parse product update response',
+          )
+          break
+        }
+        const parsedProductResource = parsedProduct.data
+        const productService = new ProductService(this.user)
+        await productService.webhookProductUpdated(
+          parsedProductResource,
+          qbTokenInfo,
+        )
         break
 
       default:
