@@ -37,11 +37,6 @@ export class ProductService extends BaseService {
 
   /**
    * Creates the map of product and price with QB item
-   *
-   * @async
-   * @param {QBProductCreateSchemaType} payload
-   * @param {?(keyof typeof QBProductSync)[]} [returningFields]
-   * @returns {(Promise<Partial<QBProductSelectSchemaType> | undefined>)}
    */
   async createQBProduct(
     payload: QBProductCreateSchemaType,
@@ -62,11 +57,6 @@ export class ProductService extends BaseService {
 
   /**
    * Bulk creates the map between product, price with QB item
-   *
-   * @async
-   * @param {QBProductCreateArraySchemaType} payload
-   * @param {?(keyof typeof QBProductSync)[]} [returningFields]
-   * @returns {Promise<Partial<QBProductSelectSchemaType>[] | undefined>}
    */
   async bulkCreateQBProduct(
     payload: QBProductCreateArraySchemaType,
