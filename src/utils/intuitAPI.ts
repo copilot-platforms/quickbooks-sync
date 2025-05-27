@@ -77,12 +77,14 @@ export default class IntuitAPI {
         'IntuitAPI#customQuery | message = no response',
       )
 
-    if (res?.Fault)
+    if (res?.Fault) {
+      console.error({ Error: res.Fault?.Error })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#customQuery | Error while executing custom query',
         res.Fault?.Error,
       )
+    }
     return res.QueryResponse
   }
 
@@ -97,12 +99,14 @@ export default class IntuitAPI {
         'IntuitAPI#createInvoice | message = no response',
       )
 
-    if (invoice?.Fault)
+    if (invoice?.Fault) {
+      console.error({ Error: invoice.Fault?.Error })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#createInvoice | Error while creating invoice',
         invoice.Fault?.Error,
       )
+    }
 
     console.log(
       'IntuitAPI#createInvoice | invoice created with doc number=',
@@ -122,12 +126,14 @@ export default class IntuitAPI {
         'IntuitAPI#createCustomer | message = no response',
       )
 
-    if (customer?.Fault)
+    if (customer?.Fault) {
+      console.error({ Error: customer.Fault?.Error })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#createCustomer | Error while creating customer',
         customer.Fault?.Error,
       )
+    }
 
     console.log(
       'IntuitAPI#createCustomer | customer created with name=',
@@ -147,12 +153,14 @@ export default class IntuitAPI {
         'IntuitAPI#createItem | message = no response',
       )
 
-    if (item?.Fault)
+    if (item?.Fault) {
+      console.error({ Error: item.Fault?.Error })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#createItem | Error while creating item',
         item.Fault?.Error,
       )
+    }
 
     console.log('IntuitAPI#createItem | item created with Id =', item?.Item?.Id)
     return item.Item
@@ -168,12 +176,14 @@ export default class IntuitAPI {
         'IntuitAPI#getSingleIncomeAccount | message = no response',
       )
 
-    if (qbIncomeAccountRefInfo?.Fault)
+    if (qbIncomeAccountRefInfo?.Fault) {
+      console.error({ Error: qbIncomeAccountRefInfo.Fault?.Error })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#getSingleIncomeAccount | Error while fetching income account',
         qbIncomeAccountRefInfo.Fault?.Error,
       )
+    }
 
     return qbIncomeAccountRefInfo.Account?.[0]
   }
@@ -188,12 +198,14 @@ export default class IntuitAPI {
         'IntuitAPI#getACustomer | message = no response',
       )
 
-    if (qbCustomers?.Fault)
+    if (qbCustomers?.Fault) {
+      console.error({ Error: qbCustomers.Fault?.Error })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#getACustomer | Error while fetching a customer',
         qbCustomers.Fault?.Error,
       )
+    }
 
     return qbCustomers.Customer?.[0]
   }
@@ -208,12 +220,14 @@ export default class IntuitAPI {
         'IntuitAPI#getAnItem | message = no response',
       )
 
-    if (qbItem?.Fault)
+    if (qbItem?.Fault) {
+      console.error({ Error: qbItem.Fault?.Error })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#getAnItem | Error while fetching an item',
         qbItem.Fault?.Error,
       )
+    }
 
     return qbItem.Item?.[0]
   }
@@ -229,12 +243,14 @@ export default class IntuitAPI {
         'IntuitAPI#InvoiceSparseUpdate | message = no response',
       )
 
-    if (invoice?.Fault)
+    if (invoice?.Fault) {
+      console.error({ Error: invoice.Fault?.Error })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#InvoiceSparseUpdate | Error while sparse update an invoice',
         invoice.Fault?.Error,
       )
+    }
 
     console.log(
       'IntuitAPI#InvoiceSparseUpdate | invoice sparse updated for doc number=',
@@ -254,12 +270,14 @@ export default class IntuitAPI {
         'IntuitAPI#customerSparseUpdate | message = no response',
       )
 
-    if (customer?.Fault)
+    if (customer?.Fault) {
+      console.error({ Error: customer.Fault?.Error })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#customerSparseUpdate | Error while sparse update a customer',
         customer.Fault?.Error,
       )
+    }
 
     console.log(
       'IntuitAPI#customerSparseUpdate | customer sparse updated with name=',
@@ -279,12 +297,14 @@ export default class IntuitAPI {
         'IntuitAPI#itemFullUpdate | message = no response',
       )
 
-    if (item?.Fault)
+    if (item?.Fault) {
+      console.error({ Error: item.Fault?.Error })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#itemFullUpdate | Error while item full update',
         item.Fault?.Error,
       )
+    }
 
     console.info(
       'IntuitAPI#itemFullUpdate | item full updated with Id =',
