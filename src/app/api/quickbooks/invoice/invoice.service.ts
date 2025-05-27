@@ -17,6 +17,7 @@ import { QBCustomerParseUpdatePayloadType } from '@/type/dto/intuitAPI.dto'
 import { InvoiceCreatedResponseType } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
+import dayjs from 'dayjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import httpStatus from 'http-status'
 
@@ -66,12 +67,6 @@ export class InvoiceService extends BaseService {
 
   /**
    * Returns the invoice item reference (QB) for the given product and price
-   *
-   * @async
-   * @param {string} productId
-   * @param {string} priceId
-   * @param {IntuitAPI} intuitApi
-   * @returns {Promise<QBNameValueSchemaType>}
    */
   async getInvoiceItemRef(
     productId: string,
@@ -135,11 +130,6 @@ export class InvoiceService extends BaseService {
   /**
    * This function is executed when invoice.created event is triggered
    * Handles the invoice creation in QuickBooks
-   *
-   * @async
-   * @param {InvoiceCreatedResponseType} payload
-   * @param {IntuitAPITokensType} qbTokenInfo
-   * @returns {Promise<void>}
    */
   async webhookInvoiceCreated(
     payload: InvoiceCreatedResponseType,
@@ -266,7 +256,7 @@ export class InvoiceService extends BaseService {
           sparse: true,
         } as QBCustomerParseUpdatePayloadType
 
-        const customerRes = await intuitApi.parseUpdateCustomer(
+        const customerRes = await intuitApi.customerSparseUpdate(
           customerSparsePayload,
         )
         customer = customerRes.Customer
@@ -311,6 +301,11 @@ export class InvoiceService extends BaseService {
             ItemRef: itemRef,
             Qty: lineItem.quantity,
             UnitPrice: actualAmount,
+            TaxCodeRef: {
+              // required to enable tax for the product.
+              // Doc reference: https://developer.intuit.com/app/developer/qbo/docs/workflows/manage-sales-tax-for-us-locales#specifying-sales-tax
+              value: 'TAX',
+            },
           },
           Description: lineItem.description,
         }
@@ -323,8 +318,21 @@ export class InvoiceService extends BaseService {
       CustomerRef: {
         value: customer?.Id || existingCustomer?.qbCustomerId,
       },
+      // include tax and dates
+      ...(invoiceResource?.taxAmount && {
+        TxnTaxDetail: {
+          TotalTax: Number((invoiceResource.taxAmount / 100).toFixed(2)),
+        },
+      }),
+      ...(invoiceResource?.sentDate && {
+        TxnDate: dayjs(invoiceResource.sentDate).format('yyyy/MM/dd'), // Valid date format for TxnDate is yyyy/MM/dd. For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice#the-invoice-object
+      }),
+      ...(invoiceResource?.dueDate && {
+        DueDate: dayjs(invoiceResource.dueDate).format('YYYY-MM-DD'), // the date format for due date follows XML Schema standard (YYYY-MM-DD). For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice#the-invoice-object
+      }),
     }
 
+    // 6. create invoice in QB
     const invoiceRes = await intuitApi.createInvoice(qbInvoicePayload)
 
     const invoicePayload = {
