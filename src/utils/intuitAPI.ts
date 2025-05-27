@@ -233,7 +233,7 @@ export default class IntuitAPI {
 
   async _itemFullUpdate(payload: QBItemFullUpdatePayloadType) {
     console.info('IntuitAPI#itemFullUpdate | item full update start')
-    const url = `${intuitBaseUrl}/v3/company/123/item?minorversion=${intuitApiMinorVersion}`
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/item?minorversion=${intuitApiMinorVersion}`
     const item = await this.postFetchWithHeaders(url, payload)
 
     if (!item)

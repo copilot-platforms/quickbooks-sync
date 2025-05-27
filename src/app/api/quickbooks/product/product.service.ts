@@ -1,4 +1,3 @@
-import { MAX_PRODUCT_LIST_LIMIT } from '@/app/api/core/constants/limit'
 import { BaseService } from '@/app/api/core/services/base.service'
 import { QBItemType } from '@/app/api/core/types/product'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
@@ -11,8 +10,6 @@ import {
   QBProductUpdateSchemaType,
   QBProductUpdateSchema,
 } from '@/db/schema/qbProductSync'
-import RedisClient from '@/lib/redis'
-import { ProductsResponse } from '@/type/common'
 import { QBItemFullUpdatePayloadType } from '@/type/dto/intuitAPI.dto'
 import { ProductCreatedResponseType } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
@@ -155,24 +152,8 @@ export class ProductService extends BaseService {
     return await intuitApi.createItem(qbItemPayload)
   }
 
-  /**
-   * Flattens the product list with price: one product with one price and stores the result in redis
-   */
-  async getFlattenProductList(
-    limit: number,
-    nextToken?: string,
-  ): Promise<ProductsResponse> {
-    // 1. check in redis. key (${workspaceId}_productList) if exists, return the value
-    const redisKey = `${this.user.workspaceId}-productList${nextToken ? '-' + nextToken : ''}`
-    const redisClient = RedisClient.getInstance()
-
-    const cachedProducts: ProductsResponse | null =
-      await redisClient.get(redisKey)
-    if (cachedProducts) {
-      return cachedProducts // auto deserialization by default
-    }
-
-    // 2. if not exists, get all the products from copilot and store in redis
+  async getFlattenProductList(limit: number, nextToken?: string) {
+    // 1. get all the products from copilot
     const copilot = new CopilotAPI(this.user.token)
     const products = await copilot.getProducts(undefined, nextToken, limit)
     const flattenProductsPrice = (
@@ -191,38 +172,7 @@ export class ProductService extends BaseService {
       )
     ).flat()
 
-    const formattedData = {
-      data: flattenProductsPrice,
-      ...(products?.nextToken && { nextToken: products.nextToken }),
-    }
-
-    await redisClient.set(redisKey, JSON.stringify(formattedData))
-    console.info('WebhookService#getFlattenProductList | Data cached in Redis')
-
-    return formattedData
-  }
-
-  async refreshCachedProductList() {
-    // remove all the cached products in redis to add fresh one
-    const redisKey = `${this.user.workspaceId}-productList`
-    const redisClient = RedisClient.getInstance()
-
-    let cursor = '0'
-    do {
-      const [newCursor, keys] = await redisClient.scan(cursor, {
-        match: `${redisKey}*`, // uses globs pattern. match all keys with given redisKey to remove paginated products
-        count: MAX_PRODUCT_LIST_LIMIT, // keys count to fetch at a time
-      })
-
-      cursor = newCursor
-      if (keys.length) {
-        await redisClient.del(...keys)
-      }
-    } while (cursor !== '0') // cursor 0 means complete
-    console.info('WebhookService#webhookProductUpdated | Redis cache cleared')
-
-    // store fresh data in redis
-    await this.getFlattenProductList(MAX_PRODUCT_LIST_LIMIT)
+    return flattenProductsPrice
   }
 
   /**
@@ -298,8 +248,5 @@ export class ProductService extends BaseService {
         }
       }),
     )
-
-    // 03. refresh cache data
-    if (updateCount > 0) await this.refreshCachedProductList()
   }
 }
