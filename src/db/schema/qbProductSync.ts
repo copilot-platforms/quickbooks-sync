@@ -17,6 +17,14 @@ export const QBProductSync = table('qb_product_sync', {
 export const QBProductCreateSchema = createInsertSchema(QBProductSync)
 export type QBProductCreateSchemaType = z.infer<typeof QBProductCreateSchema>
 
+// ignored portalId in QBProductCreateArraySchema as it can be retrieved from token. This schema is used in POST API request
+export const QBProductCreateArraySchema = z.array(
+  QBProductCreateSchema.omit({ portalId: true }),
+)
+export type QBProductCreateArraySchemaType = z.infer<
+  typeof QBProductCreateArraySchema
+>
+
 export const QBProductSelectSchema = createSelectSchema(QBProductSync)
 export type QBProductSelectSchemaType = z.infer<typeof QBProductSelectSchema>
 

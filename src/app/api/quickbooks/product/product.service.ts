@@ -6,6 +6,7 @@ import {
   QBProductCreateSchemaType,
   QBProductSync,
   QBProductSelectSchemaType,
+  QBProductCreateArraySchemaType,
 } from '@/db/schema/qbProductSync'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI from '@/utils/intuitAPI'
@@ -34,14 +35,42 @@ export class ProductService extends BaseService {
     })
   }
 
+  /**
+   * Creates the map of product and price with QB item
+   */
   async createQBProduct(
     payload: QBProductCreateSchemaType,
     returningFields?: (keyof typeof QBProductSync)[],
-  ) {
+  ): Promise<Partial<QBProductSelectSchemaType> | undefined> {
     const parsedInsertPayload = QBProductCreateSchema.parse(payload)
     const query = this.db.insert(QBProductSync).values(parsedInsertPayload)
 
     const [product] =
+      returningFields && returningFields.length > 0
+        ? await query.returning(
+            buildReturningFields(QBProductSync, returningFields),
+          )
+        : await query.returning()
+
+    return product
+  }
+
+  /**
+   * Bulk creates the map between product, price with QB item
+   */
+  async bulkCreateQBProduct(
+    payload: QBProductCreateArraySchemaType,
+    returningFields?: (keyof typeof QBProductSync)[],
+  ): Promise<Partial<QBProductSelectSchemaType>[] | undefined> {
+    const formattedPaylaod = payload.map((item) => {
+      return {
+        ...item,
+        portalId: this.user.workspaceId,
+      }
+    })
+    const query = this.db.insert(QBProductSync).values(formattedPaylaod)
+
+    const product =
       returningFields && returningFields.length > 0
         ? await query.returning(
             buildReturningFields(QBProductSync, returningFields),
