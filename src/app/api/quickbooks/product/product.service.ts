@@ -201,7 +201,6 @@ export class ProductService extends BaseService {
       return
     }
 
-    let updateCount = 0
     await Promise.all(
       mappedProducts.map(async (product) => {
         // 02. track change and sparse update the each item
@@ -243,8 +242,6 @@ export class ProductService extends BaseService {
           }
           const whereConditions = eq(QBProductSync.id, product.id)
           await this.updateQBToken(mapUpdatePayload, whereConditions)
-
-          updateCount++
         }
       }),
     )
