@@ -37,7 +37,7 @@ export class ProductService extends BaseService {
           eq(QBProductSync.priceId, priceId),
           eq(QBProductSync.portalId, this.user.workspaceId),
         ),
-      ...(columns && { columns }),
+      ...columns,
     })
   }
 
