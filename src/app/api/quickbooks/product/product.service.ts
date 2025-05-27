@@ -14,11 +14,16 @@ import { ProductResponse } from '@/type/common'
 import { ProductFlattenArrayResponseType } from '@/type/dto/api.dto'
 import { bottleneck } from '@/utils/bottleneck'
 import { QBItemFullUpdatePayloadType } from '@/type/dto/intuitAPI.dto'
-import { ProductCreatedResponseType } from '@/type/dto/webhook.dto'
+import {
+  PriceCreatedResponseType,
+  ProductCreatedResponseType,
+  ProductUpdatedResponseType,
+} from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
-import { and, eq, isNull, SQL } from 'drizzle-orm'
+import { and, desc, eq, isNull, not, SQL } from 'drizzle-orm'
 import { convert } from 'html-to-text'
+import { z } from 'zod'
 
 type WhereClause = SQL<unknown>
 export class ProductService extends BaseService {
@@ -49,6 +54,7 @@ export class ProductService extends BaseService {
    */
   async getAllByProductId(
     productId: string,
+    conditions?: WhereClause,
     returningFields?: (keyof typeof QBProductSync)[],
   ): Promise<QBProductSelectSchemaType[] | undefined> {
     let columns = null
@@ -61,8 +67,10 @@ export class ProductService extends BaseService {
         and(
           eq(QBProductSync.productId, productId),
           eq(QBProductSync.portalId, this.user.workspaceId),
+          conditions,
         ),
-      ...(columns && { columns }),
+      ...columns,
+      orderBy: [desc(QBProductSync.createdAt)],
     })
   }
 
@@ -110,7 +118,8 @@ export class ProductService extends BaseService {
 
     return product
   }
-  async updateQBToken(
+
+  async updateQBProduct(
     payload: QBProductUpdateSchemaType,
     conditions: WhereClause,
     returningFields?: (keyof typeof QBProductSync)[],
@@ -198,20 +207,21 @@ export class ProductService extends BaseService {
    * Updates the cached product list in redis
    */
   async webhookProductUpdated(
-    resource: ProductCreatedResponseType,
+    resource: ProductUpdatedResponseType,
     qbTokenInfo: IntuitAPITokensType,
   ): Promise<void> {
     const productResource = resource.data
 
     // 01. get all the mapped product ids with qb id
-    const mappedProducts = await this.getAllByProductId(productResource.id, [
-      'id',
-      'qbItemId',
-      'qbSyncToken',
-      'name',
-      'description',
-      'unitPrice',
-    ])
+    const mappedConditions =
+      (not(isNull(QBProductSync.qbItemId)),
+      not(isNull(QBProductSync.qbSyncToken)))
+
+    const mappedProducts = await this.getAllByProductId(
+      productResource.id,
+      mappedConditions,
+      ['id', 'qbItemId', 'qbSyncToken', 'name', 'description', 'unitPrice'],
+    )
 
     if (!mappedProducts || !mappedProducts.length) {
       console.info(
@@ -236,8 +246,8 @@ export class ProductService extends BaseService {
           }
 
           const fullUpdatePayload: QBItemFullUpdatePayloadType = {
-            Id: product.qbItemId,
-            SyncToken: product.qbSyncToken,
+            Id: z.string().parse(product.qbItemId),
+            SyncToken: z.string().parse(product.qbSyncToken),
             Name: productResource.name,
             ...(productDescription && { Description: productDescription }),
             ...(product.unitPrice
@@ -260,9 +270,125 @@ export class ProductService extends BaseService {
             description: productDescription,
           }
           const whereConditions = eq(QBProductSync.id, product.id)
-          await this.updateQBToken(mapUpdatePayload, whereConditions)
+          await this.updateQBProduct(mapUpdatePayload, whereConditions)
         }
       }),
     )
+  }
+
+  async webhookProductCreated(
+    resource: ProductCreatedResponseType,
+    qbTokenInfo: IntuitAPITokensType,
+  ): Promise<void> {
+    const productResource = resource.data
+    const intuitApi = new IntuitAPI(qbTokenInfo)
+    const productDescription = convert(productResource.description)
+
+    // 01. get all unmapped by product id
+    const mappedConditions =
+      (isNull(QBProductSync.qbItemId), isNull(QBProductSync.qbSyncToken))
+
+    const mappedProducts = await this.getAllByProductId(
+      productResource.id,
+      mappedConditions,
+      ['id', 'unitPrice'],
+    )
+    const latestMappedProduct = mappedProducts?.[0]
+    if (latestMappedProduct) {
+      const item = await this.createItemInQB(
+        {
+          productName: productResource.name,
+          unitPrice: latestMappedProduct?.unitPrice
+            ? Number(latestMappedProduct.unitPrice)
+            : 0,
+          incomeAccRefVal: qbTokenInfo.incomeAccountRef,
+          productDescription,
+        },
+        intuitApi,
+      )
+      await this.updateQBProduct(
+        {
+          portalId: this.user.workspaceId,
+          productId: productResource.id,
+          priceId: latestMappedProduct?.priceId,
+          name: productResource.name,
+          description: productDescription,
+          qbItemId: item.Id,
+          qbSyncToken: item.SyncToken,
+        },
+        eq(QBProductSync.id, latestMappedProduct?.id),
+      )
+
+      console.info(
+        'WebhookService#webhookProductCreated | Product created in QB',
+      )
+    } else {
+      await this.createQBProduct({
+        portalId: this.user.workspaceId,
+        productId: productResource.id,
+        name: productResource.name,
+        description: productDescription,
+      })
+
+      console.info(
+        'WebhookService#webhookProductCreated | Product mapping done',
+      )
+    }
+  }
+
+  async webhookPriceCreated(
+    resource: PriceCreatedResponseType,
+    qbTokenInfo: IntuitAPITokensType,
+  ): Promise<void> {
+    const priceResource = resource.data
+    const intuitApi = new IntuitAPI(qbTokenInfo)
+
+    // 01. get all unmapped by product id
+    const mappedConditions =
+      (isNull(QBProductSync.qbItemId), isNull(QBProductSync.qbSyncToken))
+
+    const mappedProducts = await this.getAllByProductId(
+      priceResource.productId,
+      mappedConditions,
+      ['id', 'name', 'description'],
+    )
+    const latestMappedProduct = mappedProducts?.[0]
+    if (latestMappedProduct) {
+      const item = await this.createItemInQB(
+        {
+          productName: z.string().parse(latestMappedProduct.name),
+          unitPrice: priceResource.amount,
+          incomeAccRefVal: qbTokenInfo.incomeAccountRef,
+          productDescription: latestMappedProduct.description || '',
+        },
+        intuitApi,
+      )
+      await this.updateQBProduct(
+        {
+          portalId: this.user.workspaceId,
+          productId: priceResource.id,
+          priceId: latestMappedProduct?.priceId,
+          unitPrice: priceResource.amount.toString(),
+          qbItemId: item.Id,
+          qbSyncToken: item.SyncToken,
+        },
+        eq(QBProductSync.id, latestMappedProduct?.id),
+      )
+
+      console.info(
+        'WebhookService#webhookProductCreated | Product created in QB',
+      )
+    } else {
+      await this.createQBProduct({
+        portalId: this.user.workspaceId,
+        productId: priceResource.productId,
+        priceId: priceResource.id,
+        unitPrice: priceResource.amount.toString(),
+      })
+
+      console.info(
+        'WebhookService#webhookProductCreated | Product mapping done',
+      )
+    }
   }
 }

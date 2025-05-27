@@ -85,6 +85,13 @@
       "when": 1747908390598,
       "tag": "0011_add_name_description_price_to_product_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1747995477962,
+      "tag": "0012_nullable_columns_in_product_sync",
+      "breakpoints": true
     }
   ]
 }

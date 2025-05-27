@@ -56,3 +56,29 @@ export const ProductCreatedResponseSchema = z.object({
 export type ProductCreatedResponseType = z.infer<
   typeof ProductCreatedResponseSchema
 >
+
+export const ProductUpdatedResponseSchema = z.object({
+  eventType: z.string(),
+  data: z.object({
+    id: z.string(),
+    name: z.string(),
+    status: z.nativeEnum(ProductStatus),
+    description: z.string(),
+  }),
+})
+export type ProductUpdatedResponseType = z.infer<
+  typeof ProductUpdatedResponseSchema
+>
+
+export const PriceCreatedResponseSchema = z.object({
+  eventType: z.string(),
+  data: z.object({
+    id: z.string(),
+    productId: z.string(),
+    amount: z.number(),
+    type: z.string(),
+  }),
+})
+export type PriceCreatedResponseType = z.infer<
+  typeof PriceCreatedResponseSchema
+>
