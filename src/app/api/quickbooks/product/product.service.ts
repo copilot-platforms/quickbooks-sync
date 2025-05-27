@@ -23,6 +23,7 @@ import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import { and, desc, eq, isNull, not, SQL } from 'drizzle-orm'
 import { convert } from 'html-to-text'
+import { z } from 'zod'
 
 type WhereClause = SQL<unknown>
 export class ProductService extends BaseService {
@@ -245,8 +246,8 @@ export class ProductService extends BaseService {
           }
 
           const fullUpdatePayload: QBItemFullUpdatePayloadType = {
-            Id: product.qbItemId as string,
-            SyncToken: product.qbSyncToken as string,
+            Id: z.string().parse(product.qbItemId),
+            SyncToken: z.string().parse(product.qbSyncToken),
             Name: productResource.name,
             ...(productDescription && { Description: productDescription }),
             ...(product.unitPrice
@@ -355,7 +356,7 @@ export class ProductService extends BaseService {
     if (latestMappedProduct) {
       const item = await this.createItemInQB(
         {
-          productName: latestMappedProduct.name as string,
+          productName: z.string().parse(latestMappedProduct.name),
           unitPrice: priceResource.amount,
           incomeAccRefVal: qbTokenInfo.incomeAccountRef,
           productDescription: latestMappedProduct.description || '',
