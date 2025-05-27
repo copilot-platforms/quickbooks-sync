@@ -68,7 +68,7 @@ export class ProductService extends BaseService {
           eq(QBProductSync.portalId, this.user.workspaceId),
           conditions,
         ),
-      ...(columns && { columns }),
+      ...columns,
       orderBy: [desc(QBProductSync.createdAt)],
     })
   }
