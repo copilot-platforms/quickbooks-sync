@@ -19,7 +19,6 @@
   "dependencies": {
     "@sentry/nextjs": "^9.13.0",
     "@supabase/supabase-js": "^2.49.4",
-    "@upstash/redis": "^1.34.9",
     "bottleneck": "^2.19.5",
     "copilot-design-system": "^2.0.5",
     "copilot-node-sdk": "^3.7.0",

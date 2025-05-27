@@ -33,8 +33,3 @@ export const intuitApiMinorVersion =
 export const supabaseProjectUrl =
   process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL || ''
 export const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-
-// Redis
-export const UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL || ''
-export const UPSTASH_REDIS_REST_TOKEN =
-  process.env.UPSTASH_REDIS_REST_TOKEN || ''
