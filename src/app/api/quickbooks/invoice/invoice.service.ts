@@ -11,9 +11,11 @@ import {
   QBInvoiceCreateSchema,
   QBInvoiceCreateSchemaType,
 } from '@/db/schema/qbInvoiceSync'
-import { QBNameValueSchemaType } from '@/type/dto/intuitAPI.dto'
+import {
+  QBNameValueSchemaType,
+  QBCustomerSparseUpdatePayloadType,
+} from '@/type/dto/intuitAPI.dto'
 import { convert } from 'html-to-text'
-import { QBCustomerParseUpdatePayloadType } from '@/type/dto/intuitAPI.dto'
 import {
   InvoiceCreatedResponseType,
   InvoiceLineItemSchemaType,
@@ -125,6 +127,9 @@ export class InvoiceService extends BaseService {
       priceId,
       qbItemId: qbItem.Id,
       qbSyncToken: qbItem.SyncToken,
+      name: productInfo.name,
+      description: productDescription,
+      unitPrice: Number(priceInfo.amount).toFixed(2), // decimal datatype expects string
     }
     await productService.createQBProduct(productMappingPayload)
 
@@ -266,8 +271,8 @@ export class InvoiceService extends BaseService {
     } else {
       // update the customer in qb
       const sparseUpdatePayload: Omit<
-        QBCustomerParseUpdatePayloadType,
-        'Id' | 'SyncToken'
+        QBCustomerSparseUpdatePayloadType,
+        'Id' | 'SyncToken' | 'sparse'
       > = {}
 
       if (existingCustomer.familyName !== client.familyName) {
@@ -291,8 +296,8 @@ export class InvoiceService extends BaseService {
             Line1: `${existingCustomer.givenName} ${existingCustomer.familyName}`,
             Line2: existingCustomer.companyName,
           },
-          sparse: true,
-        } as QBCustomerParseUpdatePayloadType
+          sparse: true as const,
+        }
 
         const customerRes = await intuitApi.customerSparseUpdate(
           customerSparsePayload,
