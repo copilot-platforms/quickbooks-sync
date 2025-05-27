@@ -70,7 +70,7 @@ export class WebhookService extends BaseService {
         const parsedProduct = ProductCreatedResponseSchema.safeParse(payload)
         if (!parsedProduct.success || !parsedProduct.data) {
           console.error(
-            'WebhookService#handleWebhookEvent | Could not parse invoice response',
+            'WebhookService#handleWebhookEvent | Could not parse product update response',
           )
           break
         }
