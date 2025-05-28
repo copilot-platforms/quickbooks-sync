@@ -92,6 +92,13 @@
       "when": 1747995477962,
       "tag": "0012_nullable_columns_in_product_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1748408191013,
+      "tag": "0013_alter_table_to_datatype_uuid",
+      "breakpoints": true
     }
   ]
 }
