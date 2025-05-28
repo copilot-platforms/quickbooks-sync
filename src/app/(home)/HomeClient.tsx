@@ -23,14 +23,14 @@ export default function HomeClient() {
   return (
     <div className="home-client-wrapper w-full h-full">
       {hasConnection || portalConnectionStatus ? (
-        <div>
+        <>
           {isReconnecting && (
             <div>
               Reconnecting to QuickBooks <Spinner size={5} />
             </div>
           )}
           <DashboardMain />
-        </div>
+        </>
       ) : (
         <div className="flex items-center justify-center h-full text-xl">
           {loading ? (
