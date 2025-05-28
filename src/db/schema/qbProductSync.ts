@@ -7,7 +7,7 @@ import { z } from 'zod'
 export const QBProductSync = table('qb_product_sync', {
   id: t.uuid().defaultRandom().primaryKey(),
   portalId: t.varchar('portal_id', { length: 255 }).notNull(),
-  productId: t.varchar('product_id'),
+  productId: t.uuid('product_id'),
   priceId: t.varchar('price_id'),
   name: t.varchar({ length: 100 }),
   description: t.varchar({ length: 255 }),
