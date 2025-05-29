@@ -1,5 +1,4 @@
 'use client'
-import { Heading, Icon } from 'copilot-design-system'
 import { ReactElement, ReactNode } from 'react'
 
 type AccordionProps = {
