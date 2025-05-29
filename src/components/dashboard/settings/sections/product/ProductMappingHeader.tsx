@@ -7,11 +7,12 @@ export default function ProductMappingHeader({ isOpen }: { isOpen: boolean }) {
         <Heading size="lg">Product Mapping</Heading>
         {/* Chevron rotates based on open state */}
         <div className="p-1.5">
-          {isOpen ? (
-            <Icon icon="ChevronDown" width={16} height={16} />
-          ) : (
-            <Icon icon="ChevronUp" width={16} height={16} />
-          )}
+          <Icon
+            icon="ChevronDown"
+            width={16}
+            height={16}
+            className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          />
         </div>
       </div>
       <Button

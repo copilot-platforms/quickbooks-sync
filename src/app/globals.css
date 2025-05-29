@@ -8,5 +8,8 @@
 
 @theme {
   --color-card-divider: #ededf0;
-  --color-secondary: #6b6f76;
+  --color-gray-100: #f8f9fb;
+  --color-gray-200: #dfe1e4;
+  --color-gray-500: #6b6f76; /** secondary */
+  --color-gray-600: #212b36; /** primary */
 }
