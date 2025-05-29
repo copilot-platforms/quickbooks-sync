@@ -1,4 +1,4 @@
-import { Button, Heading, Icon, IconButton } from 'copilot-design-system'
+import { Button, Heading, Icon } from 'copilot-design-system'
 
 export default function ProductMappingHeader({ isOpen }: { isOpen: boolean }) {
   return (
