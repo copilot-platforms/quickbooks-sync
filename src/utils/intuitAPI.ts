@@ -232,6 +232,30 @@ export default class IntuitAPI {
     return qbItem.Item?.[0]
   }
 
+  async _getAllItems(limit: number, columns: string[] = ['Id']) {
+    const stringColumns = columns.map((column) => `${column}`).join(',')
+    const customerQuery = `select ${stringColumns} from Item maxresults ${limit}`
+    console.log({ customerQuery })
+    const qbItems = await this.customQuery(customerQuery)
+
+    if (!qbItems)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#getAllItems | message = no response',
+      )
+
+    if (qbItems?.Fault) {
+      console.error({ Error: qbItems.Fault?.Error })
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#getAllItems | Error while fetching all items',
+        qbItems.Fault?.Error,
+      )
+    }
+
+    return qbItems.Item
+  }
+
   async _invoiceSparseUpdate(payload: QBInvoiceSparseUpdatePayloadType) {
     console.log('IntuitAPI#InvoiceSparseUpdate | invoice sparse update start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?minorversion=${intuitApiMinorVersion}`
@@ -326,6 +350,7 @@ export default class IntuitAPI {
   getSingleIncomeAccount = this.wrapWithRetry(this._getSingleIncomeAccount)
   getACustomer = this.wrapWithRetry(this._getACustomer)
   getAnItem = this.wrapWithRetry(this._getAnItem)
+  getAllItems = this.wrapWithRetry(this._getAllItems)
   invoiceSparseUpdate = this.wrapWithRetry(this._invoiceSparseUpdate)
   customerSparseUpdate = this.wrapWithRetry(this._customerSparseUpdate)
   itemFullUpdate = this.wrapWithRetry(this._itemFullUpdate)

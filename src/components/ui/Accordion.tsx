@@ -17,9 +17,9 @@ export default function Accordion({
   isOpen,
 }: AccordionProps) {
   const HeaderComponent = item.header
+
   return (
     <div className="mx-auto">
-      {/* Header - Clickable to toggle */}
       <div
         className="flex items-center justify-start py-[14] pr-3 cursor-pointer"
         onClick={() => toggleItemAction(item.id)}
@@ -28,11 +28,11 @@ export default function Accordion({
       </div>
 
       {/* Content - Conditionally visible with smooth animation */}
-      {isOpen && (
-        <div className="animate-in slide-in-from-top-2 duration-200">
-          {item.content}
-        </div>
-      )}
+      <div
+        className={`animate-in slide-in-from-top-2 duration-200 ${isOpen ? 'block' : 'hidden'}`}
+      >
+        {item.content}
+      </div>
     </div>
   )
 }
