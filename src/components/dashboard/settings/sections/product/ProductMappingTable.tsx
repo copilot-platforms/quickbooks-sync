@@ -111,23 +111,23 @@ export default function ProductMappingTable() {
 
   return (
     <>
-      <div className="bg-white border border-gray-200 text-left">
+      <div className="product-mapping-table bg-white border border-gray-200 text-left">
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-200">
-              <th className="pt-5 pr-3 pl-4 pb-2 text-xs uppercase font-normal tracking-wide w-[46.5%]">
+              <th className="pt-5 pr-3 pl-4 pb-2 text-[11px] uppercase font-normal tracking-[1px] leading-3 w-[46.5%] lg:w-[372]">
                 COPILOT PRODUCTS
               </th>
 
-              <th className="pt-5 pr-3 pl-4 pb-2 border-l border-gray-200 w-[7%]">
+              <th className="pt-5 pr-3 pl-4 pb-2 border-l border-gray-200 w-[7%] lg:w-[56]">
                 <Icon
                   icon="ArrowRight"
                   width={16}
                   height={16}
-                  className="text-gray-500 mx-auto"
+                  className="text-gray-500 mx-auto aspect-square"
                 />
               </th>
-              <th className="pt-5 pr-3 pl-4 pb-2 text-left text-xs uppercase font-normal tracking-wide border-l border-gray-200 w-[46.5%]">
+              <th className="pt-5 pr-3 pl-4 pb-2 text-left text-[11px] uppercase font-normal tracking-[1px] leading-3 border-l border-gray-200 w-[46.5%] lg:w-[372]">
                 QUICKBOOKS ITEMS
               </th>
             </tr>
@@ -137,9 +137,11 @@ export default function ProductMappingTable() {
               <tr key={index} className="hover:bg-gray-50 transition-colors">
                 {/* Copilot Products Column */}
                 <td className="py-2 pl-4 pr-3">
-                  <div className="space-y-1">
-                    <div className="text-sm">{product.name}</div>
-                    <div className="text-sm text-gray-500">{product.price}</div>
+                  <div className="">
+                    <div className="text-sm leading-5">{product.name}</div>
+                    <div className="text-sm leading-5 text-gray-500">
+                      {product.price}
+                    </div>
                   </div>
                 </td>
 
@@ -161,7 +163,7 @@ export default function ProductMappingTable() {
                   >
                     {selectedItems[index] &&
                     Object.keys(selectedItems[index]).length > 0 ? (
-                      <div className="space-y-1 text-left">
+                      <div className="text-left">
                         <div className="text-sm">
                           {selectedItems[index].name}
                         </div>
