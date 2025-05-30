@@ -172,6 +172,7 @@ export class ProductService extends BaseService {
       amount: price.amount,
       type: price.type,
       interval: price.interval,
+      intervalCount: price.intervalCount,
       currency: price.currency,
     }))
   }
@@ -390,5 +391,14 @@ export class ProductService extends BaseService {
         'WebhookService#webhookProductCreated | Product mapping done',
       )
     }
+  }
+
+  async queryItemsFromQB(
+    qbTokenInfo: IntuitAPITokensType,
+    limit: number,
+    columns: string[],
+  ) {
+    const intuitApi = new IntuitAPI(qbTokenInfo)
+    return await intuitApi.getAllItems(limit, columns)
   }
 }

@@ -1,3 +1,4 @@
+'use client'
 import { AuthStatus } from '@/app/api/core/types/auth'
 import { useAuth } from '@/app/context/AuthContext'
 import { CalloutVariant } from '@/components/type/callout'

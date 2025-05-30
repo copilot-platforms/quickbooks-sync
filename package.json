@@ -21,7 +21,7 @@
     "@supabase/supabase-js": "^2.49.4",
     "bottleneck": "^2.19.5",
     "copilot-design-system": "^2.0.10",
-    "copilot-node-sdk": "^3.7.0",
+    "copilot-node-sdk": "^3.11.1",
     "dayjs": "^1.11.13",
     "drizzle-orm": "^0.42.0",
     "drizzle-zod": "^0.7.1",
@@ -40,6 +40,7 @@
     "react-linkify": "^1.0.0-alpha",
     "react-time-ago": "^7.3.3",
     "supabase": "2.22.4",
+    "swr": "^2.3.3",
     "zod": "^3.22.4"
   },
   "devDependencies": {
