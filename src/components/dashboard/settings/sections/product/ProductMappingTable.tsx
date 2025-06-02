@@ -115,11 +115,11 @@ export default function ProductMappingTable() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-200">
-              <th className="pt-5 pr-3 pl-4 pb-2 text-[11px] uppercase font-normal tracking-[1px] leading-3 w-[46.5%] lg:w-[372]">
+              <th className="pt-5 pr-3 pl-4 pb-2 text-[11px] uppercase font-normal tracking-[1px] leading-3 w-[46.5%] lg:w-[372px]">
                 COPILOT PRODUCTS
               </th>
 
-              <th className="pt-5 pr-3 pl-4 pb-2 border-l border-gray-200 w-[7%] lg:w-[56]">
+              <th className="pt-5 pr-3 pl-4 pb-2 border-l border-gray-200 w-[7%] lg:w-[56px]">
                 <Icon
                   icon="ArrowRight"
                   width={16}
@@ -127,7 +127,7 @@ export default function ProductMappingTable() {
                   className="text-gray-500 mx-auto aspect-square"
                 />
               </th>
-              <th className="pt-5 pr-3 pl-4 pb-2 text-left text-[11px] uppercase font-normal tracking-[1px] leading-3 border-l border-gray-200 w-[46.5%] lg:w-[372]">
+              <th className="pt-5 pr-3 pl-4 pb-2 text-left text-[11px] uppercase font-normal tracking-[1px] leading-3 border-l border-gray-200 w-[46.5%] lg:w-[372px]">
                 QUICKBOOKS ITEMS
               </th>
             </tr>
@@ -184,7 +184,7 @@ export default function ProductMappingTable() {
                   </button>
 
                   {openDropdowns[index] && (
-                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 shadow-lg round-md z-100 min-w-[320px]">
+                    <div className="absolute right-0 left-[-145px] top-full md:left-0 md:right-0 bg-white border border-gray-200 shadow-xl rounded-sm z-100 md:min-w-[320px]">
                       <div className="px-3 py-2">
                         <input
                           type="text"
