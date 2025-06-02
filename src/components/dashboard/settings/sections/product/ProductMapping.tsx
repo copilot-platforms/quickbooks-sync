@@ -1,8 +1,9 @@
 import ProductMappingTable from '@/components/dashboard/settings/sections/product/ProductMappingTable'
+import { ProductMappingItemType } from '@/db/schema/qbProductSync'
 import {
   ProductDataType,
   QBItemDataType,
-  useProductMappingSettings,
+  useProductMapping,
 } from '@/hook/useSettings'
 import { Checkbox } from 'copilot-design-system'
 
@@ -27,6 +28,7 @@ export type ProductMappingComponentType = {
     index: number,
     quickbooksItems: QBItemDataType[],
   ) => QBItemDataType[]
+  setMappingItems: (products: ProductMappingItemType[]) => void
 }
 
 export default function ProductMapping({
@@ -37,13 +39,14 @@ export default function ProductMapping({
   handleSearch,
   selectItem,
   getFilteredItems,
+  setMappingItems,
 }: ProductMappingComponentType) {
   const {
     newlyCreatedFlag,
     itemCreateFlag,
     setNewlyCreatedFlag,
     setItemCreateFlag,
-  } = useProductMappingSettings()
+  } = useProductMapping()
 
   return (
     <>
@@ -76,6 +79,7 @@ export default function ProductMapping({
           handleSearch={handleSearch}
           selectItem={selectItem}
           getFilteredItems={getFilteredItems}
+          setMappingItems={setMappingItems}
         />
       </div>
     </>

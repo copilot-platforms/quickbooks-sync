@@ -27,6 +27,11 @@ import { and, eq, isNull } from 'drizzle-orm'
 import httpStatus from 'http-status'
 import { bottleneck } from '@/utils/bottleneck'
 
+const oneOffItem = {
+  name: 'Services', // for one-off items
+  value: '1',
+}
+
 export class InvoiceService extends BaseService {
   private copilot: CopilotAPI
 
@@ -84,10 +89,17 @@ export class InvoiceService extends BaseService {
       productId,
       priceId,
     )
-    if (mapping && mapping.qbItemId) {
-      console.info('InvoiceService#getInvoiceItemRef | Product map found')
-      return {
-        value: mapping.qbItemId,
+    if (mapping) {
+      if (mapping.isExcluded) {
+        // if excluded, do not include in invoice and send as one-off item
+        console.info('InvoiceService#getInvoiceItemRef | Product is excluded')
+        return oneOffItem
+      }
+      if (mapping.qbItemId) {
+        console.info('InvoiceService#getInvoiceItemRef | Product map found')
+        return {
+          value: mapping.qbItemId,
+        }
       }
     }
 
@@ -142,10 +154,7 @@ export class InvoiceService extends BaseService {
   ) {
     const actualAmount = lineItem.amount / 100 // Convert to dollar. amount received in cents.
 
-    let itemRef: QBNameValueSchemaType = {
-      name: 'Services', // for one-off items
-      value: '1',
-    }
+    let itemRef: QBNameValueSchemaType = oneOffItem
     if (lineItem.productId && lineItem.priceId) {
       itemRef = await this.getInvoiceItemRef(
         lineItem.productId,
