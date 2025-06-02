@@ -45,8 +45,6 @@ export const useProductMappingSettings = () => {
   const { token } = useAuth()
 
   const submitMappingItems = async () => {
-    console.log({ mappingItems })
-
     const res = await postFetcher(
       `/api/quickbooks/product/map?token=${token}`,
       {},
@@ -92,7 +90,6 @@ export const useProductMappingSettings = () => {
     item: Record<string, any>,
     products: ProductDataType[],
   ) => {
-    console.log({ item, index, products })
     setSelectedItems((prev) => ({
       ...prev,
       [index]: item,
@@ -105,8 +102,6 @@ export const useProductMappingSettings = () => {
       ...prev,
       [index]: '',
     }))
-
-    console.log({ item })
 
     setMappingItems((prev) => [
       ...prev,
