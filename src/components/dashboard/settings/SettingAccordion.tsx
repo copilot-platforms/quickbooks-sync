@@ -1,22 +1,41 @@
 import InvoiceDetail from '@/components/dashboard/settings/sections/invoice/InvoiceDetail'
-import InvoiceDetailHeader from '@/components/dashboard/settings/sections/invoice/InvoiceDetailHeader'
 import ProductMapping from '@/components/dashboard/settings/sections/product/ProductMapping'
-import ProductMappingHeader from '@/components/dashboard/settings/sections/product/ProductMappingHeader'
 import Accordion from '@/components/ui/Accordion'
 import Divider from '@/components/ui/Divider'
-import { useSettings } from '@/hook/useSettings'
-import { Fragment } from 'react'
+import { useProductMappingSettings, useSettings } from '@/hook/useSettings'
+import { Button } from 'copilot-design-system'
 
 export default function SettingAccordion() {
+  const {
+    openDropdowns,
+    searchTerms,
+    selectedItems,
+    toggleDropdown,
+    handleSearch,
+    selectItem,
+    getFilteredItems,
+    submitMappingItems,
+  } = useProductMappingSettings()
+
   const accordionItems = [
     {
       id: 'product-mapping',
-      header: ProductMappingHeader,
-      content: <ProductMapping />,
+      header: 'Product Mapping',
+      content: (
+        <ProductMapping
+          openDropdowns={openDropdowns}
+          searchTerms={searchTerms}
+          selectedItems={selectedItems}
+          toggleDropdown={toggleDropdown}
+          handleSearch={handleSearch}
+          selectItem={selectItem}
+          getFilteredItems={getFilteredItems}
+        />
+      ),
     },
     {
       id: 'invoice-detail',
-      header: InvoiceDetailHeader,
+      header: 'Invoice Details',
       content: <InvoiceDetail />,
     },
   ]
@@ -34,14 +53,25 @@ export default function SettingAccordion() {
     <div className="mx-auto">
       {accordionItems.map((item, index) => {
         return (
-          <Fragment key={item.id}>
+          <div key={item.id} className="relative">
+            <div
+              className={`absolute top-[14] right-0 z-10 flex items-center justify-end ${index === 0 ? '' : 'hidden'}`}
+            >
+              <Button
+                label="Confirm"
+                variant="primary"
+                prefixIcon="Check"
+                className="mt-1 sm:mt-0"
+                onClick={submitMappingItems}
+              />
+            </div>
             <Accordion
               item={item}
               toggleItemAction={toggleItem}
               isOpen={openItems.includes(item.id)}
             />
             {index !== accordionItems.length - 1 && <Divider />}
-          </Fragment>
+          </div>
         )
       })}
     </div>

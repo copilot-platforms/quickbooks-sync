@@ -40,7 +40,7 @@ export async function getItemsFromQB(req: NextRequest) {
   const items = await productService.queryItemsFromQB(
     qbTokenInfo,
     MAX_PRODUCT_LIST_LIMIT,
-    ['Id', 'Name', 'UnitPrice'],
+    ['Id', 'Name', 'UnitPrice', 'SyncToken'],
   )
   return NextResponse.json(items)
 }
