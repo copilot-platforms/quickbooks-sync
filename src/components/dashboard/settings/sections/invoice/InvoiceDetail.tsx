@@ -20,7 +20,7 @@ export default function InvoiceDetail() {
             onChange={() => setAbsorbedFeeFlag(!absorbedFeeFlag)}
           />
         </div>
-        <div className="mb-5">
+        <div className="mb-6">
           <Checkbox
             label="Use company name when syncing invoices billed to companies"
             description="Create QuickBooks customers using the company name rather than individual client names when invoices are billed to organizations."
