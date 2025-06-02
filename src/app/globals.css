@@ -7,11 +7,6 @@
 }
 
 @theme {
-  --color-text-primary: #212b36;
-  --color-success-primary: #115b3b;
-  --color-success-background: #dfffeb;
-  --color-warning-primary: #863805;
-  --color-warning-background: #fef6d0;
-  --color-failed-primary: #991a00;
-  --color-failed-background: #ffede8;
+  --color-card-divider: #ededf0;
+  --color-secondary: #6b6f76;
 }

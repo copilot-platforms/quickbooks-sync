@@ -1,25 +1,45 @@
 'use client'
-import { Callout, CalloutType } from '@/components/template/Callout'
-import { CalloutStatus } from '@/components/type/callout'
+import SettingAccordion from '@/components/dashboard/settings/SettingAccordion'
+import { CalloutVariant } from '@/components/type/callout'
+import Divider from '@/components/ui/Divider'
 import { useDashboardMain } from '@/hook/useDashboard'
-import { Spinner } from 'copilot-design-system'
+import {
+  ButtonProps,
+  Callout,
+  Heading,
+  IconType,
+  Spinner,
+} from 'copilot-design-system'
+
+type CalloutType = {
+  title: string
+  description?: string
+  actionLabel?: string
+  actionIcon?: IconType
+  buttonDisabled?: boolean
+  buttonVariant?: ButtonProps['variant']
+}
 
 const DashboardCallout = {
-  [CalloutStatus.Warning]: {
-    label: 'Confirm your mapping before getting started',
-    body: "Set your product mappings and review configuration settings to best set up your QuickBooks integration. Once you're ready, click the button below to enable the app.",
-    buttonText: 'Enable app',
+  [CalloutVariant.WARNING]: {
+    title: 'Confirm your mapping before getting started',
+    description:
+      "Set your product mappings and review configuration settings to best set up your QuickBooks integration. Once you're ready, click the button below to enable the app.",
+    actionLabel: 'Enable app',
+    actionIcon: 'Check' as IconType,
+    buttonVariant: 'primary' as const,
   },
-  [CalloutStatus.Success]: {
-    label: 'QuickBooks sync is on',
+  [CalloutVariant.SUCCESS]: {
+    title: 'QuickBooks sync is live',
+    description: 'Last synced just now',
   },
-  [CalloutStatus.Info]: {
-    label: 'This is an info',
-  },
-  [CalloutStatus.Failed]: {
-    label: 'QuickBooks sync is off',
-    body: 'Please reauthorize your account to reconnect with QuickBooks.',
-    buttonText: 'Reauthorize',
+  [CalloutVariant.ERROR]: {
+    title: 'Sync failed',
+    description:
+      'Please reauthorize your account to reconnect with QuickBooks.',
+    actionLabel: 'Reauthorize',
+    actionIcon: 'Repeat' as IconType,
+    buttonVariant: 'secondary' as const,
   },
 }
 
@@ -38,19 +58,37 @@ export const Main = () => {
       {isLoading ? (
         <Spinner size={5} />
       ) : (
-        <Callout
-          label={dashboardCallout.label}
-          body={dashboardCallout.body}
-          {...(dashboardCallout.buttonText && {
-            buttonText: isReconnecting
-              ? 'Reauthorizing...'
-              : dashboardCallout.buttonText,
-            onButtonClick: buttonAction,
-            buttonDisabled: isReconnecting,
-          })}
-          buttonIcon={dashboardCallout.buttonIcon}
-          status={status}
-        />
+        <>
+          <Callout
+            title={dashboardCallout.title}
+            description={dashboardCallout.description}
+            variant={status}
+            {...(dashboardCallout.actionLabel && {
+              actionProps: {
+                label: isReconnecting
+                  ? 'Reauthorizing...'
+                  : dashboardCallout.actionLabel,
+                onClick: buttonAction,
+                disabled: isReconnecting,
+                prefixIcon: dashboardCallout.actionIcon,
+                ...(dashboardCallout.buttonVariant && {
+                  variant: dashboardCallout.buttonVariant,
+                }),
+              },
+            })}
+          />
+          <div className="mt-6 mb-2">
+            <Heading
+              size="xl"
+              tag="h2"
+              className="pb-4 border-b-1 border-b-card-divider !leading-7" // forcing styles with "!"
+            >
+              Settings
+            </Heading>
+            <Divider />
+          </div>
+          <SettingAccordion />
+        </>
       )}
     </>
   )
