@@ -21,7 +21,7 @@ export default function Accordion({
     <div className="mx-auto">
       {/* Header - Clickable to toggle */}
       <div
-        className="flex items-center justify-start py-[14] pr-3 cursor-pointer"
+        className="flex items-center justify-start py-[14px] pr-3 cursor-pointer"
         onClick={() => toggleItemAction(item.id)}
       >
         <HeaderComponent isOpen={isOpen} />
