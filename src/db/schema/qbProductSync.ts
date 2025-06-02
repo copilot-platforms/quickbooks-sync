@@ -37,3 +37,8 @@ export const QBProductUpdateSchema = QBProductCreateSchema.omit({
   createdAt: true,
 }).partial()
 export type QBProductUpdateSchemaType = z.infer<typeof QBProductUpdateSchema>
+
+export type ProductMappingItemType = Pick<
+  QBProductCreateSchemaType,
+  'name' | 'priceId' | 'productId' | 'unitPrice' | 'qbItemId' | 'qbSyncToken'
+>
