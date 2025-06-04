@@ -1,7 +1,35 @@
 import { ProductMappingComponentType } from '@/components/dashboard/settings/sections/product/ProductMapping'
-import { useProductTableSetting } from '@/hook/useSettings'
+import { ProductMappingItemType } from '@/db/schema/qbProductSync'
+import { useMapItem, useProductTableSetting } from '@/hook/useSettings'
 import { excerpt } from '@/utils/string'
 import { Icon, Spinner } from 'copilot-design-system'
+
+const MapItemComponent = ({
+  mappingItems,
+  productId,
+  priceId,
+}: {
+  mappingItems: ProductMappingItemType[] | undefined
+  productId: string
+  priceId: string
+}) => {
+  const { currentlyMapped } = useMapItem(mappingItems, productId, priceId)
+  return (
+    <>
+      {currentlyMapped ? (
+        <div className="space-y-1 text-left">
+          <div className="text-sm">{currentlyMapped?.name}</div>
+          <div className="text-sm text-gray-500">
+            {currentlyMapped.unitPrice &&
+              `$${parseInt(currentlyMapped.unitPrice) / 100}`}
+          </div>
+        </div>
+      ) : (
+        '--'
+      )}
+    </>
+  )
+}
 
 export default function ProductMappingTable({
   openDropdowns,
@@ -11,6 +39,7 @@ export default function ProductMappingTable({
   handleSearch,
   selectItem,
   getFilteredItems,
+  mappingItems,
   setMappingItems,
 }: ProductMappingComponentType) {
   const { products, quickbooksItems, isLoading, error } =
@@ -93,7 +122,11 @@ export default function ProductMappingTable({
                           </div>
                         </div>
                       ) : (
-                        '--'
+                        <MapItemComponent
+                          mappingItems={mappingItems}
+                          productId={product.id}
+                          priceId={product.priceId}
+                        />
                       )}
 
                       <Icon

@@ -22,8 +22,15 @@ export async function storeProductMap(req: NextRequest) {
   const productService = new ProductService(user)
   const body = await req.json()
   const parsedBody = QBProductCreateArraySchema.parse(body)
-  const productMapping = await productService.bulkCreateQBProduct(parsedBody)
-  return NextResponse.json(productMapping)
+  const products = await productService.bulkUpdateCreateQBProduct(parsedBody)
+  return NextResponse.json(products)
+}
+
+export async function getAll(req: NextRequest) {
+  const user = await authenticate(req)
+  const productService = new ProductService(user)
+  const mapping = await productService.getAll()
+  return NextResponse.json(mapping)
 }
 
 export async function getItemsFromQB(req: NextRequest) {

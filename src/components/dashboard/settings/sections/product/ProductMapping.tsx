@@ -28,6 +28,7 @@ export type ProductMappingComponentType = {
     index: number,
     quickbooksItems: QBItemDataType[],
   ) => QBItemDataType[]
+  mappingItems: ProductMappingItemType[]
   setMappingItems: (products: ProductMappingItemType[]) => void
 }
 
@@ -39,6 +40,7 @@ export default function ProductMapping({
   handleSearch,
   selectItem,
   getFilteredItems,
+  mappingItems,
   setMappingItems,
 }: ProductMappingComponentType) {
   const {
@@ -79,6 +81,7 @@ export default function ProductMapping({
           handleSearch={handleSearch}
           selectItem={selectItem}
           getFilteredItems={getFilteredItems}
+          mappingItems={mappingItems}
           setMappingItems={setMappingItems}
         />
       </div>

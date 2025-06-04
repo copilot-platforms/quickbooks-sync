@@ -68,7 +68,19 @@ export const QBProductUpdateSchema = QBProductCreateSchema.omit({
 }).partial()
 export type QBProductUpdateSchemaType = z.infer<typeof QBProductUpdateSchema>
 
-export type ProductMappingItemType = Pick<
-  QBProductCreateSchemaType,
-  'name' | 'priceId' | 'productId' | 'unitPrice' | 'qbItemId' | 'qbSyncToken'
->
+type NonNullableProps<T> = {
+  [K in keyof T]: NonNullable<T[K]>
+}
+export type ProductMappingItemType = NonNullableProps<
+  Required<
+    Pick<
+      QBProductCreateSchemaType,
+      | 'name'
+      | 'priceId'
+      | 'productId'
+      | 'unitPrice'
+      | 'qbItemId'
+      | 'qbSyncToken'
+    >
+  >
+> & { isExcluded: boolean }

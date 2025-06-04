@@ -15,6 +15,7 @@ export default function SettingAccordion() {
     selectItem,
     getFilteredItems,
     submitMappingItems,
+    mappingItems,
     setMappingItems,
   } = useProductMappingSettings()
 
@@ -31,6 +32,7 @@ export default function SettingAccordion() {
           handleSearch={handleSearch}
           selectItem={selectItem}
           getFilteredItems={getFilteredItems}
+          mappingItems={mappingItems}
           setMappingItems={setMappingItems}
         />
       ),
@@ -57,13 +59,12 @@ export default function SettingAccordion() {
         return (
           <div key={item.id} className="relative">
             <div
-              className={`absolute top-[14] right-0 z-10 flex items-center justify-end ${index === 0 ? '' : 'hidden'}`}
+              className={`absolute top-[14px] right-0 z-10 flex items-center justify-end ${index === 0 ? '' : 'hidden'}`}
             >
               <Button
                 label="Confirm"
                 variant="primary"
                 prefixIcon="Check"
-                className="mt-1 sm:mt-0"
                 onClick={submitMappingItems}
               />
             </div>
