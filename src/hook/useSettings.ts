@@ -59,11 +59,13 @@ export const useProductTableSetting = () => {
   ) => {
     return (
       data?.products &&
+      data.products?.length > 0 &&
       data.products.map((product) => {
         // convert amount to dollar
-        const price = new Intl.NumberFormat('en-US').format(
-          product.amount / 100,
-        )
+        const price = new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+        }).format(product.amount / 100)
         const newPrice = `$${price} ${product?.interval && product?.intervalCount ? `/ ${getTimeInterval(product.interval, product.intervalCount)}` : ''}`
         return {
           id: product.id,
@@ -77,9 +79,13 @@ export const useProductTableSetting = () => {
   const formatQBItemForListing = (data: QuickbooksItemType[]) => {
     return (
       data &&
+      data?.length > 0 &&
       data.map((product) => {
         // convert amount to dollar
-        const price = new Intl.NumberFormat('en-US').format(product.UnitPrice)
+        const price = new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+        }).format(product.UnitPrice)
         const newPrice = `$${price}`
         return {
           id: product.Id,
