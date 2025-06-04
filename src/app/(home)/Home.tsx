@@ -48,16 +48,17 @@ export default async function Main({
     portalConnection && Object.keys(portalConnection).length > 0 ? true : false
 
   let reconnect = false,
-    syncFlag = false
+    syncFlag = false,
+    successLog = null
   if (portalConnectionStatus) {
     syncFlag = await checkSyncStatus(tokenPayload.workspaceId)
 
     if (!syncFlag) {
       reconnect = await reconnectIfCta(type)
+    } else {
+      successLog = await getLatestSuccesLog(token)
     }
   }
-
-  const successLog = await getLatestSuccesLog(token)
 
   return (
     <>
