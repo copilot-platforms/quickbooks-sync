@@ -1,4 +1,8 @@
 import ReactTimeAgo from 'react-time-ago'
+import TimeAgo from 'javascript-time-ago'
+import en from 'javascript-time-ago/locale/en'
+
+TimeAgo.addDefaultLocale(en)
 
 export default function LastSyncAt({ date }: { date: string | null }) {
   if (!date) return <> </>
