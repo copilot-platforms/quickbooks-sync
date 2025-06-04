@@ -3,7 +3,7 @@ import SettingAccordion from '@/components/dashboard/settings/SettingAccordion'
 import { CalloutVariant } from '@/components/type/callout'
 import Divider from '@/components/ui/Divider'
 import { useDashboardMain } from '@/hook/useDashboard'
-import { getTimeAgo } from '@/utils/getTimeAgo'
+
 import {
   ButtonProps,
   Callout,
@@ -11,6 +11,7 @@ import {
   IconType,
   Spinner,
 } from 'copilot-design-system'
+import LastSyncAt from '@/components/dashboard/LastSyncAt'
 
 type CalloutType = {
   title: string
@@ -21,31 +22,28 @@ type CalloutType = {
   buttonVariant?: ButtonProps['variant']
 }
 
-const DashboardCallout = (lastSyncTime: string | null) => {
-  const formattedTimeAgo = getTimeAgo(lastSyncTime)
-  return {
-    [CalloutVariant.WARNING]: {
-      title: 'Confirm your mapping before getting started',
-      description:
-        "Set your product mappings and review configuration settings to best set up your QuickBooks integration. Once you're ready, click the button below to enable the app.",
-      actionLabel: 'Enable app',
-      actionIcon: 'Check' as IconType,
-      buttonVariant: 'primary' as const,
-    },
-    [CalloutVariant.SUCCESS]: {
-      title: 'QuickBooks sync is live',
-      description: formattedTimeAgo ? `Last synced ${formattedTimeAgo}` : '',
-    },
-    [CalloutVariant.ERROR]: {
-      title: 'Sync failed',
-      description:
-        'Please reauthorize your account to reconnect with QuickBooks.',
-      actionLabel: 'Reauthorize',
-      actionIcon: 'Repeat' as IconType,
-      buttonVariant: 'secondary' as const,
-    },
-  }
-}
+const DashboardCallout = (lastSyncTime: string | null) => ({
+  [CalloutVariant.WARNING]: {
+    title: 'Confirm your mapping before getting started',
+    description:
+      "Set your product mappings and review configuration settings to best set up your QuickBooks integration. Once you're ready, click the button below to enable the app.",
+    actionLabel: 'Enable app',
+    actionIcon: 'Check' as IconType,
+    buttonVariant: 'primary' as const,
+  },
+  [CalloutVariant.SUCCESS]: {
+    title: 'QuickBooks sync is live',
+    description: <LastSyncAt date={lastSyncTime} />,
+  },
+  [CalloutVariant.ERROR]: {
+    title: 'Sync failed',
+    description:
+      'Please reauthorize your account to reconnect with QuickBooks.',
+    actionLabel: 'Reauthorize',
+    actionIcon: 'Repeat' as IconType,
+    buttonVariant: 'secondary' as const,
+  },
+})
 
 export const Main = () => {
   const {
