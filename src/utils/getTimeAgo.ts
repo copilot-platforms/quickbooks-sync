@@ -5,8 +5,17 @@ TimeAgo.addLocale(en)
 
 const timeAgo = new TimeAgo('en-US')
 
-export const getTimeAgo = (date: Date | string | null): string | null => {
+export const getTimeAgo = (date: string | null): string | null => {
   if (!date) return null
-  const dateStr = typeof date === 'string' ? date.replace('Z', '') : date // Remove 'Z' if present to avoid timezone issues.
-  return timeAgo.format(new Date(dateStr))
+
+  const sanitizedCreatedAt = date.match(/Z|[+-]\d{2}:\d{2}$/)
+    ? date
+    : `${date}Z`
+
+  try {
+    const parsedDate = new Date(sanitizedCreatedAt)
+    return timeAgo.format(parsedDate)
+  } catch {
+    return null
+  }
 }
