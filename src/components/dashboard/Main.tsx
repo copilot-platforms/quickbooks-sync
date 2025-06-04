@@ -3,7 +3,8 @@ import SettingAccordion from '@/components/dashboard/settings/SettingAccordion'
 import { CalloutVariant } from '@/components/type/callout'
 import Divider from '@/components/ui/Divider'
 import { useDashboardMain } from '@/hook/useDashboard'
-import { getTimeAgo } from '@/utils/getTimeAgo'
+import { useTimeAgo } from '@/hook/useTimeago'
+
 import {
   ButtonProps,
   Callout,
@@ -22,7 +23,7 @@ type CalloutType = {
 }
 
 const DashboardCallout = (lastSyncTime: string | null) => {
-  const formattedTimeAgo = getTimeAgo(lastSyncTime)
+  const formattedTimeAgo = useTimeAgo(lastSyncTime)
   return {
     [CalloutVariant.WARNING]: {
       title: 'Confirm your mapping before getting started',
