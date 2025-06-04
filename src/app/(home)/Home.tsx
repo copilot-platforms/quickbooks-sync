@@ -23,7 +23,7 @@ export default async function Main({
   searchParams: Promise<{ token: string; type?: string }>
 }) {
   const { token, type } = await searchParams
-  const successLog = await getLatestSuccesLog(token)
+
   if (!token) {
     return <SilentError message="No token available" />
   }
@@ -56,6 +56,9 @@ export default async function Main({
       reconnect = await reconnectIfCta(type)
     }
   }
+
+  const successLog = await getLatestSuccesLog(token)
+
   return (
     <>
       <AuthProvider
@@ -64,7 +67,7 @@ export default async function Main({
         syncFlag={syncFlag}
         reconnect={reconnect}
         portalConnectionStatus={portalConnectionStatus}
-        lastSyncTimestamp={successLog?.createdAt || null}
+        lastSyncTimestamp={successLog?.createdAt}
       >
         <HomeClient />
       </AuthProvider>

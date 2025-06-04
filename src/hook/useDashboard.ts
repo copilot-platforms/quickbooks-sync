@@ -5,9 +5,10 @@ import { useQuickbooks } from '@/hook/useQuickbooks'
 import { useEffect, useState } from 'react'
 
 export const useDashboardMain = () => {
-  const { token, tokenPayload, syncFlag, reconnect } = useAuth()
+  const { token, tokenPayload, syncFlag, reconnect, lastSyncTimestamp } =
+    useAuth()
 
-  const { handleConnect, isReconnecting, lastSyncTimestamp } = useQuickbooks(
+  const { handleConnect, isReconnecting } = useQuickbooks(
     token,
     tokenPayload,
     reconnect,
