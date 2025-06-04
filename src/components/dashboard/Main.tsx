@@ -27,9 +27,8 @@ TimeAgo.addLocale(en)
 const timeAgo = new TimeAgo('en-US')
 
 const DashboardCallout = (lastSyncTime: string | null) => {
-  const formattedTimeAgo = lastSyncTime
-    ? timeAgo.format(new Date(lastSyncTime))
-    : 'a while ago' // Fallback if lastSyncTime is null (extremely unlikely)
+  const formattedTimeAgo =
+    lastSyncTime && timeAgo.format(new Date(lastSyncTime))
 
   return {
     [CalloutVariant.WARNING]: {
@@ -42,7 +41,7 @@ const DashboardCallout = (lastSyncTime: string | null) => {
     },
     [CalloutVariant.SUCCESS]: {
       title: 'QuickBooks sync is live',
-      description: `Last synced ${formattedTimeAgo}`,
+      description: formattedTimeAgo ? `Last synced ${formattedTimeAgo}` : '',
     },
     [CalloutVariant.ERROR]: {
       title: 'Sync failed',
