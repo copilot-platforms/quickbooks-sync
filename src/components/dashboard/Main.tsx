@@ -10,37 +10,49 @@ import {
   IconType,
   Spinner,
 } from 'copilot-design-system'
+import TimeAgo from 'javascript-time-ago'
+import en from 'javascript-time-ago/locale/en.json'
 
 type CalloutType = {
   title: string
-  description?: string
+  description?: string | React.ReactNode
   actionLabel?: string
   actionIcon?: IconType
   buttonDisabled?: boolean
   buttonVariant?: ButtonProps['variant']
 }
 
-const DashboardCallout = {
-  [CalloutVariant.WARNING]: {
-    title: 'Confirm your mapping before getting started',
-    description:
-      "Set your product mappings and review configuration settings to best set up your QuickBooks integration. Once you're ready, click the button below to enable the app.",
-    actionLabel: 'Enable app',
-    actionIcon: 'Check' as IconType,
-    buttonVariant: 'primary' as const,
-  },
-  [CalloutVariant.SUCCESS]: {
-    title: 'QuickBooks sync is live',
-    description: 'Last synced just now',
-  },
-  [CalloutVariant.ERROR]: {
-    title: 'Sync failed',
-    description:
-      'Please reauthorize your account to reconnect with QuickBooks.',
-    actionLabel: 'Reauthorize',
-    actionIcon: 'Repeat' as IconType,
-    buttonVariant: 'secondary' as const,
-  },
+TimeAgo.addLocale(en)
+
+const timeAgo = new TimeAgo('en-US')
+
+const DashboardCallout = (lastSyncTime: string | null) => {
+  const formattedTimeAgo = lastSyncTime
+    ? timeAgo.format(new Date(lastSyncTime))
+    : 'a while ago' // Fallback if lastSyncTime is null (extremely unlikely)
+
+  return {
+    [CalloutVariant.WARNING]: {
+      title: 'Confirm your mapping before getting started',
+      description:
+        "Set your product mappings and review configuration settings to best set up your QuickBooks integration. Once you're ready, click the button below to enable the app.",
+      actionLabel: 'Enable app',
+      actionIcon: 'Check' as IconType,
+      buttonVariant: 'primary' as const,
+    },
+    [CalloutVariant.SUCCESS]: {
+      title: 'QuickBooks sync is live',
+      description: `Last synced ${formattedTimeAgo}`,
+    },
+    [CalloutVariant.ERROR]: {
+      title: 'Sync failed',
+      description:
+        'Please reauthorize your account to reconnect with QuickBooks.',
+      actionLabel: 'Reauthorize',
+      actionIcon: 'Repeat' as IconType,
+      buttonVariant: 'secondary' as const,
+    },
+  }
 }
 
 export const Main = () => {
@@ -49,9 +61,11 @@ export const Main = () => {
     isLoading,
     buttonAction,
     isReconnecting,
+    lastSyncTimestamp,
   } = useDashboardMain()
 
-  const dashboardCallout: CalloutType = DashboardCallout[status]
+  const dashboardCallout: CalloutType =
+    DashboardCallout(lastSyncTimestamp)[status]
 
   return (
     <>

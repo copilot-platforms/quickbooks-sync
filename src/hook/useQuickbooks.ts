@@ -14,7 +14,10 @@ export const useQuickbooks = (
   const [loading, setLoading] = useState(false)
   const [hasConnection, setHasConnection] = useState<boolean | null>(false) // null indicates error
   const [isReconnecting, setIsReconnecting] = useState(reconnect)
-  const { setAuthParams } = useAuth()
+  const { setAuthParams, lastSyncTimestamp } = useAuth()
+  const [lastSyncTimestampState, setLastSyncTimestampState] = useState<
+    string | null
+  >(lastSyncTimestamp)
 
   useEffect(() => {
     const supabase = SupabaseClient.getInstance()
@@ -53,6 +56,10 @@ export const useQuickbooks = (
               : newPayload.connection_status === ConnectionStatus.PENDING
                 ? false
                 : null
+          const lastSuccessTimestamp = connectionStatus
+            ? newPayload.createdAt
+            : null
+          setLastSyncTimestampState(lastSuccessTimestamp) //realtime update of last sync timestamp
           setHasConnection(connectionStatus)
           setIsReconnecting(!connectionStatus)
           setAuthParams((prev) => ({
@@ -108,6 +115,7 @@ export const useQuickbooks = (
     hasConnection,
     checkPortalConnection,
     isReconnecting,
+    lastSyncTimestamp: lastSyncTimestampState,
   }
 }
 

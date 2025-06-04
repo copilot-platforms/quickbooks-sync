@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 export const useDashboardMain = () => {
   const { token, tokenPayload, syncFlag, reconnect } = useAuth()
 
-  const { handleConnect, isReconnecting } = useQuickbooks(
+  const { handleConnect, isReconnecting, lastSyncTimestamp } = useQuickbooks(
     token,
     tokenPayload,
     reconnect,
@@ -30,5 +30,11 @@ export const useDashboardMain = () => {
     setIsLoading(false)
   }, [syncFlag])
 
-  return { callOutStatus, isLoading, buttonAction, isReconnecting }
+  return {
+    callOutStatus,
+    isLoading,
+    buttonAction,
+    isReconnecting,
+    lastSyncTimestamp,
+  }
 }
