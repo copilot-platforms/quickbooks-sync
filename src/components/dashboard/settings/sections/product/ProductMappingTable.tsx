@@ -182,23 +182,25 @@ export default function ProductMappingTable() {
                           </button>
                         </div>
                         <div className="max-h-64 overflow-y-auto">
-                          {getFilteredItems(index)?.map((item, itemIndex) => (
-                            <button
-                              key={itemIndex}
-                              onClick={() =>
-                                selectItem(index, {
-                                  name: item.name,
-                                  price: item.price,
-                                })
-                              }
-                              className="w-full flex items-center justify-between px-3 py-1.5 text-sm hover:bg-gray-50 transition-colors cursor-pointer text-left"
-                            >
-                              <span>{excerpt(item.name, 65)}</span>
-                              <span className="text-gray-500">
-                                {item.price}
-                              </span>
-                            </button>
-                          ))}
+                          {(getFilteredItems(index) || []).map(
+                            (item, itemIndex) => (
+                              <button
+                                key={itemIndex}
+                                onClick={() =>
+                                  selectItem(index, {
+                                    name: item.name,
+                                    price: item.price,
+                                  })
+                                }
+                                className="w-full flex items-center justify-between px-3 py-1.5 text-sm hover:bg-gray-50 transition-colors cursor-pointer text-left"
+                              >
+                                <span>{excerpt(item.name, 65)}</span>
+                                <span className="text-gray-500">
+                                  {item.price}
+                                </span>
+                              </button>
+                            ),
+                          )}
                           {(getFilteredItems(index) || []).length === 0 && (
                             <div className="px-3 py-2 text-sm text-gray-500">
                               No items found
