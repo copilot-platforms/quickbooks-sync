@@ -10,6 +10,7 @@ import {
   QBTokenUpdateSchemaType,
 } from '@/db/schema/qbTokens'
 import { getPortalConnection } from '@/db/service/token.service'
+import { changeEnableStatusRequest } from '@/type/common'
 import dayjs from 'dayjs'
 import { and, eq, SQL } from 'drizzle-orm'
 import httpStatus from 'http-status'
@@ -106,5 +107,30 @@ export class TokenService extends BaseService {
       )
     }
     return updateSync
+  }
+
+  async changeEnableStatus(
+    portalId: string,
+    parsedBody: changeEnableStatusRequest,
+  ) {
+    const whereConditions = and(
+      eq(QBTokens.portalId, portalId),
+      eq(QBTokens.syncFlag, true),
+    ) as SQL
+
+    const portal = await this.updateQBToken(
+      {
+        isEnabled: parsedBody.enable,
+      },
+      whereConditions,
+    )
+
+    if (!portal) {
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        `Cannot update sync status for portal ${portalId}.`,
+      )
+    }
+    return portal
   }
 }
