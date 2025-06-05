@@ -3,6 +3,7 @@ import SettingAccordion from '@/components/dashboard/settings/SettingAccordion'
 import { CalloutVariant } from '@/components/type/callout'
 import Divider from '@/components/ui/Divider'
 import { useDashboardMain } from '@/hook/useDashboard'
+
 import {
   ButtonProps,
   Callout,
@@ -10,17 +11,18 @@ import {
   IconType,
   Spinner,
 } from 'copilot-design-system'
+import LastSyncAt from '@/components/dashboard/LastSyncAt'
 
 type CalloutType = {
   title: string
-  description?: string
+  description?: string | React.ReactNode
   actionLabel?: string
   actionIcon?: IconType
   buttonDisabled?: boolean
   buttonVariant?: ButtonProps['variant']
 }
 
-const DashboardCallout = {
+const DashboardCallout = (lastSyncTime: string | null) => ({
   [CalloutVariant.WARNING]: {
     title: 'Confirm your mapping before getting started',
     description:
@@ -31,7 +33,7 @@ const DashboardCallout = {
   },
   [CalloutVariant.SUCCESS]: {
     title: 'QuickBooks sync is live',
-    description: 'Last synced just now',
+    description: <LastSyncAt date={lastSyncTime} />,
   },
   [CalloutVariant.ERROR]: {
     title: 'Sync failed',
@@ -41,7 +43,7 @@ const DashboardCallout = {
     actionIcon: 'Repeat' as IconType,
     buttonVariant: 'secondary' as const,
   },
-}
+})
 
 export const Main = () => {
   const {
@@ -49,9 +51,11 @@ export const Main = () => {
     isLoading,
     buttonAction,
     isReconnecting,
+    lastSyncTimestamp,
   } = useDashboardMain()
 
-  const dashboardCallout: CalloutType = DashboardCallout[status]
+  const dashboardCallout: CalloutType =
+    DashboardCallout(lastSyncTimestamp)[status]
 
   return (
     <>

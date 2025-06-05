@@ -53,11 +53,13 @@ export const useQuickbooks = (
               : newPayload.connection_status === ConnectionStatus.PENDING
                 ? false
                 : null
+
           setHasConnection(connectionStatus)
           setIsReconnecting(!connectionStatus)
           setAuthParams((prev) => ({
             ...prev,
             syncFlag: connectionStatus || false,
+            lastSyncTimestamp: connectionStatus ? newPayload.updated_at : null,
           }))
         },
       )
