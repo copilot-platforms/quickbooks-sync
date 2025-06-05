@@ -4313,13 +4313,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"copilot-node-sdk@npm:^3.7.0":
-  version: 3.7.0
-  resolution: "copilot-node-sdk@npm:3.7.0"
+"copilot-node-sdk@npm:^3.11.1":
+  version: 3.11.1
+  resolution: "copilot-node-sdk@npm:3.11.1"
   dependencies:
     isomorphic-fetch: "npm:^3.0.0"
     next: "npm:^14.0.2"
-  checksum: 10c0/8001e8243e5c66ccf35cde59124925c0ebe9e74c6eee35b4c3d220130fe8b6e841b6f0cfb2209fc95278526f1e925d83a58e841faba4fed7010fa42c1ed6bb48
+  checksum: 10c0/f98ef7fa04ab4e49dacc0732a227e234a90a63d9d7a3e510a1c383ce4f6ca23e6a393f981e36ea68c0b2e6cb316a7c5fc97e47ce53a8bc20bbaa2afa383bf537
   languageName: node
   linkType: hard
 
@@ -4412,7 +4412,7 @@ __metadata:
     autoprefixer: "npm:^10.4.0"
     bottleneck: "npm:^2.19.5"
     copilot-design-system: "npm:^2.0.10"
-    copilot-node-sdk: "npm:^3.7.0"
+    copilot-node-sdk: "npm:^3.11.1"
     dayjs: "npm:^1.11.13"
     dotenv: "npm:^16.4.5"
     drizzle-kit: "npm:^0.31.0"
@@ -4441,6 +4441,7 @@ __metadata:
     react-linkify: "npm:^1.0.0-alpha"
     react-time-ago: "npm:^7.3.3"
     supabase: "npm:2.22.4"
+    swr: "npm:^2.3.3"
     tailwindcss: "npm:^4.1.5"
     typescript: "npm:^5.8.3"
     zod: "npm:^3.22.4"
@@ -4652,6 +4653,13 @@ __metadata:
   version: 1.0.0
   resolution: "delayed-stream@npm:1.0.0"
   checksum: 10c0/d758899da03392e6712f042bec80aa293bbe9e9ff1b2634baae6a360113e708b91326594c8a486d475c69d6259afb7efacdc3537bfcda1c6c648e390ce601b19
+  languageName: node
+  linkType: hard
+
+"dequal@npm:^2.0.3":
+  version: 2.0.3
+  resolution: "dequal@npm:2.0.3"
+  checksum: 10c0/f98860cdf58b64991ae10205137c0e97d384c3a4edc7f807603887b7c4b850af1224a33d88012009f150861cbee4fa2d322c4cc04b9313bee312e47f6ecaa888
   languageName: node
   linkType: hard
 
@@ -10242,6 +10250,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"swr@npm:^2.3.3":
+  version: 2.3.3
+  resolution: "swr@npm:2.3.3"
+  dependencies:
+    dequal: "npm:^2.0.3"
+    use-sync-external-store: "npm:^1.4.0"
+  peerDependencies:
+    react: ^16.11.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10c0/882fc8291912860e0c50eae3470ebf0cd58b0144cb12adcc4b14c5cef913ea06479043830508d8b0b3d4061d99ad8dd52485c9c879fbd4e9b893484e6d8da9e3
+  languageName: node
+  linkType: hard
+
 "synckit@npm:^0.11.0":
   version: 0.11.4
   resolution: "synckit@npm:0.11.4"
@@ -10656,7 +10676,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"use-sync-external-store@npm:^1.5.0":
+"use-sync-external-store@npm:^1.4.0, use-sync-external-store@npm:^1.5.0":
   version: 1.5.0
   resolution: "use-sync-external-store@npm:1.5.0"
   peerDependencies:

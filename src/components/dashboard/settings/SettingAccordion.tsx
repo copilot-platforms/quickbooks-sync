@@ -4,7 +4,8 @@ import ProductMapping from '@/components/dashboard/settings/sections/product/Pro
 import ProductMappingHeader from '@/components/dashboard/settings/sections/product/ProductMappingHeader'
 import Accordion from '@/components/ui/Accordion'
 import Divider from '@/components/ui/Divider'
-import { Fragment, useState } from 'react'
+import { useSettings } from '@/hook/useSettings'
+import { Fragment } from 'react'
 
 export default function SettingAccordion() {
   const accordionItems = [
@@ -19,8 +20,7 @@ export default function SettingAccordion() {
       content: <InvoiceDetail />,
     },
   ]
-
-  const [openItems, setOpenItems] = useState<string[]>(['product-mapping'])
+  const { openItems, setOpenItems } = useSettings()
 
   const toggleItem = (itemId: string) => {
     setOpenItems((prev) =>

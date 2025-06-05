@@ -10,6 +10,7 @@ export const ProductFlattenArrayResponseSchema = z.object({
       amount: z.number(),
       type: z.string(),
       interval: z.string().nullish(),
+      intervalCount: z.number().nullish(),
       currency: z.string(),
       createdAt: z.string().datetime(),
     }),
