@@ -83,7 +83,7 @@ export default function ProductMappingTable({
                     >
                       {selectedItems[index] &&
                       Object.keys(selectedItems[index]).length > 0 ? (
-                        <div className=" text-left">
+                        <div className="text-left">
                           <div className="text-sm">
                             {selectedItems[index].name}
                           </div>
@@ -169,7 +169,7 @@ export default function ProductMappingTable({
               <tr className="text-center">
                 <td colSpan={3} className="py-11">
                   Start by creating a product in Copilot.
-                  <a href="#" className="ms-2">
+                  <a href="#" className="ms-2 text-blue-300">
                     Create Product
                   </a>
                 </td>
