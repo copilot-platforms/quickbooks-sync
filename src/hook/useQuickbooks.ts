@@ -59,7 +59,7 @@ export const useQuickbooks = (
           setAuthParams((prev) => ({
             ...prev,
             syncFlag: connectionStatus || false,
-            lastSyncTimestamp: connectionStatus ? newPayload.created_at : null,
+            lastSyncTimestamp: connectionStatus ? newPayload.updated_at : null,
           }))
         },
       )

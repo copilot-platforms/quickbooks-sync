@@ -38,7 +38,7 @@ export class LogService extends BaseService {
 
   async getLatestSuccessLog(): Promise<Pick<
     QBConnectionLogSelectSchemaType,
-    'createdAt'
+    'updatedAt'
   > | null> {
     const log = await this.db.query.QBConnectionLogs.findFirst({
       where: (logs, { eq, and }) =>
@@ -46,9 +46,9 @@ export class LogService extends BaseService {
           eq(logs.portalId, this.user.workspaceId),
           eq(logs.connectionStatus, ConnectionStatus.SUCCESS),
         ),
-      orderBy: (logs, { desc }) => [desc(logs.createdAt)],
+      orderBy: (logs, { desc }) => [desc(logs.createdAt)], //fetching the latest success log
       columns: {
-        createdAt: true,
+        updatedAt: true,
       },
     })
     return log || null
