@@ -6,10 +6,16 @@ import { useQuickbooks } from '@/hook/useQuickbooks'
 import { useEffect, useState } from 'react'
 
 export const useDashboardMain = () => {
-  const { token, tokenPayload, syncFlag, reconnect, lastSyncTimestamp } =
-    useAuth()
+  const {
+    token,
+    tokenPayload,
+    syncFlag,
+    reconnect,
+    lastSyncTimestamp,
+    isEnabled,
+  } = useAuth()
 
-  const { handleConnect, isReconnecting } = useQuickbooks(
+  const { handleConnect, isReconnecting, handleSyncEnable } = useQuickbooks(
     token,
     tokenPayload,
     reconnect,
@@ -24,13 +30,18 @@ export const useDashboardMain = () => {
 
   useEffect(() => {
     if (syncFlag) {
-      setCallOutStatus(CalloutVariant.SUCCESS)
+      if (!isEnabled) {
+        setCallOutStatus(CalloutVariant.WARNING)
+        setButtonAction(() => handleSyncEnable)
+      } else {
+        setCallOutStatus(CalloutVariant.SUCCESS)
+      }
     } else {
       setCallOutStatus(CalloutVariant.ERROR)
+      setButtonAction(() => () => handleConnect(AuthStatus.RECONNECT))
     }
-    setButtonAction(() => () => handleConnect(AuthStatus.RECONNECT))
     setIsLoading(false)
-  }, [syncFlag])
+  }, [syncFlag, isEnabled])
 
   return {
     callOutStatus,

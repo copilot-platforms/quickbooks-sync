@@ -8,6 +8,7 @@ type AuthContextType = {
   syncFlag: boolean
   reconnect: boolean
   portalConnectionStatus: boolean
+  isEnabled: boolean
   lastSyncTimestamp: string | null
 }
 
@@ -24,6 +25,7 @@ export const AuthProvider = ({
   syncFlag,
   reconnect,
   portalConnectionStatus,
+  isEnabled,
   lastSyncTimestamp,
   children,
 }: AuthContextType & { children: ReactNode }) => {
@@ -34,6 +36,7 @@ export const AuthProvider = ({
     reconnect,
     portalConnectionStatus,
     lastSyncTimestamp,
+    isEnabled,
   })
   return (
     <AuthContext.Provider value={{ ...authParams, setAuthParams }}>

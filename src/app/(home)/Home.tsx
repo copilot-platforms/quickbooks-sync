@@ -49,9 +49,11 @@ export default async function Main({
 
   let reconnect = false,
     syncFlag = false,
-    successLog = null
+    successLog = null,
+    isEnabled = false
   if (portalConnectionStatus) {
     syncFlag = await checkSyncStatus(tokenPayload.workspaceId)
+    isEnabled = portalConnection?.isEnabled || false
 
     if (!syncFlag) {
       reconnect = await reconnectIfCta(type)
@@ -68,6 +70,7 @@ export default async function Main({
         syncFlag={syncFlag}
         reconnect={reconnect}
         portalConnectionStatus={portalConnectionStatus}
+        isEnabled={isEnabled}
         lastSyncTimestamp={successLog?.updatedAt || null}
       >
         <HomeClient />
