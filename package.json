@@ -28,6 +28,7 @@
     "html-to-text": "^9.0.5",
     "http-status": "^2.1.0",
     "intuit-oauth": "^4.2.0",
+    "javascript-time-ago": "^2.5.11",
     "next": "15.3.0",
     "open": "^10.1.0",
     "p-retry": "^6.2.1",
@@ -37,6 +38,7 @@
     "react-code-blocks": "^0.1.6",
     "react-dom": "^18",
     "react-linkify": "^1.0.0-alpha",
+    "react-time-ago": "^7.3.3",
     "supabase": "2.22.4",
     "zod": "^3.22.4"
   },
