@@ -46,7 +46,7 @@ export class LogService extends BaseService {
           eq(logs.portalId, this.user.workspaceId),
           eq(logs.connectionStatus, ConnectionStatus.SUCCESS),
         ),
-      orderBy: (logs, { desc }) => [desc(logs.createdAt)], //fetching the latest success log
+      orderBy: (logs, { desc }) => [desc(logs.createdAt)], //ensures fetching of the latest success log
       columns: {
         updatedAt: true,
       },
