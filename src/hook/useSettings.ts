@@ -143,7 +143,7 @@ export const useProductMappingSettings = () => {
     return (
       quickbooksItems &&
       quickbooksItems.filter((item) =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()),
+        item.name.toLowerCase().includes(searchTerm.toLowerCase().trim()),
       )
     )
   }
@@ -198,13 +198,14 @@ export const useProductTableSetting = (
   const formatProductDataForListing = (
     data: ProductFlattenArrayResponseType,
   ): ProductDataType[] | undefined => {
-    return data?.products && data.products.length > 0
+    return data?.products && data.products?.length > 0
       ? data.products.map((product) => {
           // convert amount to dollar
-          const price = new Intl.NumberFormat('en-US').format(
-            product.amount / 100,
-          )
-          const newPrice = `$${price} ${product?.interval && product?.intervalCount ? `/ ${getTimeInterval(product.interval, product.intervalCount)}` : ''}`
+          const price = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+          }).format(product.amount / 100)
+          const newPrice = `${price} ${product?.interval && product?.intervalCount ? `/ ${getTimeInterval(product.interval, product.intervalCount)}` : ''}`
           return {
             id: product.id,
             name: product.name,
@@ -219,10 +220,13 @@ export const useProductTableSetting = (
   const formatQBItemForListing = (
     data: QuickbooksItemType[],
   ): QBItemDataType[] | undefined => {
-    return data && data.length > 0
+    return data && data?.length > 0
       ? data.map((product) => {
-          const price = new Intl.NumberFormat('en-US').format(product.UnitPrice)
-          const newPrice = `$${price}`
+          const price = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+          }).format(product.UnitPrice)
+          const newPrice = `${price}`
           return {
             id: product.Id,
             name: product.Name,

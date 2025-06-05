@@ -7,7 +7,15 @@ import {
 import HomeClient from '@/app/(home)/HomeClient'
 import { AuthProvider } from '@/app/context/AuthContext'
 import { SilentError } from '@/components/template/SilentError'
+import { apiUrl } from '@/config'
 import { z } from 'zod'
+
+export async function getLatestSuccesLog(token: string) {
+  const response = await fetch(
+    `${apiUrl}/api/quickbooks/log/success?token=${token}`,
+  )
+  return (await response.json()).data
+}
 
 export default async function Main({
   searchParams,
@@ -15,6 +23,7 @@ export default async function Main({
   searchParams: Promise<{ token: string; type?: string }>
 }) {
   const { token, type } = await searchParams
+
   if (!token) {
     return <SilentError message="No token available" />
   }
@@ -39,12 +48,15 @@ export default async function Main({
     portalConnection && Object.keys(portalConnection).length > 0 ? true : false
 
   let reconnect = false,
-    syncFlag = false
+    syncFlag = false,
+    successLog = null
   if (portalConnectionStatus) {
     syncFlag = await checkSyncStatus(tokenPayload.workspaceId)
 
     if (!syncFlag) {
       reconnect = await reconnectIfCta(type)
+    } else {
+      successLog = await getLatestSuccesLog(token)
     }
   }
 
@@ -56,6 +68,7 @@ export default async function Main({
         syncFlag={syncFlag}
         reconnect={reconnect}
         portalConnectionStatus={portalConnectionStatus}
+        lastSyncTimestamp={successLog?.updatedAt || null}
       >
         <HomeClient />
       </AuthProvider>

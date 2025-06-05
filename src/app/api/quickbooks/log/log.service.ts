@@ -21,7 +21,7 @@ export class LogService extends BaseService {
   async upsertLatestPendingConnectionLog(
     log: QBConnectionLogCreateSchemaType,
   ): Promise<QBConnectionLogSelectSchemaType> {
-    const subQuery = sql`(SELECT ${QBConnectionLogs.id} From ${QBConnectionLogs} WHERE ${QBConnectionLogs.portalId} = ${log.portalId} 
+    const subQuery = sql`(SELECT ${QBConnectionLogs.id} From ${QBConnectionLogs} WHERE ${QBConnectionLogs.portalId} = ${log.portalId}
           AND ${QBConnectionLogs.connectionStatus} = ${ConnectionStatus.PENDING} ORDER BY ${QBConnectionLogs.createdAt} DESC LIMIT 1)`
 
     const [result] = await this.db
@@ -34,5 +34,23 @@ export class LogService extends BaseService {
       return await this.storeConnectionLog(log)
     }
     return result
+  }
+
+  async getLatestSuccessLog(): Promise<Pick<
+    QBConnectionLogSelectSchemaType,
+    'updatedAt'
+  > | null> {
+    const log = await this.db.query.QBConnectionLogs.findFirst({
+      where: (logs, { eq, and }) =>
+        and(
+          eq(logs.portalId, this.user.workspaceId),
+          eq(logs.connectionStatus, ConnectionStatus.SUCCESS),
+        ),
+      orderBy: (logs, { desc }) => [desc(logs.createdAt)], //ensures fetching of the latest success log
+      columns: {
+        updatedAt: true,
+      },
+    })
+    return log || null
   }
 }
