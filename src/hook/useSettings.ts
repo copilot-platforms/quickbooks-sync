@@ -123,7 +123,7 @@ export const useProductMappingSettings = () => {
           name: item.name,
           priceId: products[index].priceId,
           productId: products[index].id,
-          unitPrice: item.numericPrice.toString(),
+          unitPrice: item.numericPrice?.toString(),
           qbItemId: item.id,
           qbSyncToken: item.syncToken,
           isExcluded: false,
