@@ -4,7 +4,10 @@ import { useAuth } from '@/app/context/AuthContext'
 import { useSwrHelper } from '@/helper/swr.helper'
 import { ProductFlattenArrayResponseType } from '@/type/dto/api.dto'
 import { getTimeInterval } from '@/utils/common'
-import { ProductMappingItemType } from '@/db/schema/qbProductSync'
+import {
+  ProductMappingItemArraySchema,
+  ProductMappingItemType,
+} from '@/db/schema/qbProductSync'
 import { postFetcher } from '@/helper/fetch.helper'
 
 export type QuickbooksItemType = {
@@ -236,9 +239,9 @@ export const useProductTableSetting = (
           }
         })
       }
+      ProductMappingItemArraySchema.parse(newMap)
+      setMappingItems(newMap)
     }
-
-    setMappingItems(newMap)
   }, [products])
 
   const formatProductDataForListing = (
