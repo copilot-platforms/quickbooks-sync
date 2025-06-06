@@ -1,8 +1,43 @@
 import ProductMappingTable from '@/components/dashboard/settings/sections/product/ProductMappingTable'
-import { useProductMappingSettings } from '@/hook/useSettings'
+import {
+  ProductDataType,
+  QBItemDataType,
+  useProductMappingSettings,
+} from '@/hook/useSettings'
 import { Checkbox } from 'copilot-design-system'
 
-export default function ProductMapping() {
+export type ProductMappingComponentType = {
+  openDropdowns: {
+    [key: number]: boolean
+  }
+  searchTerms: {
+    [key: number]: string
+  }
+  selectedItems: {
+    [key: number]: Record<string, string>
+  }
+  toggleDropdown: (index: number) => void
+  handleSearch: (index: number, value: string) => void
+  selectItem: (
+    index: number,
+    item: Record<string, any>,
+    products: ProductDataType[],
+  ) => void
+  getFilteredItems: (
+    index: number,
+    quickbooksItems: QBItemDataType[],
+  ) => QBItemDataType[]
+}
+
+export default function ProductMapping({
+  openDropdowns,
+  searchTerms,
+  selectedItems,
+  toggleDropdown,
+  handleSearch,
+  selectItem,
+  getFilteredItems,
+}: ProductMappingComponentType) {
   const {
     newlyCreatedFlag,
     itemCreateFlag,
@@ -33,7 +68,15 @@ export default function ProductMapping() {
         </div>
 
         {/* Product Mapping table */}
-        <ProductMappingTable />
+        <ProductMappingTable
+          openDropdowns={openDropdowns}
+          searchTerms={searchTerms}
+          selectedItems={selectedItems}
+          toggleDropdown={toggleDropdown}
+          handleSearch={handleSearch}
+          selectItem={selectItem}
+          getFilteredItems={getFilteredItems}
+        />
       </div>
     </>
   )

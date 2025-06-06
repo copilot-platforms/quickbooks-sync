@@ -1,80 +1,24 @@
-import {
-  useProductMappingSettings,
-  useProductTableSetting,
-} from '@/hook/useSettings'
+import { ProductMappingComponentType } from '@/components/dashboard/settings/sections/product/ProductMapping'
+import DropDownIcon from '@/components/ui/DropDownIcon'
+import { useProductTableSetting } from '@/hook/useSettings'
 import { excerpt } from '@/utils/string'
 import { Icon, Spinner } from 'copilot-design-system'
 
-export default function ProductMappingTable() {
-  const {
-    openDropdowns,
-    setOpenDropdowns,
-    searchTerms,
-    setSearchTerms,
-    selectedItems,
-    setSelectedItems,
-  } = useProductMappingSettings()
-
+export default function ProductMappingTable({
+  openDropdowns,
+  searchTerms,
+  selectedItems,
+  toggleDropdown,
+  handleSearch,
+  selectItem,
+  getFilteredItems,
+}: ProductMappingComponentType) {
   const { products, quickbooksItems, isLoading, error } =
     useProductTableSetting()
 
   if (error) {
     // TODO: if error show in proper UI
     console.error({ error })
-  }
-
-  const toggleDropdown = (index: number) => {
-    setOpenDropdowns((prev) => {
-      // If this dropdown is already open, just close it
-      if (prev[index]) {
-        return {
-          ...prev,
-          [index]: false,
-        }
-      }
-
-      // Otherwise, close all dropdowns and open only this one
-      const newState = prev
-      Object.keys(prev).forEach((key: string) => {
-        newState[parseInt(key)] = false
-      })
-
-      return {
-        ...newState,
-        [index]: true,
-      }
-    })
-  }
-  const handleSearch = (index: number, value: string) => {
-    setSearchTerms((prev) => ({
-      ...prev,
-      [index]: value,
-    }))
-  }
-
-  const selectItem = (index: number, item: Record<string, string>) => {
-    setSelectedItems((prev) => ({
-      ...prev,
-      [index]: item,
-    }))
-    setOpenDropdowns((prev) => ({
-      ...prev,
-      [index]: false,
-    }))
-    setSearchTerms((prev) => ({
-      ...prev,
-      [index]: '',
-    }))
-  }
-
-  const getFilteredItems = (index: number) => {
-    const searchTerm = searchTerms[index] || ''
-    return (
-      quickbooksItems &&
-      quickbooksItems.filter((item) =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase().trim()),
-      )
-    )
   }
 
   return (
@@ -151,12 +95,9 @@ export default function ProductMappingTable() {
                       ) : (
                         '--'
                       )}
-
-                      <Icon
-                        icon="ChevronDown"
-                        width={16}
-                        height={16}
-                        className={`text-gray-500 transition-transform ${openDropdowns[index] ? 'rotate-180' : ''}`}
+                      <DropDownIcon
+                        isOpen={openDropdowns[index]}
+                        className={`text-gray-500`}
                       />
                     </button>
 
@@ -176,32 +117,42 @@ export default function ProductMappingTable() {
                         <div className="px-3 py-2 border-1 border-card-divider">
                           <button
                             className="text-sm text-gray-700 cursor-pointer"
-                            onClick={() => selectItem(index, {})}
+                            onClick={() => selectItem(index, {}, products)}
                           >
                             Exclude from mapping
                           </button>
                         </div>
                         <div className="max-h-64 overflow-y-auto">
-                          {(getFilteredItems(index) || []).map(
-                            (item, itemIndex) => (
-                              <button
-                                key={itemIndex}
-                                onClick={() =>
-                                  selectItem(index, {
-                                    name: item.name,
-                                    price: item.price,
-                                  })
-                                }
-                                className="w-full flex items-center justify-between px-3 py-1.5 text-sm hover:bg-gray-50 transition-colors cursor-pointer text-left"
-                              >
-                                <span>{excerpt(item.name, 65)}</span>
-                                <span className="text-gray-500">
-                                  {item.price}
-                                </span>
-                              </button>
-                            ),
-                          )}
-                          {(getFilteredItems(index) || []).length === 0 && (
+                          {quickbooksItems &&
+                            getFilteredItems(index, quickbooksItems).map(
+                              (item, itemIndex) => (
+                                <button
+                                  key={itemIndex}
+                                  onClick={() =>
+                                    selectItem(
+                                      index,
+                                      {
+                                        id: item.id,
+                                        name: item.name,
+                                        price: item.price,
+                                        syncToken: item.syncToken,
+                                        numericPrice: item.numericPrice,
+                                      },
+                                      products,
+                                    )
+                                  }
+                                  className="w-full flex items-center justify-between px-3 py-1.5 text-sm hover:bg-gray-50 transition-colors cursor-pointer text-left"
+                                >
+                                  <span>{excerpt(item.name, 65)}</span>
+                                  <span className="text-gray-500">
+                                    {item.price}
+                                  </span>
+                                </button>
+                              ),
+                            )}
+                          {(!quickbooksItems ||
+                            getFilteredItems(index, quickbooksItems).length ===
+                              0) && (
                             <div className="px-3 py-2 text-sm text-gray-500">
                               No items found
                             </div>

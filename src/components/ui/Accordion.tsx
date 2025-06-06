@@ -1,10 +1,12 @@
 'use client'
-import { ReactElement, ReactNode } from 'react'
+import DropDownIcon from '@/components/ui/DropDownIcon'
+import { Heading } from 'copilot-design-system'
+import { ReactElement } from 'react'
 
 type AccordionProps = {
   item: {
     id: string
-    header: ({ isOpen }: { isOpen: boolean }) => ReactNode
+    header: string
     content: ReactElement
   }
   toggleItemAction: (itemId: string) => void
@@ -16,15 +18,17 @@ export default function Accordion({
   toggleItemAction,
   isOpen,
 }: AccordionProps) {
-  const HeaderComponent = item.header
-
   return (
     <div className="mx-auto">
       <div
         className="flex items-center justify-start py-[14px] pr-3 cursor-pointer"
         onClick={() => toggleItemAction(item.id)}
       >
-        <HeaderComponent isOpen={isOpen} />
+        <Heading size="lg">{item.header}</Heading>
+        {/* Chevron rotates based on open state */}
+        <div className="p-1.5">
+          <DropDownIcon isOpen={isOpen} />
+        </div>
       </div>
 
       {/* Content - Conditionally visible with smooth animation */}
