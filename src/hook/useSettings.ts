@@ -4,7 +4,10 @@ import { useAuth } from '@/app/context/AuthContext'
 import { useSwrHelper } from '@/helper/swr.helper'
 import { ProductFlattenArrayResponseType } from '@/type/dto/api.dto'
 import { getTimeInterval } from '@/utils/common'
-import { ProductMappingItemType } from '@/db/schema/qbProductSync'
+import {
+  ProductMappingItemArraySchema,
+  ProductMappingItemType,
+} from '@/db/schema/qbProductSync'
 import { postFetcher } from '@/helper/fetch.helper'
 
 export type QuickbooksItemType = {
@@ -120,13 +123,13 @@ export const useProductMappingSettings = () => {
       ) {
         return {
           ...mapItem,
-          name: item.name,
+          name: item.name || null,
           priceId: products[index].priceId,
           productId: products[index].id,
-          unitPrice: item.numericPrice.toString(),
-          qbItemId: item.id,
-          qbSyncToken: item.syncToken,
-          isExcluded: false,
+          unitPrice: item.numericPrice?.toString() || null,
+          qbItemId: item.id || null,
+          qbSyncToken: item.syncToken || null,
+          isExcluded: item.id && item.syncToken ? false : true,
         }
       }
       return mapItem
@@ -143,7 +146,7 @@ export const useProductMappingSettings = () => {
     return (
       quickbooksItems &&
       quickbooksItems.filter((item) =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()),
+        item.name.toLowerCase().includes(searchTerm.toLowerCase().trim()),
       )
     )
   }
@@ -157,12 +160,13 @@ export const useProductMappingSettings = () => {
     handleSearch,
     selectItem,
     getFilteredItems,
+    mappingItems,
     setMappingItems,
   }
 }
 
 export const useProductTableSetting = (
-  setMappingItems: (products: ProductMappingItemType[]) => void,
+  setMappingItems: (mapProducts: ProductMappingItemType[]) => void,
 ) => {
   const { token } = useAuth()
   const {
@@ -177,34 +181,80 @@ export const useProductTableSetting = (
     isLoading: isQBLoading,
   } = useSwrHelper(`/api/quickbooks/product/qb/item?token=${token}`)
 
-  const isLoading = isProductLoading || isQBLoading
-  const error = productError || quickbooksError
+  const {
+    data: mappedItems,
+    error: mappedItemsError,
+    isLoading: isMappedItemsLoading,
+  } = useSwrHelper(`/api/quickbooks/product/map?token=${token}`)
+
+  const isLoading = isProductLoading || isQBLoading || isMappedItemsLoading
+  const error = productError || quickbooksError || mappedItemsError
 
   useEffect(() => {
-    const excludeMap = products?.products?.map((product: ProductDataType) => {
-      return {
-        name: null,
-        priceId: product.priceId,
-        productId: product.id,
-        unitPrice: null,
-        qbItemId: null,
-        qbSyncToken: null,
-        isExcluded: true,
+    let newMap
+    if (products) {
+      if (!mappedItems || Object.keys(mappedItems).length === 0) {
+        // if mapped list is empty, exclude all items by default
+        newMap = products?.products?.map((product: ProductDataType) => {
+          return {
+            name: null,
+            priceId: product.priceId,
+            productId: product.id,
+            unitPrice: null,
+            qbItemId: null,
+            qbSyncToken: null,
+            isExcluded: true,
+          }
+        })
+      } else {
+        newMap = products?.products?.map((product: ProductDataType) => {
+          const mappedItem = mappedItems.find(
+            // search for the already mapped product from the mapped list
+            (item: ProductMappingItemType) =>
+              item.productId === product.id &&
+              item.priceId === product.priceId &&
+              item.qbItemId,
+          )
+          if (mappedItem) {
+            // if found, return with the mapped product in mapping item
+            return {
+              name: mappedItem.name,
+              priceId: product.priceId,
+              productId: product.id,
+              unitPrice: mappedItem.unitPrice,
+              qbItemId: mappedItem.qbItemId,
+              qbSyncToken: mappedItem.qbSyncToken,
+              isExcluded: false,
+            }
+          } else {
+            return {
+              name: null,
+              priceId: product.priceId,
+              productId: product.id,
+              unitPrice: null,
+              qbItemId: null,
+              qbSyncToken: null,
+              isExcluded: true,
+            }
+          }
+        })
       }
-    })
-    setMappingItems(excludeMap)
+      ProductMappingItemArraySchema.parse(newMap)
+      setMappingItems(newMap)
+    }
   }, [products])
 
   const formatProductDataForListing = (
     data: ProductFlattenArrayResponseType,
   ): ProductDataType[] | undefined => {
-    return data?.products && data.products.length > 0
+    return data?.products?.length
       ? data.products.map((product) => {
           // convert amount to dollar
-          const price = new Intl.NumberFormat('en-US').format(
-            product.amount / 100,
-          )
-          const newPrice = `$${price} ${product?.interval && product?.intervalCount ? `/ ${getTimeInterval(product.interval, product.intervalCount)}` : ''}`
+          const price = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+          }).format(product.amount / 100)
+          const newPrice = `${price} ${product?.interval && product?.intervalCount ? `/ ${getTimeInterval(product.interval, product.intervalCount)}` : ''}`
           return {
             id: product.id,
             name: product.name,
@@ -219,14 +269,16 @@ export const useProductTableSetting = (
   const formatQBItemForListing = (
     data: QuickbooksItemType[],
   ): QBItemDataType[] | undefined => {
-    return data && data.length > 0
+    return data?.length
       ? data.map((product) => {
-          const price = new Intl.NumberFormat('en-US').format(product.UnitPrice)
-          const newPrice = `$${price}`
+          const price = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+          }).format(product.UnitPrice)
           return {
             id: product.Id,
             name: product.Name,
-            price: newPrice,
+            price: price,
             numericPrice: product.UnitPrice * 100,
             syncToken: product.SyncToken,
           }
@@ -239,6 +291,35 @@ export const useProductTableSetting = (
     quickbooksItems: formatQBItemForListing(quickbooksItems),
     isLoading,
     error,
+  }
+}
+
+export const useMapItem = (
+  mappingItems: ProductMappingItemType[] | undefined,
+  productId: string,
+  priceId: string,
+) => {
+  const [currentlyMapped, setCurrentlyMapped] = useState<
+    ProductMappingItemType | undefined
+  >()
+  const checkIfMappedItemExists = () => {
+    const currentMapItem = mappingItems?.find((item) => {
+      return (
+        item.productId === productId &&
+        item.priceId === priceId &&
+        item.qbItemId
+      )
+    })
+    setCurrentlyMapped(currentMapItem)
+    return currentMapItem
+  }
+
+  useEffect(() => {
+    if (mappingItems) checkIfMappedItemExists()
+  }, [mappingItems])
+
+  return {
+    currentlyMapped,
   }
 }
 
