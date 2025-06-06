@@ -34,6 +34,7 @@ export const useQuickbooks = (
           setAuthParams((prev) => ({
             ...prev,
             syncFlag: payload.new.sync_flag,
+            isEnabled: payload.new.is_enabled,
           }))
         },
       )
@@ -96,6 +97,25 @@ export const useQuickbooks = (
     if (authUrl) window.open(authUrl, '_blank')
   }
 
+  const handleSyncEnable = async () => {
+    try {
+      const enable = true
+      const url = `/api/quickbooks/token/change-enable-status?token=${token}`
+      setLoading(true)
+      const response = await fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ enable }),
+      })
+
+      const res = await response.json()
+      setLoading(false)
+      return res
+    } catch (e) {
+      setLoading(false)
+      console.error('Error: ', e)
+    }
+  }
+
   const checkPortalConnection = async () => {
     const response = await fetch(
       `/api/quickbooks/token/check-connection?token=${token}`,
@@ -110,6 +130,7 @@ export const useQuickbooks = (
     hasConnection,
     checkPortalConnection,
     isReconnecting,
+    handleSyncEnable,
   }
 }
 
