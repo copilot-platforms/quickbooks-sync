@@ -30,6 +30,7 @@ export class AuthService extends BaseService {
     state: { token: string; originUrl?: string },
     type?: string,
   ): Promise<string | null> {
+    console.log('test redirect url', intuitRedirectUri)
     if (type && type === AuthStatus.RECONNECT) {
       const resStatus = await getSyncedPortalConnection(this.user.workspaceId)
       const status = resStatus?.syncFlag || false
