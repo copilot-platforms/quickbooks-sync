@@ -36,7 +36,7 @@ export async function getAll(req: NextRequest) {
 export async function getItemsFromQB(req: NextRequest) {
   const user = await authenticate(req)
   const authService = new AuthService(user)
-  const qbTokenInfo = await authService.getQBToken(user.workspaceId)
+  const qbTokenInfo = await authService.getQBToken(user.workspaceId, true)
   if (!qbTokenInfo || !qbTokenInfo.accessToken) {
     throw new APIError(
       httpStatus.UNAUTHORIZED,

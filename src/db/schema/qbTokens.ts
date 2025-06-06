@@ -21,6 +21,7 @@ export const QBTokens = table(
     incomeAccountRef: t
       .varchar('income_account_ref', { length: 100 })
       .notNull(),
+    isEnabled: t.boolean('is_enabled').default(false),
     ...timestamps,
   },
   (table) => [t.uniqueIndex('uq_qb_tokens_portal_id_idx').on(table.portalId)],
