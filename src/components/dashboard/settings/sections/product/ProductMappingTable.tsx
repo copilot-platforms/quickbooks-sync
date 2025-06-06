@@ -1,4 +1,5 @@
 import { ProductMappingComponentType } from '@/components/dashboard/settings/sections/product/ProductMapping'
+import DropDownIcon from '@/components/ui/DropDownIcon'
 import { useProductTableSetting } from '@/hook/useSettings'
 import { excerpt } from '@/utils/string'
 import { Icon, Spinner } from 'copilot-design-system'
@@ -95,12 +96,9 @@ export default function ProductMappingTable({
                       ) : (
                         '--'
                       )}
-
-                      <Icon
-                        icon="ChevronDown"
-                        width={16}
-                        height={16}
-                        className={`text-gray-500 transition-transform ${openDropdowns[index] ? 'rotate-180' : ''}`}
+                      <DropDownIcon
+                        isOpen={openDropdowns[index]}
+                        className={`text-gray-500`}
                       />
                     </button>
 

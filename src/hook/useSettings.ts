@@ -198,7 +198,7 @@ export const useProductTableSetting = (
   const formatProductDataForListing = (
     data: ProductFlattenArrayResponseType,
   ): ProductDataType[] | undefined => {
-    return data?.products && data.products?.length > 0
+    return data?.products?.length
       ? data.products.map((product) => {
           // convert amount to dollar
           const price = new Intl.NumberFormat('en-US', {
@@ -220,17 +220,16 @@ export const useProductTableSetting = (
   const formatQBItemForListing = (
     data: QuickbooksItemType[],
   ): QBItemDataType[] | undefined => {
-    return data && data?.length > 0
+    return data?.length
       ? data.map((product) => {
           const price = new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'USD',
           }).format(product.UnitPrice)
-          const newPrice = `${price}`
           return {
             id: product.Id,
             name: product.Name,
-            price: newPrice,
+            price: price,
             numericPrice: product.UnitPrice * 100,
             syncToken: product.SyncToken,
           }
