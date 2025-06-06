@@ -11,7 +11,7 @@ const nextConfig = {
           {
             key: 'Content-Security-Policy',
             value:
-              "frame-ancestors 'self' https://dashboard.copilot.app https://dashboard.copilot-staging.app;",
+              "frame-ancestors 'self' https://dashboard.copilot.app https://dashboard.copilot-staging.app https://dashboard.copilot-staging.com;",
           },
           {
             key: 'X-Content-Type-Options',
