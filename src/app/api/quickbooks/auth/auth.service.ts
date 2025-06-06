@@ -85,6 +85,9 @@ export class AuthService extends BaseService {
         // query income acc ref from intuit
         const incomeAccRef = await intuitApi.getSingleIncomeAccount()
         insertPayload.incomeAccountRef = incomeAccRef.Id
+      } else {
+        // case for re-authorization
+        insertPayload.incomeAccountRef = existingToken.incomeAccountRef // if exists, use existing income account ref
       }
 
       const qbTokens = await tokenService.upsertQBToken(insertPayload, ['id'])

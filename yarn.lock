@@ -4426,6 +4426,7 @@ __metadata:
     http-status: "npm:^2.1.0"
     husky: "npm:^9.1.7"
     intuit-oauth: "npm:^4.2.0"
+    javascript-time-ago: "npm:^2.5.11"
     lint-staged: "npm:^15.5.1"
     next: "npm:15.3.0"
     open: "npm:^10.1.0"
@@ -4438,6 +4439,7 @@ __metadata:
     react-code-blocks: "npm:^0.1.6"
     react-dom: "npm:^18"
     react-linkify: "npm:^1.0.0-alpha"
+    react-time-ago: "npm:^7.3.3"
     supabase: "npm:2.22.4"
     swr: "npm:^2.3.3"
     tailwindcss: "npm:^4.1.5"
@@ -7204,6 +7206,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"javascript-time-ago@npm:^2.5.11":
+  version: 2.5.11
+  resolution: "javascript-time-ago@npm:2.5.11"
+  dependencies:
+    relative-time-format: "npm:^1.1.6"
+  checksum: 10c0/3f0eafa05ee2e8819df5a11436ecd4791ff572a2d5f5899e118374acc1c46b060838c72fc7f05805200c871d086b8b64c1b81d0f837328c610ef7dffa3721069
+  languageName: node
+  linkType: hard
+
 "jiti@npm:^2.4.2":
   version: 2.4.2
   resolution: "jiti@npm:2.4.2"
@@ -8594,6 +8605,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"performance-now@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "performance-now@npm:2.1.0"
+  checksum: 10c0/22c54de06f269e29f640e0e075207af57de5052a3d15e360c09b9a8663f393f6f45902006c1e71aa8a5a1cdfb1a47fe268826f8496d6425c362f00f5bc3e85d9
+  languageName: node
+  linkType: hard
+
 "pg-int8@npm:1.0.1":
   version: 1.0.1
   resolution: "pg-int8@npm:1.0.1"
@@ -8978,6 +8996,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"raf@npm:^3.4.1":
+  version: 3.4.1
+  resolution: "raf@npm:3.4.1"
+  dependencies:
+    performance-now: "npm:^2.1.0"
+  checksum: 10c0/337f0853c9e6a77647b0f499beedafea5d6facfb9f2d488a624f88b03df2be72b8a0e7f9118a3ff811377d534912039a3311815700d2b6d2313f82f736f9eb6e
+  languageName: node
+  linkType: hard
+
 "random-bytes@npm:~1.0.0":
   version: 1.0.0
   resolution: "random-bytes@npm:1.0.0"
@@ -9060,6 +9087,21 @@ __metadata:
   peerDependencies:
     react: ">= 0.14.0"
   checksum: 10c0/2bf57a1ea151f688efc7eba355677577c9bb55f05f9df7ef86627aae42f63f505486cddf3f4a628aecc51ec75e89beb9533201570d03201c4bf7d69d61d2545d
+  languageName: node
+  linkType: hard
+
+"react-time-ago@npm:^7.3.3":
+  version: 7.3.3
+  resolution: "react-time-ago@npm:7.3.3"
+  dependencies:
+    memoize-one: "npm:^6.0.0"
+    prop-types: "npm:^15.8.1"
+    raf: "npm:^3.4.1"
+  peerDependencies:
+    javascript-time-ago: ^2.3.7
+    react: ">=0.16.8"
+    react-dom: ">=0.16.8"
+  checksum: 10c0/ea26f94b892ec83537c47856507438cea9668be6ff9864041eae967fc0629c261650bd480d29f8c40eb9c61e2b303a14b3cf6cea6db5e78ed71f0c47ca3604d5
   languageName: node
   linkType: hard
 
@@ -9171,6 +9213,13 @@ __metadata:
     gopd: "npm:^1.2.0"
     set-function-name: "npm:^2.0.2"
   checksum: 10c0/83b88e6115b4af1c537f8dabf5c3744032cb875d63bc05c288b1b8c0ef37cbe55353f95d8ca817e8843806e3e150b118bc624e4279b24b4776b4198232735a77
+  languageName: node
+  linkType: hard
+
+"relative-time-format@npm:^1.1.6":
+  version: 1.1.6
+  resolution: "relative-time-format@npm:1.1.6"
+  checksum: 10c0/d0784eda966ebf256c5585f67786435c611972406abcabebca0d4489e28cba7523a40c8c9725a7a089c5f33a20c16d537068a909ed91da275feed9d8607e70f0
   languageName: node
   linkType: hard
 

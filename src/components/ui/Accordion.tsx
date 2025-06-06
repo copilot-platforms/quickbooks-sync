@@ -1,6 +1,7 @@
 'use client'
-import { Heading, Icon } from 'copilot-design-system'
-import { ReactElement, ReactNode } from 'react'
+import DropDownIcon from '@/components/ui/DropDownIcon'
+import { Heading } from 'copilot-design-system'
+import { ReactElement } from 'react'
 
 type AccordionProps = {
   item: {
@@ -26,12 +27,7 @@ export default function Accordion({
         <Heading size="lg">{item.header}</Heading>
         {/* Chevron rotates based on open state */}
         <div className="p-1.5">
-          <Icon
-            icon="ChevronDown"
-            width={16}
-            height={16}
-            className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          />
+          <DropDownIcon isOpen={isOpen} />
         </div>
       </div>
 
