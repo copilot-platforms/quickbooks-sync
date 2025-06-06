@@ -15,6 +15,7 @@ export default function SettingAccordion() {
     selectItem,
     getFilteredItems,
     submitMappingItems,
+    mappingItems,
     setMappingItems,
   } = useProductMappingSettings()
 
@@ -31,6 +32,7 @@ export default function SettingAccordion() {
           handleSearch={handleSearch}
           selectItem={selectItem}
           getFilteredItems={getFilteredItems}
+          mappingItems={mappingItems}
           setMappingItems={setMappingItems}
         />
       ),

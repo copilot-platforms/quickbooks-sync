@@ -68,7 +68,9 @@ export const QBProductUpdateSchema = QBProductCreateSchema.omit({
 }).partial()
 export type QBProductUpdateSchemaType = z.infer<typeof QBProductUpdateSchema>
 
-export type ProductMappingItemType = Pick<
-  QBProductCreateSchemaType,
-  'name' | 'priceId' | 'productId' | 'unitPrice' | 'qbItemId' | 'qbSyncToken'
->
+const ProductMappingItemSchema = QBProductCreateSchema.omit({
+  portalId: true,
+})
+export type ProductMappingItemType = z.infer<typeof ProductMappingItemSchema>
+
+export const ProductMappingItemArraySchema = z.array(ProductMappingItemSchema)

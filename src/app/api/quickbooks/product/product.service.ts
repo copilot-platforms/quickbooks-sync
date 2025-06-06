@@ -75,6 +75,30 @@ export class ProductService extends BaseService {
   }
 
   /**
+   * Get all the mapped products
+   */
+  async getAll(
+    conditions?: WhereClause,
+    returningFields?: (keyof typeof QBProductSync)[],
+  ) {
+    let columns = null
+    if (returningFields && returningFields.length > 0) {
+      columns = buildReturningFields(QBProductSync, returningFields, true)
+    }
+
+    return await this.db.query.QBProductSync.findMany({
+      where: (QBProductSync, { eq }) =>
+        and(
+          isNull(QBProductSync.deletedAt),
+          eq(QBProductSync.portalId, this.user.workspaceId),
+          conditions,
+        ),
+      ...columns,
+      orderBy: [desc(QBProductSync.createdAt)],
+    })
+  }
+
+  /**
    * Creates the map of product and price with QB item
    */
   async createQBProduct(
@@ -117,6 +141,35 @@ export class ProductService extends BaseService {
         : await query.returning()
 
     return product
+  }
+
+  /**
+   * Bulk update or create the map between product, price with QB item
+   */
+  async bulkDeleteCreateQBProduct(
+    payload: QBProductCreateArraySchemaType,
+    returningFields?: (keyof typeof QBProductSync)[],
+  ): Promise<Partial<QBProductSelectSchemaType>[] | undefined> {
+    const formattedPayload = payload.map((item) => {
+      return {
+        ...item,
+        portalId: this.user.workspaceId,
+      }
+    })
+
+    return await this.db.transaction(async (tx) => {
+      await tx
+        .delete(QBProductSync)
+        .where(eq(QBProductSync.portalId, this.user.workspaceId))
+      const query = tx.insert(QBProductSync).values(formattedPayload)
+      const product =
+        returningFields && returningFields.length > 0
+          ? await query.returning(
+              buildReturningFields(QBProductSync, returningFields),
+            )
+          : await query.returning()
+      return product
+    })
   }
 
   async updateQBProduct(
@@ -376,9 +429,7 @@ export class ProductService extends BaseService {
         eq(QBProductSync.id, latestMappedProduct?.id),
       )
 
-      console.info(
-        'WebhookService#webhookProductCreated | Product created in QB',
-      )
+      console.info('WebhookService#webhookPriceCreated | Product created in QB')
     } else {
       await this.createQBProduct({
         portalId: this.user.workspaceId,
@@ -387,9 +438,7 @@ export class ProductService extends BaseService {
         unitPrice: priceResource.amount.toString(),
       })
 
-      console.info(
-        'WebhookService#webhookProductCreated | Product mapping done',
-      )
+      console.info('WebhookService#webhookPriceCreated | Product mapping done')
     }
   }
 
