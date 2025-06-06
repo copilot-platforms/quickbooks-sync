@@ -1,6 +1,6 @@
 'use client'
 import DropDownIcon from '@/components/ui/DropDownIcon'
-import { Heading, Icon } from 'copilot-design-system'
+import { Heading } from 'copilot-design-system'
 import { ReactElement } from 'react'
 
 type AccordionProps = {
