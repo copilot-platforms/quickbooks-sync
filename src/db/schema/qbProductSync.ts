@@ -68,10 +68,6 @@ export const QBProductUpdateSchema = QBProductCreateSchema.omit({
 }).partial()
 export type QBProductUpdateSchemaType = z.infer<typeof QBProductUpdateSchema>
 
-type NonNullableProps<T> = {
-  [K in keyof T]: NonNullable<T[K]>
-}
-
 const ProductMappingItemSchema = QBProductCreateSchema.omit({
   portalId: true,
 })
