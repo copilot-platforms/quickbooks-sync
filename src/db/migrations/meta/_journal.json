@@ -99,6 +99,13 @@
       "when": 1748408191013,
       "tag": "0013_alter_table_to_datatype_uuid",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1748860447071,
+      "tag": "0014_is_excluded_in_product_sync_table",
+      "breakpoints": true
     }
   ]
 }

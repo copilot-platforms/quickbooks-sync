@@ -15,6 +15,7 @@ export default function SettingAccordion() {
     selectItem,
     getFilteredItems,
     submitMappingItems,
+    setMappingItems,
   } = useProductMappingSettings()
 
   const accordionItems = [
@@ -30,6 +31,7 @@ export default function SettingAccordion() {
           handleSearch={handleSearch}
           selectItem={selectItem}
           getFilteredItems={getFilteredItems}
+          setMappingItems={setMappingItems}
         />
       ),
     },

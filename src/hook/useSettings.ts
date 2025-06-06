@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/app/context/AuthContext'
 import { useSwrHelper } from '@/helper/swr.helper'
 import { ProductFlattenArrayResponseType } from '@/type/dto/api.dto'
@@ -29,10 +29,19 @@ export type QBItemDataType = {
   numericPrice: number
 }
 
-export const useProductMappingSettings = () => {
+export const useProductMapping = () => {
   const [newlyCreatedFlag, setNewlyCreatedFlag] = useState(false)
   const [itemCreateFlag, setItemCreateFlag] = useState(false)
 
+  return {
+    newlyCreatedFlag,
+    setNewlyCreatedFlag,
+    itemCreateFlag,
+    setItemCreateFlag,
+  }
+}
+
+export const useProductMappingSettings = () => {
   const [openDropdowns, setOpenDropdowns] = useState<{
     [key: number]: boolean
   }>({})
@@ -103,17 +112,27 @@ export const useProductMappingSettings = () => {
       [index]: '',
     }))
 
-    setMappingItems((prev) => [
-      ...prev,
-      {
-        name: item.name,
-        priceId: products[index].priceId,
-        productId: products[index].id,
-        unitPrice: item.numericPrice.toString(),
-        qbItemId: item.id,
-        qbSyncToken: item.syncToken,
-      },
-    ])
+    // update the mapped array
+    const mappedArray = mappingItems.map((mapItem) => {
+      if (
+        mapItem.productId === products[index].id &&
+        mapItem.priceId === products[index].priceId
+      ) {
+        return {
+          ...mapItem,
+          name: item.name,
+          priceId: products[index].priceId,
+          productId: products[index].id,
+          unitPrice: item.numericPrice?.toString(),
+          qbItemId: item.id,
+          qbSyncToken: item.syncToken,
+          isExcluded: false,
+        }
+      }
+      return mapItem
+    })
+
+    setMappingItems(mappedArray)
   }
 
   const getFilteredItems = (
@@ -130,10 +149,6 @@ export const useProductMappingSettings = () => {
   }
 
   return {
-    newlyCreatedFlag,
-    setNewlyCreatedFlag,
-    itemCreateFlag,
-    setItemCreateFlag,
     openDropdowns,
     searchTerms,
     selectedItems,
@@ -142,10 +157,13 @@ export const useProductMappingSettings = () => {
     handleSearch,
     selectItem,
     getFilteredItems,
+    setMappingItems,
   }
 }
 
-export const useProductTableSetting = () => {
+export const useProductTableSetting = (
+  setMappingItems: (products: ProductMappingItemType[]) => void,
+) => {
   const { token } = useAuth()
   const {
     data: products,
@@ -161,6 +179,21 @@ export const useProductTableSetting = () => {
 
   const isLoading = isProductLoading || isQBLoading
   const error = productError || quickbooksError
+
+  useEffect(() => {
+    const excludeMap = products?.products?.map((product: ProductDataType) => {
+      return {
+        name: null,
+        priceId: product.priceId,
+        productId: product.id,
+        unitPrice: null,
+        qbItemId: null,
+        qbSyncToken: null,
+        isExcluded: true,
+      }
+    })
+    setMappingItems(excludeMap)
+  }, [products])
 
   const formatProductDataForListing = (
     data: ProductFlattenArrayResponseType,

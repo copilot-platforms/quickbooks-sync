@@ -1,0 +1,1 @@
+ALTER TABLE "qb_product_sync" ADD COLUMN "is_excluded" boolean DEFAULT false;

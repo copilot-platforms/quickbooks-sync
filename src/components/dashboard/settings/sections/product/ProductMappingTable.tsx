@@ -12,9 +12,10 @@ export default function ProductMappingTable({
   handleSearch,
   selectItem,
   getFilteredItems,
+  setMappingItems,
 }: ProductMappingComponentType) {
   const { products, quickbooksItems, isLoading, error } =
-    useProductTableSetting()
+    useProductTableSetting(setMappingItems)
 
   if (error) {
     // TODO: if error show in proper UI
