@@ -81,6 +81,7 @@ export class AuthService extends BaseService {
           intuitRealmId: realmId,
           incomeAccountRef: '',
         })
+        // TODO: implement transactional behavior
         // query income acc ref from intuit
         const incomeAccRef = await intuitApi.getSingleIncomeAccount()
         insertPayload.incomeAccountRef = incomeAccRef.Id
@@ -118,7 +119,10 @@ export class AuthService extends BaseService {
     }
   }
 
-  async getQBToken(portalId: string): Promise<IntuitAPITokensType> {
+  async getQBToken(
+    portalId: string,
+    manualSyncEnable: boolean = false,
+  ): Promise<IntuitAPITokensType> {
     const portalQBToken = await getSyncedPortalConnection(portalId)
     if (!portalQBToken) {
       throw new APIError(
@@ -135,7 +139,16 @@ export class AuthService extends BaseService {
       intiatedBy,
       expiresIn,
       incomeAccountRef,
+      isEnabled,
     } = portalQBToken
+
+    if (!isEnabled && !manualSyncEnable) {
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        `Sync is not enabled for portal with ID: ${portalId}`,
+      )
+    }
+
     const expiryTime = dayjs(tokenSetTime).add(expiresIn, 'seconds')
     let updatedTokenInfo = {
       accessToken,

@@ -246,3 +246,10 @@ export const PricesResponseSchema = z.object({
   data: z.array(PriceResponseSchema).nullable(),
 })
 export type PricesResponse = z.infer<typeof PricesResponseSchema>
+
+export const changeEnableStatusRequestSchema = z.object({
+  enable: z.boolean(),
+})
+export type changeEnableStatusRequest = z.infer<
+  typeof changeEnableStatusRequestSchema
+>
