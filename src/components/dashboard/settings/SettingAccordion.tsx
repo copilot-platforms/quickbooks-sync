@@ -54,17 +54,18 @@ export default function SettingAccordion() {
       {accordionItems.map((item, index) => {
         return (
           <div key={item.id} className="relative">
-            <div
-              className={`absolute top-[14] right-0 z-10 flex items-center justify-end ${index === 0 ? '' : 'hidden'}`}
-            >
-              <Button
-                label="Confirm"
-                variant="primary"
-                prefixIcon="Check"
-                className="mt-1 sm:mt-0"
-                onClick={submitMappingItems}
-              />
-            </div>
+            {index === 0 && (
+              <div
+                className={`absolute top-[14px] right-0 z-10 flex items-center justify-end`}
+              >
+                <Button
+                  label="Confirm"
+                  variant="primary"
+                  prefixIcon="Check"
+                  onClick={submitMappingItems}
+                />
+              </div>
+            )}
             <Accordion
               item={item}
               toggleItemAction={toggleItem}
