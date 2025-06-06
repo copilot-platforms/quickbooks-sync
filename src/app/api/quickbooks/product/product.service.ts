@@ -146,7 +146,7 @@ export class ProductService extends BaseService {
   /**
    * Bulk update or create the map between product, price with QB item
    */
-  async bulkUpdateCreateQBProduct(
+  async bulkDeleteCreateQBProduct(
     payload: QBProductCreateArraySchemaType,
     returningFields?: (keyof typeof QBProductSync)[],
   ): Promise<Partial<QBProductSelectSchemaType>[] | undefined> {

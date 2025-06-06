@@ -22,7 +22,7 @@ export async function storeProductMap(req: NextRequest) {
   const productService = new ProductService(user)
   const body = await req.json()
   const parsedBody = QBProductCreateArraySchema.parse(body)
-  const products = await productService.bulkUpdateCreateQBProduct(parsedBody)
+  const products = await productService.bulkDeleteCreateQBProduct(parsedBody)
   return NextResponse.json(products)
 }
 
