@@ -453,6 +453,7 @@ export class InvoiceService extends BaseService {
     ])
 
     if (!invoiceSync) {
+      // very minimal chance for this. May occur when invoice with paid status is created (won't hamper the flow).
       console.error(
         'WebhookService#webhookInvoicePaid | Invoice not found in sync table',
       )
