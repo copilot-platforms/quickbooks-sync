@@ -226,16 +226,15 @@ export const useProductTableSetting = (
               qbSyncToken: mappedItem.qbSyncToken,
               isExcluded: false,
             }
-          } else {
-            return {
-              name: null,
-              priceId: product.priceId,
-              productId: product.id,
-              unitPrice: null,
-              qbItemId: null,
-              qbSyncToken: null,
-              isExcluded: true,
-            }
+          }
+          return {
+            name: null,
+            priceId: product.priceId,
+            productId: product.id,
+            unitPrice: null,
+            qbItemId: null,
+            qbSyncToken: null,
+            isExcluded: true,
           }
         })
       }
