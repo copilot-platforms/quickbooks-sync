@@ -3,4 +3,5 @@ export enum WebhookEvents {
   PRODUCT_UPDATED = 'product.updated',
   PRODUCT_CREATED = 'product.created',
   PRICE_CREATED = 'price.created',
+  INVOICE_PAID = 'invoice.paid',
 }

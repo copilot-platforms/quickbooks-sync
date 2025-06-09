@@ -10,6 +10,7 @@ import {
   QBItemCreatePayloadType,
   QBInvoiceSparseUpdatePayloadType,
   QBItemFullUpdatePayloadType,
+  QBPaymentCreatePayloadType,
 } from '@/type/dto/intuitAPI.dto'
 import httpStatus from 'http-status'
 
@@ -337,6 +338,33 @@ export default class IntuitAPI {
     return item
   }
 
+  async _createPayment(payload: QBPaymentCreatePayloadType) {
+    console.log('IntuitAPI#createPayment | payment creation start')
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/payment?minorversion=${intuitApiMinorVersion}`
+    const payment = await this.postFetchWithHeaders(url, payload)
+
+    if (!payment)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createPayment | message = no response',
+      )
+
+    if (payment?.Fault) {
+      console.error({ Error: payment.Fault?.Error })
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createPayment | Error while creating payment',
+        payment.Fault?.Error,
+      )
+    }
+
+    console.log(
+      'IntuitAPI#createPayment | payment created with Id =',
+      payment.Payment?.Id,
+    )
+    return payment
+  }
+
   private wrapWithRetry<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
   ): (...args: Args) => Promise<R> {
@@ -354,4 +382,5 @@ export default class IntuitAPI {
   invoiceSparseUpdate = this.wrapWithRetry(this._invoiceSparseUpdate)
   customerSparseUpdate = this.wrapWithRetry(this._customerSparseUpdate)
   itemFullUpdate = this.wrapWithRetry(this._itemFullUpdate)
+  createPayment = this.wrapWithRetry(this._createPayment)
 }

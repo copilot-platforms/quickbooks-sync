@@ -91,3 +91,25 @@ export const QBItemFullUpdatePayloadSchema =
 export type QBItemFullUpdatePayloadType = z.infer<
   typeof QBItemFullUpdatePayloadSchema
 >
+
+export const QBPaymentCreatePayloadSchema = z.object({
+  TotalAmt: z.number(),
+  CustomerRef: z.object({
+    value: z.string(),
+  }),
+  Line: z.array(
+    z.object({
+      Amount: z.number(),
+      LinkedTxn: z.array(
+        z.object({
+          TxnId: z.string(),
+          TxnType: z.string(),
+        }),
+      ),
+    }),
+  ),
+})
+
+export type QBPaymentCreatePayloadType = z.infer<
+  typeof QBPaymentCreatePayloadSchema
+>

@@ -113,6 +113,13 @@
       "when": 1749029670975,
       "tag": "0015_add_is_excluded_in_qb_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1749466411465,
+      "tag": "0016_alter_invoice_sync_and_payment_sync_tables",
+      "breakpoints": true
     }
   ]
 }
