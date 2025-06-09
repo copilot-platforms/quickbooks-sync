@@ -135,6 +135,22 @@ export class WebhookService extends BaseService {
         )
         break
 
+      case WebhookEvents.INVOICE_VOIDED:
+        const parsedVoidedInvoice = InvoicePaidResponseSchema.safeParse(payload)
+        if (!parsedVoidedInvoice.success || !parsedVoidedInvoice.data) {
+          console.error(
+            'WebhookService#handleWebhookEvent | Could not parse invoice paid response',
+          )
+          break
+        }
+        const parsedVoidedInvoiceResource = parsedVoidedInvoice.data
+        const invoiceServce = new InvoiceService(this.user)
+        await invoiceServce.webhookInvoiceVoided(
+          parsedVoidedInvoiceResource,
+          qbTokenInfo,
+        )
+        break
+
       default:
         console.error('WebhookService#handleWebhookEvent | Unknown event type')
     }
