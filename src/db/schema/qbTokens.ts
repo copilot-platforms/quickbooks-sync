@@ -21,6 +21,10 @@ export const QBTokens = table(
     incomeAccountRef: t
       .varchar('income_account_ref', { length: 100 })
       .notNull(),
+    assetAccountRef: t.varchar('asset_account_ref', { length: 100 }).notNull(),
+    expenseAccountRef: t
+      .varchar('expense_account_ref', { length: 100 })
+      .notNull(),
     isEnabled: t.boolean('is_enabled').default(false),
     ...timestamps,
   },

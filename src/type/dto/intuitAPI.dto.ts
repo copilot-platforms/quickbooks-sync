@@ -122,3 +122,15 @@ export const QBVoidInvoicePayloadSchema = z.object({
 export type QBVoidInvoicePayloadType = z.infer<
   typeof QBVoidInvoicePayloadSchema
 >
+
+export const QBAccountCreatePayloadSchema = z.object({
+  Name: z.string(),
+  AccountType: z.string(),
+  AccountSubType: z.string().optional(),
+  Active: z.boolean(),
+  Classification: z.string(),
+})
+
+export type QBAccountCreatePayloadType = z.infer<
+  typeof QBAccountCreatePayloadSchema
+>

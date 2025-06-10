@@ -44,6 +44,53 @@ export class AuthService extends BaseService {
     return await Intuit.getInstance().authorizeUri(state)
   }
 
+  async manageIncomeAccountRef(intuitApi: IntuitAPI) {
+    const incomeAccRef = await intuitApi.getSingleIncomeAccount()
+    return incomeAccRef.Id
+  }
+
+  async manageExpenseAccountRef(intuitApi: IntuitAPI) {
+    const accName = 'Copilot Processing Fees'
+    const existingAccount = await intuitApi.getAnAccountByName(accName)
+    if (existingAccount) {
+      return existingAccount.Id
+    }
+
+    // Docs: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/account#the-account-object
+    const payload = {
+      Name: accName,
+      Classification: 'Expense',
+      AccountType: 'Expense', // Creating expense account.
+      AccountSubType: 'FinanceCosts',
+      Active: true,
+    }
+    const expenseAccRef = await intuitApi.createAccount(payload)
+    return expenseAccRef.Id
+  }
+
+  async manageAssetAccountRef(intuitApi: IntuitAPI) {
+    const accName = 'Copilot General Asset'
+    const existingAccount = await intuitApi.getAnAccountByName(accName)
+    if (existingAccount) {
+      return existingAccount.Id
+    }
+
+    /**
+     * Need to create this account as the source of cash for the company. This account will be referenced while creating a purchase as Expense for absorbed fee.
+     * Doc: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase#create-a-purchase
+     * */
+
+    // Docs: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/account#the-account-object
+    const payload = {
+      Name: accName,
+      Classification: 'Asset',
+      AccountType: 'Bank', // Create Bank account. Default account subtype is "CashOnHand".
+      Active: true,
+    }
+    const assetAccRef = await intuitApi.createAccount(payload)
+    return assetAccRef.Id
+  }
+
   async handleTokenExchange(
     body: { code: string; realmId: string },
     portalId: string,
@@ -56,6 +103,10 @@ export class AuthService extends BaseService {
       const tokenInfo = QBAuthTokenResponseSchema.parse(authResponse.token)
       const tokenSetTime = dayjs().toDate()
 
+      const tokenService = new TokenService(this.user)
+      // check if the token exists
+      const existingToken = await tokenService.getOneByPortalId(portalId)
+
       const insertPayload: QBTokenCreateSchemaType = {
         intuitRealmId: realmId,
         accessToken: tokenInfo.access_token,
@@ -67,27 +118,30 @@ export class AuthService extends BaseService {
         tokenType: tokenInfo.token_type,
         intiatedBy: this.user.internalUserId as string, // considering this is defined since we know this action is intiated by an IU
         syncFlag: true,
-        incomeAccountRef: '',
+        incomeAccountRef: existingToken?.incomeAccountRef || '',
+        expenseAccountRef: existingToken?.expenseAccountRef || '',
+        assetAccountRef: existingToken?.assetAccountRef || '',
       }
-
-      const tokenService = new TokenService(this.user)
-      // set income acc ref here in qbtokens table
-      const existingToken = await tokenService.getOneByPortalId(portalId)
-      if (!existingToken || !existingToken.incomeAccountRef) {
-        // get income acc ref from intuit and store in qbtokens table
-        const intuitApi = new IntuitAPI({
-          accessToken: tokenInfo.access_token,
-          refreshToken: tokenInfo.refresh_token,
-          intuitRealmId: realmId,
-          incomeAccountRef: '',
-        })
-        // TODO: implement transactional behavior
-        // query income acc ref from intuit
-        const incomeAccRef = await intuitApi.getSingleIncomeAccount()
-        insertPayload.incomeAccountRef = incomeAccRef.Id
-      } else {
-        // case for re-authorization
-        insertPayload.incomeAccountRef = existingToken.incomeAccountRef // if exists, use existing income account ref
+      const intuitApi = new IntuitAPI({
+        accessToken: tokenInfo.access_token,
+        refreshToken: tokenInfo.refresh_token,
+        intuitRealmId: realmId,
+        incomeAccountRef: insertPayload.incomeAccountRef,
+        expenseAccountRef: insertPayload.expenseAccountRef,
+        assetAccountRef: insertPayload.assetAccountRef,
+      })
+      // manage acc ref from intuit and store in qbtokens table
+      if (!insertPayload.incomeAccountRef) {
+        insertPayload.incomeAccountRef =
+          await this.manageIncomeAccountRef(intuitApi)
+      }
+      if (!insertPayload.expenseAccountRef) {
+        insertPayload.expenseAccountRef =
+          await this.manageExpenseAccountRef(intuitApi)
+      }
+      if (!insertPayload.assetAccountRef) {
+        insertPayload.assetAccountRef =
+          await this.manageAssetAccountRef(intuitApi)
       }
 
       const qbTokens = await tokenService.upsertQBToken(insertPayload, ['id'])
@@ -139,6 +193,8 @@ export class AuthService extends BaseService {
       intiatedBy,
       expiresIn,
       incomeAccountRef,
+      expenseAccountRef,
+      assetAccountRef,
       isEnabled,
     } = portalQBToken
 
@@ -155,6 +211,8 @@ export class AuthService extends BaseService {
       refreshToken,
       intuitRealmId,
       incomeAccountRef,
+      expenseAccountRef,
+      assetAccountRef,
     }
 
     // Refresh token if expired
@@ -224,6 +282,8 @@ export class AuthService extends BaseService {
               refreshToken: '',
               intuitRealmId,
               incomeAccountRef: '',
+              expenseAccountRef: '',
+              assetAccountRef: '',
             }
           }
         }
