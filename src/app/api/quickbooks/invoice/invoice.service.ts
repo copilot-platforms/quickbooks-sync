@@ -348,6 +348,7 @@ export class InvoiceService extends BaseService {
       CustomerRef: {
         value: customer?.Id || existingCustomer?.qbCustomerId,
       },
+      DocNumber: invoiceResource.number, // copilot invoice number as DocNumber
       // include tax and dates
       ...(invoiceResource?.taxAmount && {
         TxnTaxDetail: {
@@ -368,7 +369,6 @@ export class InvoiceService extends BaseService {
     const invoicePayload = {
       portalId: qbTokenInfo.intuitRealmId,
       invoiceNumber: invoiceResource.number,
-      qbDocNumber: invoiceRes.Invoice.DocNumber,
       qbInvoiceId: invoiceRes.Invoice.Id,
       qbSyncToken: invoiceRes.Invoice.SyncToken,
     }

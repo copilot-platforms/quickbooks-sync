@@ -8,7 +8,6 @@ export const QBInvoiceSync = table('qb_invoice_sync', {
   id: t.uuid().defaultRandom().primaryKey(),
   portalId: t.varchar('portal_id', { length: 255 }).notNull(),
   invoiceNumber: t.varchar('invoice_number').notNull(),
-  qbDocNumber: t.varchar('qb_doc_number'),
   qbInvoiceId: t.varchar('qb_invoice_id'),
   qbSyncToken: t.varchar('qb_sync_token', { length: 100 }),
   ...timestamps,
