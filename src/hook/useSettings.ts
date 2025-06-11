@@ -54,7 +54,7 @@ export const useProductMappingSettings = () => {
   }>({})
 
   const [mappingItems, setMappingItems] = useState<ProductMappingItemType[]>([])
-  const { token } = useAuth()
+  const { token, setAuthParams } = useAuth()
 
   const submitMappingItems = async () => {
     const res = await postFetcher(
@@ -65,6 +65,12 @@ export const useProductMappingSettings = () => {
     if (!res || res?.error) {
       console.error({ res })
       alert('Error submitting mapping items') // TODO: UI toastr if error
+    } else {
+      // enable the "Enable" button in callout
+      setAuthParams((prev) => ({
+        ...prev,
+        itemMapped: true,
+      }))
     }
   }
 
@@ -168,7 +174,7 @@ export const useProductMappingSettings = () => {
 export const useProductTableSetting = (
   setMappingItems: (mapProducts: ProductMappingItemType[]) => void,
 ) => {
-  const { token } = useAuth()
+  const { token, setAuthParams } = useAuth()
   const {
     data: products,
     error: productError,
@@ -194,6 +200,12 @@ export const useProductTableSetting = (
     let newMap
     if (products) {
       if (!mappedItems || Object.keys(mappedItems).length === 0) {
+        // disable the "Enable" button in callout
+        setAuthParams((prev) => ({
+          ...prev,
+          itemMapped: false,
+        }))
+
         // if mapped list is empty, exclude all items by default
         newMap = products?.products?.map((product: ProductDataType) => {
           return {
@@ -207,6 +219,11 @@ export const useProductTableSetting = (
           }
         })
       } else {
+        // enable the "Enable" button in callout
+        setAuthParams((prev) => ({
+          ...prev,
+          itemMapped: true,
+        }))
         newMap = products?.products?.map((product: ProductDataType) => {
           const mappedItem = mappedItems.find(
             // search for the already mapped product from the mapped list

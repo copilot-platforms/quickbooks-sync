@@ -13,6 +13,7 @@ export const useDashboardMain = () => {
     reconnect,
     lastSyncTimestamp,
     isEnabled,
+    itemMapped,
   } = useAuth()
 
   const { handleConnect, isReconnecting, handleSyncEnable } = useQuickbooks(
@@ -49,5 +50,6 @@ export const useDashboardMain = () => {
     buttonAction,
     isReconnecting,
     lastSyncTimestamp,
+    itemMapped,
   }
 }
