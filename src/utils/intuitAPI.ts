@@ -13,6 +13,7 @@ import {
   QBPaymentCreatePayloadType,
   QBVoidInvoicePayloadType,
   QBAccountCreatePayloadType,
+  QBPurchaseCreatePayloadType,
 } from '@/type/dto/intuitAPI.dto'
 import httpStatus from 'http-status'
 
@@ -449,6 +450,33 @@ export default class IntuitAPI {
     return account
   }
 
+  async _createPurchase(payload: QBPurchaseCreatePayloadType) {
+    console.info('IntuitAPI#createPurchase | Purchase create start')
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/purchase?minorversion=${intuitApiMinorVersion}`
+    const purchase = await this.postFetchWithHeaders(url, payload)
+
+    if (!purchase)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createPurchase | message = no response',
+      )
+
+    if (purchase?.Fault) {
+      console.error({ Error: purchase.Fault?.Error })
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createPurchase | Error while creating purchase',
+        purchase.Fault?.Error,
+      )
+    }
+
+    console.info(
+      'IntuitAPI#createPurchase | Purchase created with Id =',
+      purchase.Purchase?.Id,
+    )
+    return purchase
+  }
+
   private wrapWithRetry<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
   ): (...args: Args) => Promise<R> {
@@ -470,4 +498,5 @@ export default class IntuitAPI {
   voidInvoice = this.wrapWithRetry(this._voidInvoice)
   getAnAccountByName = this.wrapWithRetry(this._getAnAccountByName)
   createAccount = this.wrapWithRetry(this._createAccount)
+  createPurchase = this.wrapWithRetry(this._createPurchase)
 }

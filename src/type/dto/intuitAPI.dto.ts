@@ -134,3 +134,21 @@ export const QBAccountCreatePayloadSchema = z.object({
 export type QBAccountCreatePayloadType = z.infer<
   typeof QBAccountCreatePayloadSchema
 >
+
+export const QBPurchaseCreatePayloadSchema = z.object({
+  PaymentType: z.literal('Cash'),
+  AccountRef: QBNameValueSchema,
+  Line: z.array(
+    z.object({
+      DetailType: z.literal('AccountBasedExpenseLineDetail'),
+      Amount: z.number(),
+      AccountBasedExpenseLineDetail: z.object({
+        AccountRef: QBNameValueSchema,
+      }),
+    }),
+  ),
+})
+
+export type QBPurchaseCreatePayloadType = z.infer<
+  typeof QBPurchaseCreatePayloadSchema
+>

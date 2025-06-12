@@ -8,8 +8,12 @@ import {
   QBPaymentUpdateSchemaType,
 } from '@/db/schema/qbPaymentSync'
 import { WhereClause } from '@/type/common'
-import { QBPaymentCreatePayloadType } from '@/type/dto/intuitAPI.dto'
-import IntuitAPI from '@/utils/intuitAPI'
+import {
+  QBPaymentCreatePayloadType,
+  QBPurchaseCreatePayloadSchema,
+} from '@/type/dto/intuitAPI.dto'
+import { PaymentSucceededResponseType } from '@/type/dto/webhook.dto'
+import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 
 export class PaymentService extends BaseService {
   async createQBPayment(
@@ -65,5 +69,41 @@ export class PaymentService extends BaseService {
       qbSyncToken: qbPaymentRes.Payment.SyncToken,
     }
     await this.createQBPayment(paymentPayload, ['id'])
+  }
+
+  async webhookPaymentSucceeded(
+    parsedPaymentSucceedResource: PaymentSucceededResponseType,
+    qbTokenInfo: IntuitAPITokensType,
+  ): Promise<void> {
+    const paymentResource = parsedPaymentSucceedResource.data
+    const payload = {
+      PaymentType: 'Cash' as const,
+      AccountRef: {
+        value: qbTokenInfo.assetAccountRef,
+      },
+      Line: [
+        {
+          DetailType: 'AccountBasedExpenseLineDetail' as const,
+          Amount: paymentResource.feeAmount.paidByPlatform / 100,
+          AccountBasedExpenseLineDetail: {
+            AccountRef: {
+              value: qbTokenInfo.expenseAccountRef,
+            },
+          },
+        },
+      ],
+    }
+
+    const parsedPayload = QBPurchaseCreatePayloadSchema.parse(payload)
+    const intuitApi = new IntuitAPI(qbTokenInfo)
+
+    console.info(
+      'PaymentService#webhookPaymentSucceeded | Creating expense for absorbed fees',
+    )
+    const res = await intuitApi.createPurchase(parsedPayload)
+    console.info(
+      'PaymentService#webhookPaymentSucceeded | Created expense for absorbed fees with purchase Id =',
+      res.Purchase?.Id,
+    )
   }
 }

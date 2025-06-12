@@ -2,10 +2,12 @@ import { BaseService } from '@/app/api/core/services/base.service'
 import { InvoiceStatus } from '@/app/api/core/types/invoice'
 import { WebhookEvents } from '@/app/api/core/types/webhook'
 import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
+import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
 import {
   InvoiceCreatedResponseSchema,
   InvoicePaidResponseSchema,
+  PaymentSucceededResponseSchema,
   PriceCreatedResponseSchema,
   ProductCreatedResponseSchema,
   ProductUpdatedResponseSchema,
@@ -149,6 +151,27 @@ export class WebhookService extends BaseService {
           parsedVoidedInvoiceResource,
           qbTokenInfo,
         )
+        break
+
+      case WebhookEvents.PAYMENT_SUCCEEDED:
+        const parsedPaymentSucceed =
+          PaymentSucceededResponseSchema.safeParse(payload)
+        if (!parsedPaymentSucceed.success || !parsedPaymentSucceed.data) {
+          console.error(
+            'WebhookService#handleWebhookEvent | Could not parse invoice paid response',
+          )
+          break
+        }
+        const parsedPaymentSucceedResource = parsedPaymentSucceed.data
+
+        if (parsedPaymentSucceedResource.data.feeAmount.paidByPlatform > 0) {
+          // only track if the fee amount is paid by platform
+          const paymentService = new PaymentService(this.user)
+          await paymentService.webhookPaymentSucceeded(
+            parsedPaymentSucceedResource,
+            qbTokenInfo,
+          )
+        }
         break
 
       default:
