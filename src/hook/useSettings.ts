@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useAuth } from '@/app/context/AuthContext'
+import { useApp } from '@/app/context/AppContext'
 import { useSwrHelper } from '@/helper/swr.helper'
 import { ProductFlattenArrayResponseType } from '@/type/dto/api.dto'
 import { getTimeInterval } from '@/utils/common'
@@ -9,6 +9,8 @@ import {
   ProductMappingItemType,
 } from '@/db/schema/qbProductSync'
 import { postFetcher } from '@/helper/fetch.helper'
+import { mutate } from 'swr'
+import equal from 'deep-equal'
 
 export type QuickbooksItemType = {
   Name: string
@@ -22,6 +24,7 @@ export type ProductDataType = {
   name: string
   price: string
   priceId: string
+  description?: string
 }
 
 export type QBItemDataType = {
@@ -54,7 +57,8 @@ export const useProductMappingSettings = () => {
   }>({})
 
   const [mappingItems, setMappingItems] = useState<ProductMappingItemType[]>([])
-  const { token, setAuthParams } = useAuth()
+  const { token, initialProductMap, showProductConfirm, setAppParams } =
+    useApp()
 
   const submitMappingItems = async () => {
     const res = await postFetcher(
@@ -66,9 +70,10 @@ export const useProductMappingSettings = () => {
       console.error({ res })
       alert('Error submitting mapping items') // TODO: UI toastr if error
     } else {
-      // enable the "Enable" button in callout
-      setAuthParams((prev) => ({
+      mutate(`/api/quickbooks/product/map?token=${token}`)
+      setAppParams((prev) => ({
         ...prev,
+        showProductConfirm: false,
         itemMapped: true,
       }))
     }
@@ -130,6 +135,7 @@ export const useProductMappingSettings = () => {
         return {
           ...mapItem,
           name: item.name || null,
+          description: products[index].description || '',
           priceId: products[index].priceId,
           productId: products[index].id,
           unitPrice: item.numericPrice?.toString() || null,
@@ -141,6 +147,10 @@ export const useProductMappingSettings = () => {
       return mapItem
     })
 
+    setAppParams((prev) => ({
+      ...prev,
+      showProductConfirm: !equal(initialProductMap, mappedArray),
+    }))
     setMappingItems(mappedArray)
   }
 
@@ -168,13 +178,14 @@ export const useProductMappingSettings = () => {
     getFilteredItems,
     mappingItems,
     setMappingItems,
+    showProductConfirm,
   }
 }
 
 export const useProductTableSetting = (
   setMappingItems: (mapProducts: ProductMappingItemType[]) => void,
 ) => {
-  const { token, setAuthParams } = useAuth()
+  const { token, setAppParams } = useApp()
   const {
     data: products,
     error: productError,
@@ -197,19 +208,17 @@ export const useProductTableSetting = (
   const error = productError || quickbooksError || mappedItemsError
 
   useEffect(() => {
-    let newMap
-    if (products) {
-      if (!mappedItems || Object.keys(mappedItems).length === 0) {
-        // disable the "Enable" button in callout
-        setAuthParams((prev) => ({
-          ...prev,
-          itemMapped: false,
-        }))
-
+    let newMap: ProductMappingItemType[],
+      itemMapped = false
+    const mappedItemEmpty =
+      !mappedItems || Object.keys(mappedItems).length === 0
+    if (products && !isLoading) {
+      if (mappedItemEmpty) {
         // if mapped list is empty, exclude all items by default
         newMap = products?.products?.map((product: ProductDataType) => {
           return {
             name: null,
+            description: product.description,
             priceId: product.priceId,
             productId: product.id,
             unitPrice: null,
@@ -219,11 +228,7 @@ export const useProductTableSetting = (
           }
         })
       } else {
-        // enable the "Enable" button in callout
-        setAuthParams((prev) => ({
-          ...prev,
-          itemMapped: true,
-        }))
+        itemMapped = true
         newMap = products?.products?.map((product: ProductDataType) => {
           const mappedItem = mappedItems.find(
             // search for the already mapped product from the mapped list
@@ -236,6 +241,7 @@ export const useProductTableSetting = (
             // if found, return with the mapped product in mapping item
             return {
               name: mappedItem.name,
+              description: mappedItem.description,
               priceId: product.priceId,
               productId: product.id,
               unitPrice: mappedItem.unitPrice,
@@ -246,6 +252,7 @@ export const useProductTableSetting = (
           }
           return {
             name: null,
+            description: product.description,
             priceId: product.priceId,
             productId: product.id,
             unitPrice: null,
@@ -256,9 +263,18 @@ export const useProductTableSetting = (
         })
       }
       ProductMappingItemArraySchema.parse(newMap)
+      // create deep copy of the newMap.
+      if (newMap) {
+        setAppParams((prev) => ({
+          ...prev,
+          initialProductMap: mappedItemEmpty ? [] : structuredClone(newMap), // allow confirm if not product mapping in intial state
+          showProductConfirm: mappedItemEmpty, // allow confirm if not product mapping in intial state
+          itemMapped,
+        }))
+      }
       setMappingItems(newMap)
     }
-  }, [products])
+  }, [products, mappedItems])
 
   const formatProductDataForListing = (
     data: ProductFlattenArrayResponseType,
@@ -274,6 +290,7 @@ export const useProductTableSetting = (
           return {
             id: product.id,
             name: product.name,
+            description: product.description || '',
             price: newPrice,
             numericPrice: product.amount,
             priceId: product.priceId,

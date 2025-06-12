@@ -10,6 +10,8 @@ import {
   QBInvoiceSync,
   QBInvoiceCreateSchema,
   QBInvoiceCreateSchemaType,
+  QBInvoiceUpdateSchemaType,
+  QBInvoiceUpdateSchema,
 } from '@/db/schema/qbInvoiceSync'
 import {
   QBNameValueSchemaType,
@@ -19,17 +21,27 @@ import { convert } from 'html-to-text'
 import {
   InvoiceCreatedResponseType,
   InvoiceLineItemSchemaType,
+  InvoicePaidResponseType,
 } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import dayjs from 'dayjs'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull, SQL } from 'drizzle-orm'
 import httpStatus from 'http-status'
 import { bottleneck } from '@/utils/bottleneck'
+import { InvoiceStatus } from '@/app/api/core/types/invoice'
+import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
+import { TransactionType, WhereClause } from '@/type/common'
+import { z } from 'zod'
 
 const oneOffItem = {
   name: 'Services', // for one-off items
   value: '1',
+}
+
+type InvoiceItemRefAndDescriptionType = {
+  ref: QBNameValueSchemaType
+  productDescription?: string
 }
 
 export class InvoiceService extends BaseService {
@@ -57,6 +69,28 @@ export class InvoiceService extends BaseService {
     return invoiceSync
   }
 
+  async updateQBInvoice(
+    payload: QBInvoiceUpdateSchemaType,
+    conditions: WhereClause,
+    returningFields?: (keyof typeof QBInvoiceSync)[],
+  ) {
+    const parsedInsertPayload = QBInvoiceUpdateSchema.parse(payload)
+
+    const query = this.db
+      .update(QBInvoiceSync)
+      .set(parsedInsertPayload)
+      .where(conditions)
+
+    const [invoiceSync] =
+      returningFields && returningFields.length > 0
+        ? await query.returning(
+            buildReturningFields(QBInvoiceSync, returningFields),
+          )
+        : await query.returning()
+
+    return invoiceSync
+  }
+
   async getInvoiceByNumber(
     invoiceNumber: string,
     returningFields?: (keyof typeof QBInvoiceSync)[],
@@ -71,6 +105,7 @@ export class InvoiceService extends BaseService {
         and(
           isNull(QBTokens.deletedAt),
           eq(QBInvoiceSync.invoiceNumber, invoiceNumber),
+          eq(QBInvoiceSync.portalId, this.user.workspaceId),
         ),
       ...(columns && { columns }),
     })
@@ -83,7 +118,7 @@ export class InvoiceService extends BaseService {
     productId: string,
     priceId: string,
     intuitApi: IntuitAPI,
-  ): Promise<QBNameValueSchemaType> {
+  ): Promise<InvoiceItemRefAndDescriptionType> {
     const productService = new ProductService(this.user)
     const mapping = await productService.getMappingByProductPriceId(
       productId,
@@ -93,12 +128,13 @@ export class InvoiceService extends BaseService {
       if (mapping.isExcluded) {
         // if excluded, do not include in invoice and send as one-off item
         console.info('InvoiceService#getInvoiceItemRef | Product is excluded')
-        return oneOffItem
+        return { ref: oneOffItem }
       }
       if (mapping.qbItemId) {
         console.info('InvoiceService#getInvoiceItemRef | Product map found')
         return {
-          value: mapping.qbItemId,
+          ref: { value: mapping.qbItemId },
+          productDescription: mapping.description || '',
         }
       }
     }
@@ -145,7 +181,7 @@ export class InvoiceService extends BaseService {
     }
     await productService.createQBProduct(productMappingPayload)
 
-    return { value: qbItem.Id }
+    return { ref: { value: qbItem.Id }, productDescription }
   }
 
   async prepareLineItemPayload(
@@ -154,7 +190,11 @@ export class InvoiceService extends BaseService {
   ) {
     const actualAmount = lineItem.amount / 100 // Convert to dollar. amount received in cents.
 
-    let itemRef: QBNameValueSchemaType = oneOffItem
+    let itemRef: InvoiceItemRefAndDescriptionType = {
+      ref: oneOffItem,
+      productDescription: lineItem.description,
+    }
+
     if (lineItem.productId && lineItem.priceId) {
       itemRef = await this.getInvoiceItemRef(
         lineItem.productId,
@@ -166,7 +206,7 @@ export class InvoiceService extends BaseService {
       DetailType: 'SalesItemLineDetail',
       Amount: actualAmount * lineItem.quantity,
       SalesItemLineDetail: {
-        ItemRef: itemRef,
+        ItemRef: itemRef.ref,
         Qty: lineItem.quantity,
         UnitPrice: actualAmount,
         TaxCodeRef: {
@@ -175,7 +215,10 @@ export class InvoiceService extends BaseService {
           value: 'TAX',
         },
       },
-      Description: lineItem.description,
+      Description:
+        typeof itemRef.productDescription === 'undefined'
+          ? lineItem.description
+          : itemRef.productDescription, // specific check for undefined type. Allow empty string
     }
   }
 
@@ -266,7 +309,7 @@ export class InvoiceService extends BaseService {
       }
       // create map for customer into mapping table
       const customerSyncPayload = {
-        portalId: qbTokenInfo.intuitRealmId,
+        portalId: this.user.workspaceId,
         clientId: client.id,
         givenName: client.givenName,
         familyName: client.familyName,
@@ -343,10 +386,12 @@ export class InvoiceService extends BaseService {
     const lineItems = await Promise.all(lineItemPromises)
 
     // 5. create invoice in QB
+    const customerRefValue: string =
+      customer?.Id || existingCustomer?.qbCustomerId
     const qbInvoicePayload = {
       Line: lineItems,
       CustomerRef: {
-        value: customer?.Id || existingCustomer?.qbCustomerId,
+        value: customerRefValue,
       },
       DocNumber: invoiceResource.number, // copilot invoice number as DocNumber
       // include tax and dates
@@ -366,12 +411,128 @@ export class InvoiceService extends BaseService {
     // 6. create invoice in QB
     const invoiceRes = await intuitApi.createInvoice(qbInvoicePayload)
 
+    /**
+     * here, creates a payment if invoice is paid. "invoice.paid" hook can trigger before "invoice.created" hook
+     * this can create issue as invoice is not found when "invoice.paid" hook is triggered
+     */
+    if (invoiceResource.status === InvoiceStatus.PAID) {
+      const paymentService = new PaymentService(this.user)
+      const totalActualAmount = invoiceResource.total / 100
+      const qbPaymentPayload = {
+        TotalAmt: totalActualAmount,
+        CustomerRef: {
+          value: customerRefValue,
+        },
+        Line: [
+          {
+            Amount: totalActualAmount,
+            LinkedTxn: [
+              {
+                TxnId: invoiceRes.Invoice.Id,
+                TxnType: TransactionType.INVOICE,
+              },
+            ],
+          },
+        ],
+      }
+      await paymentService.createPaymentAndSync(
+        intuitApi,
+        qbPaymentPayload,
+        invoiceResource.number,
+      )
+    }
+
     const invoicePayload = {
-      portalId: qbTokenInfo.intuitRealmId,
+      portalId: this.user.workspaceId,
       invoiceNumber: invoiceResource.number,
       qbInvoiceId: invoiceRes.Invoice.Id,
       qbSyncToken: invoiceRes.Invoice.SyncToken,
+      clientId: client.id,
+      status: invoiceResource.status,
     }
     await this.createQBInvoice(invoicePayload)
+  }
+
+  async webhookInvoicePaid(
+    payload: InvoicePaidResponseType,
+    qbTokenInfo: IntuitAPITokensType,
+  ): Promise<void> {
+    // 1. check if the status of invoice is already paid in sync table
+    const invoiceSync = await this.getInvoiceByNumber(payload.data.number, [
+      'id',
+      'qbInvoiceId',
+      'status',
+      'clientId',
+    ])
+
+    if (!invoiceSync) {
+      // very minimal chance for this. May occur when invoice with paid status is created (won't hamper the flow).
+      console.error(
+        'WebhookService#webhookInvoicePaid | Invoice not found in sync table',
+      )
+      return
+    }
+
+    if (invoiceSync?.status === InvoiceStatus.PAID) {
+      console.info('WebhookService#webhookInvoicePaid | Invoice already paid')
+      return
+    }
+
+    // 2. if not, create payment in QB, sync payment in payment sync table and change invoice status to paid
+    if (!invoiceSync?.clientId) {
+      throw new APIError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'WebhookService#webhookInvoicePaid | ClientId not found',
+      )
+    }
+    const customerService = new CustomerService(this.user)
+    const existingCustomer = await customerService.getByClientId(
+      invoiceSync.clientId,
+      ['id', 'qbCustomerId'],
+    )
+    if (!existingCustomer) {
+      throw new APIError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'WebhookService#webhookInvoicePaid | Customer mapping not found',
+      )
+    }
+
+    const actualAmount = payload.data.total / 100 // Convert to dollar. amount received in cents.
+    const qbPaymentPayload = {
+      TotalAmt: actualAmount,
+      CustomerRef: {
+        value: existingCustomer.qbCustomerId,
+      },
+      Line: [
+        {
+          Amount: actualAmount,
+          LinkedTxn: [
+            {
+              TxnId: z.string().parse(invoiceSync.qbInvoiceId), // this links payment to invoice docs reference: https://help.developer.intuit.com/s/question/0D54R00007Ot7ZXSAZ/linking-payment-to-invoice-through-api
+              TxnType: TransactionType.INVOICE,
+            },
+          ],
+        },
+      ],
+    }
+    const intuitApi = new IntuitAPI(qbTokenInfo)
+    const paymentService = new PaymentService(this.user)
+    await paymentService.createPaymentAndSync(
+      intuitApi,
+      qbPaymentPayload,
+      payload.data.number,
+    )
+
+    const whereConditions = and(
+      eq(QBInvoiceSync.id, invoiceSync.id),
+      eq(QBInvoiceSync.portalId, this.user.workspaceId),
+    ) as SQL
+    await this.updateQBInvoice(
+      {
+        status: InvoiceStatus.PAID,
+      },
+      whereConditions,
+      ['id'],
+    )
   }
 }
