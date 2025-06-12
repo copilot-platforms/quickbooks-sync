@@ -88,7 +88,7 @@ export const InvoicePaidResponseSchema = z.object({
   data: z.object({
     id: z.string(),
     number: z.string(),
-    status: z.string(),
+    status: z.nativeEnum(InvoiceStatus),
     total: z.number(),
   }),
 })

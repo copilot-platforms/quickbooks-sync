@@ -5,7 +5,7 @@ import {
   reconnectIfCta,
 } from '@/action/quickbooks.action'
 import HomeClient from '@/app/(home)/HomeClient'
-import { AuthProvider } from '@/app/context/AuthContext'
+import { AppProvider } from '@/app/context/AppContext'
 import { SilentError } from '@/components/template/SilentError'
 import { apiUrl } from '@/config'
 import { z } from 'zod'
@@ -64,7 +64,7 @@ export default async function Main({
 
   return (
     <>
-      <AuthProvider
+      <AppProvider
         token={token}
         tokenPayload={tokenPayload}
         syncFlag={syncFlag}
@@ -74,7 +74,7 @@ export default async function Main({
         lastSyncTimestamp={successLog?.updatedAt || null}
       >
         <HomeClient />
-      </AuthProvider>
+      </AppProvider>
     </>
   )
 }

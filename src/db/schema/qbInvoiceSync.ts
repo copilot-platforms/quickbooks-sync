@@ -8,7 +8,10 @@ import { z } from 'zod'
 export function enumToPgEnum<T extends Record<string, any>>(
   myEnum: T,
 ): [T[keyof T], ...T[keyof T][]] {
-  return Object.values(myEnum).map((value: any) => `${value}`) as any
+  return Object.values(myEnum).map((value: any) => `${value}`) as [
+    T[keyof T],
+    ...T[keyof T][],
+  ]
 }
 
 const invoiceStatusEnum = t.pgEnum(
@@ -20,7 +23,6 @@ export const QBInvoiceSync = table('qb_invoice_sync', {
   id: t.uuid().defaultRandom().primaryKey(),
   portalId: t.varchar('portal_id', { length: 255 }).notNull(),
   invoiceNumber: t.varchar('invoice_number').notNull(),
-  qbDocNumber: t.varchar('qb_doc_number'),
   qbInvoiceId: t.varchar('qb_invoice_id'),
   qbSyncToken: t.varchar('qb_sync_token', { length: 100 }),
   clientId: t.uuid('client_id'),

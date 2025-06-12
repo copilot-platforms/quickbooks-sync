@@ -17,6 +17,7 @@ export default function SettingAccordion() {
     submitMappingItems,
     mappingItems,
     setMappingItems,
+    showProductConfirm,
   } = useProductMappingSettings()
 
   const accordionItems = [
@@ -58,7 +59,7 @@ export default function SettingAccordion() {
       {accordionItems.map((item, index) => {
         return (
           <div key={item.id} className="relative">
-            {index === 0 && (
+            {index === 0 && showProductConfirm && (
               <div
                 className={`absolute top-[14px] right-0 z-10 flex items-center justify-end`}
               >

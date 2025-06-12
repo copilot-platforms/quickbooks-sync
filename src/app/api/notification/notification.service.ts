@@ -51,7 +51,7 @@ export class NotificationService extends BaseService {
         }
       }
     } catch (error) {
-      console.log(`Failed to send notification for action: ${action}`, {
+      console.error(`Failed to send notification for action: ${action}`, {
         error,
       })
     }

@@ -1,6 +1,6 @@
 {
-  "id": "ef9d8980-b0c1-443a-a8cd-5a3c5b6fae5b",
-  "prevId": "c9a2e7f4-6842-4259-86a8-200516729821",
+  "id": "347a04b5-1f51-4d7c-82fa-7d75f601fdc4",
+  "prevId": "ef9d8980-b0c1-443a-a8cd-5a3c5b6fae5b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -190,6 +190,20 @@
           "primaryKey": false,
           "notNull": false
         },
+        "client_id": {
+          "name": "client_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "invoice_statuses",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'open'"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -236,21 +250,27 @@
           "primaryKey": false,
           "notNull": true
         },
-        "payment_id": {
-          "name": "payment_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
         "invoice_number": {
           "name": "invoice_number",
           "type": "varchar",
           "primaryKey": false,
           "notNull": true
         },
+        "total_amount": {
+          "name": "total_amount",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
         "qb_payment_id": {
           "name": "qb_payment_id",
           "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qb_sync_token": {
+          "name": "qb_sync_token",
+          "type": "varchar(100)",
           "primaryKey": false,
           "notNull": true
         },
