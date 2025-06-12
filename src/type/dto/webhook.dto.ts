@@ -82,3 +82,14 @@ export const PriceCreatedResponseSchema = z.object({
 export type PriceCreatedResponseType = z.infer<
   typeof PriceCreatedResponseSchema
 >
+
+export const InvoicePaidResponseSchema = z.object({
+  eventType: z.string(),
+  data: z.object({
+    id: z.string(),
+    number: z.string(),
+    status: z.nativeEnum(InvoiceStatus),
+    total: z.number(),
+  }),
+})
+export type InvoicePaidResponseType = z.infer<typeof InvoicePaidResponseSchema>

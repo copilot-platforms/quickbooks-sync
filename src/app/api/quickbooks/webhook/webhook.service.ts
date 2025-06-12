@@ -5,6 +5,7 @@ import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
 import {
   InvoiceCreatedResponseSchema,
+  InvoicePaidResponseSchema,
   PriceCreatedResponseSchema,
   ProductCreatedResponseSchema,
   ProductUpdatedResponseSchema,
@@ -31,7 +32,7 @@ export class WebhookService extends BaseService {
 
         // Check if invoice is in draft status
         if (parsedInvoiceResource.data.status === InvoiceStatus.DRAFT) {
-          console.log(
+          console.info(
             'WebhookService#handleWebhookEvent#draft | Invoice is in draft status',
           )
           break
@@ -46,7 +47,7 @@ export class WebhookService extends BaseService {
 
         // Do not store if invoice already exists
         if (invoice) {
-          console.log(
+          console.info(
             'WebhookService#handleWebhookEvent#exists | Invoice already exists in the db',
           )
           break
@@ -56,7 +57,7 @@ export class WebhookService extends BaseService {
         if (qbTokenInfo.accessToken === '') {
           // store invoice info in db. Later update the record when sync is back on
           const invoicePayload = {
-            portalId: qbTokenInfo.intuitRealmId,
+            portalId: this.user.workspaceId,
             invoiceNumber: parsedInvoiceResource.data.number,
           }
           await invoiceService.createQBInvoice(invoicePayload)
@@ -114,6 +115,22 @@ export class WebhookService extends BaseService {
         productService = new ProductService(this.user)
         await productService.webhookPriceCreated(
           parsedCreatedPriceResource,
+          qbTokenInfo,
+        )
+        break
+
+      case WebhookEvents.INVOICE_PAID:
+        const parsedPaidInvoice = InvoicePaidResponseSchema.safeParse(payload)
+        if (!parsedPaidInvoice.success || !parsedPaidInvoice.data) {
+          console.error(
+            'WebhookService#handleWebhookEvent | Could not parse invoice paid response',
+          )
+          break
+        }
+        const parsedPaidInvoiceResource = parsedPaidInvoice.data
+        const invService = new InvoiceService(this.user)
+        await invService.webhookInvoicePaid(
+          parsedPaidInvoiceResource,
           qbTokenInfo,
         )
         break
