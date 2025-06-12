@@ -59,7 +59,7 @@ export default class Intuit {
   async getRefreshedQBToken(
     refreshToken: string,
   ): Promise<QBAuthTokenResponse> {
-    console.log('Refreshing QuickBooks token...')
+    console.info('Refreshing QuickBooks token...')
 
     const authResponse = await this.refreshAccessToken(refreshToken)
     const tokenInfo = QBAuthTokenResponseSchema.parse(authResponse.token)

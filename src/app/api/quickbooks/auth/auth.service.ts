@@ -106,7 +106,7 @@ export class AuthService extends BaseService {
       })
       return true
     } catch (error: unknown) {
-      console.log('AuthService#handleTokenExchange | Error =', error)
+      console.error('AuthService#handleTokenExchange | Error =', error)
       // store error connection log
       await logService.upsertLatestPendingConnectionLog({
         portalId,
@@ -200,7 +200,7 @@ export class AuthService extends BaseService {
       } catch (error: unknown) {
         if (isAxiosError(error)) {
           // Special handling for refresh token expired
-          console.log(
+          console.error(
             'Refresh token is invalid or expired, reauthorization needed.',
             { message: error.response.data?.error },
           )

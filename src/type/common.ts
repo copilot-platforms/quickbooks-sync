@@ -1,4 +1,5 @@
 import { ProductStatus } from '@/app/api/core/types/product'
+import { SQL } from 'drizzle-orm'
 import { z } from 'zod'
 
 export const HexColorSchema = z
@@ -253,3 +254,9 @@ export const changeEnableStatusRequestSchema = z.object({
 export type changeEnableStatusRequest = z.infer<
   typeof changeEnableStatusRequestSchema
 >
+
+export enum TransactionType {
+  INVOICE = 'Invoice',
+}
+
+export type WhereClause = SQL<unknown>
