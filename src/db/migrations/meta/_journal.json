@@ -117,8 +117,15 @@
     {
       "idx": 16,
       "version": "7",
-      "when": 1749466411465,
-      "tag": "0016_alter_invoice_sync_and_payment_sync_tables",
+      "when": 1749624326469,
+      "tag": "0016_removed_doc_number_column_from_invoice_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1749712949693,
+      "tag": "0017_alter_invoice_sync_and_payment_sync_tables",
       "breakpoints": true
     }
   ]

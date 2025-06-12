@@ -39,6 +39,11 @@ const oneOffItem = {
   value: '1',
 }
 
+type InvoiceItemRefAndDescriptionType = {
+  ref: QBNameValueSchemaType
+  productDescription?: string
+}
+
 export class InvoiceService extends BaseService {
   private copilot: CopilotAPI
 
@@ -113,7 +118,7 @@ export class InvoiceService extends BaseService {
     productId: string,
     priceId: string,
     intuitApi: IntuitAPI,
-  ): Promise<QBNameValueSchemaType> {
+  ): Promise<InvoiceItemRefAndDescriptionType> {
     const productService = new ProductService(this.user)
     const mapping = await productService.getMappingByProductPriceId(
       productId,
@@ -123,12 +128,13 @@ export class InvoiceService extends BaseService {
       if (mapping.isExcluded) {
         // if excluded, do not include in invoice and send as one-off item
         console.info('InvoiceService#getInvoiceItemRef | Product is excluded')
-        return oneOffItem
+        return { ref: oneOffItem }
       }
       if (mapping.qbItemId) {
         console.info('InvoiceService#getInvoiceItemRef | Product map found')
         return {
-          value: mapping.qbItemId,
+          ref: { value: mapping.qbItemId },
+          productDescription: mapping.description || '',
         }
       }
     }
@@ -175,7 +181,7 @@ export class InvoiceService extends BaseService {
     }
     await productService.createQBProduct(productMappingPayload)
 
-    return { value: qbItem.Id }
+    return { ref: { value: qbItem.Id }, productDescription }
   }
 
   async prepareLineItemPayload(
@@ -184,7 +190,11 @@ export class InvoiceService extends BaseService {
   ) {
     const actualAmount = lineItem.amount / 100 // Convert to dollar. amount received in cents.
 
-    let itemRef: QBNameValueSchemaType = oneOffItem
+    let itemRef: InvoiceItemRefAndDescriptionType = {
+      ref: oneOffItem,
+      productDescription: lineItem.description,
+    }
+
     if (lineItem.productId && lineItem.priceId) {
       itemRef = await this.getInvoiceItemRef(
         lineItem.productId,
@@ -196,7 +206,7 @@ export class InvoiceService extends BaseService {
       DetailType: 'SalesItemLineDetail',
       Amount: actualAmount * lineItem.quantity,
       SalesItemLineDetail: {
-        ItemRef: itemRef,
+        ItemRef: itemRef.ref,
         Qty: lineItem.quantity,
         UnitPrice: actualAmount,
         TaxCodeRef: {
@@ -205,7 +215,10 @@ export class InvoiceService extends BaseService {
           value: 'TAX',
         },
       },
-      Description: lineItem.description,
+      Description:
+        typeof itemRef.productDescription === 'undefined'
+          ? lineItem.description
+          : itemRef.productDescription, // specific check for undefined type. Allow empty string
     }
   }
 
@@ -380,6 +393,7 @@ export class InvoiceService extends BaseService {
       CustomerRef: {
         value: customerRefValue,
       },
+      DocNumber: invoiceResource.number, // copilot invoice number as DocNumber
       // include tax and dates
       ...(invoiceResource?.taxAmount && {
         TxnTaxDetail: {
@@ -431,7 +445,6 @@ export class InvoiceService extends BaseService {
     const invoicePayload = {
       portalId: this.user.workspaceId,
       invoiceNumber: invoiceResource.number,
-      qbDocNumber: invoiceRes.Invoice.DocNumber,
       qbInvoiceId: invoiceRes.Invoice.Id,
       qbSyncToken: invoiceRes.Invoice.SyncToken,
       clientId: client.id,
