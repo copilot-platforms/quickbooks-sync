@@ -8,7 +8,10 @@ import { z } from 'zod'
 export function enumToPgEnum<T extends Record<string, any>>(
   myEnum: T,
 ): [T[keyof T], ...T[keyof T][]] {
-  return Object.values(myEnum).map((value: any) => `${value}`) as any
+  return Object.values(myEnum).map((value: any) => `${value}`) as [
+    T[keyof T],
+    ...T[keyof T][],
+  ]
 }
 
 const invoiceStatusEnum = t.pgEnum(

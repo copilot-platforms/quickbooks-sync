@@ -257,7 +257,6 @@ export type changeEnableStatusRequest = z.infer<
 
 export enum TransactionType {
   INVOICE = 'Invoice',
-  EXPENSE = 'Expense',
 }
 
 export type WhereClause = SQL<unknown>

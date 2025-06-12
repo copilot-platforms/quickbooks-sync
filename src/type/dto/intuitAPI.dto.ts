@@ -1,4 +1,5 @@
 import { QBItemType } from '@/app/api/core/types/product'
+import { TransactionType } from '@/type/common'
 import { z } from 'zod'
 
 export const QBNameValueSchema = z.object({
@@ -103,7 +104,7 @@ export const QBPaymentCreatePayloadSchema = z.object({
       LinkedTxn: z.array(
         z.object({
           TxnId: z.string(),
-          TxnType: z.string(),
+          TxnType: z.nativeEnum(TransactionType),
         }),
       ),
     }),
@@ -112,4 +113,13 @@ export const QBPaymentCreatePayloadSchema = z.object({
 
 export type QBPaymentCreatePayloadType = z.infer<
   typeof QBPaymentCreatePayloadSchema
+>
+
+export const QBPaymentDeletePayloadSchema = z.object({
+  SyncToken: z.string(),
+  Id: z.string(),
+})
+
+export type QBPaymentDeletePayloadType = z.infer<
+  typeof QBPaymentDeletePayloadSchema
 >
