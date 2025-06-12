@@ -1,4 +1,5 @@
 'use client'
+import { ProductMappingItemType } from '@/db/schema/qbProductSync'
 import { Token } from '@/type/common'
 import { createContext, useContext, useState, ReactNode } from 'react'
 
@@ -10,6 +11,8 @@ type AuthContextType = {
   portalConnectionStatus: boolean
   isEnabled: boolean
   lastSyncTimestamp: string | null
+  showProductConfirm?: boolean
+  initialProductMap?: ProductMappingItemType[]
 }
 
 const AuthContext = createContext<
@@ -27,6 +30,8 @@ export const AuthProvider = ({
   portalConnectionStatus,
   isEnabled,
   lastSyncTimestamp,
+  showProductConfirm = false,
+  initialProductMap = [],
   children,
 }: AuthContextType & { children: ReactNode }) => {
   const [authParams, setAuthParams] = useState<AuthContextType>({
@@ -37,6 +42,8 @@ export const AuthProvider = ({
     portalConnectionStatus,
     lastSyncTimestamp,
     isEnabled,
+    showProductConfirm,
+    initialProductMap,
   })
   return (
     <AuthContext.Provider value={{ ...authParams, setAuthParams }}>
