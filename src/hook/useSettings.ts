@@ -22,6 +22,7 @@ export type ProductDataType = {
   name: string
   price: string
   priceId: string
+  description?: string
 }
 
 export type QBItemDataType = {
@@ -124,6 +125,7 @@ export const useProductMappingSettings = () => {
         return {
           ...mapItem,
           name: item.name || null,
+          description: products[index].description || null,
           priceId: products[index].priceId,
           productId: products[index].id,
           unitPrice: item.numericPrice?.toString() || null,
@@ -198,6 +200,7 @@ export const useProductTableSetting = (
         newMap = products?.products?.map((product: ProductDataType) => {
           return {
             name: null,
+            description: product.description,
             priceId: product.priceId,
             productId: product.id,
             unitPrice: null,
@@ -219,6 +222,7 @@ export const useProductTableSetting = (
             // if found, return with the mapped product in mapping item
             return {
               name: mappedItem.name,
+              description: mappedItem.description,
               priceId: product.priceId,
               productId: product.id,
               unitPrice: mappedItem.unitPrice,
@@ -229,6 +233,7 @@ export const useProductTableSetting = (
           }
           return {
             name: null,
+            description: null,
             priceId: product.priceId,
             productId: product.id,
             unitPrice: null,
@@ -257,6 +262,7 @@ export const useProductTableSetting = (
           return {
             id: product.id,
             name: product.name,
+            description: product.description || '',
             price: newPrice,
             numericPrice: product.amount,
             priceId: product.priceId,
