@@ -106,6 +106,7 @@ export const PaymentSucceededResponseSchema = z.object({
       paidByPlatform: z.number(),
       paidByClient: z.number(),
     }),
+    createdAt: z.string().datetime(),
   }),
 })
 export type PaymentSucceededResponseType = z.infer<

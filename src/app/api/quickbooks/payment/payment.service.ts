@@ -14,6 +14,7 @@ import {
 } from '@/type/dto/intuitAPI.dto'
 import { PaymentSucceededResponseType } from '@/type/dto/webhook.dto'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
+import dayjs from 'dayjs'
 
 export class PaymentService extends BaseService {
   async createQBPayment(
@@ -93,6 +94,8 @@ export class PaymentService extends BaseService {
       AccountRef: {
         value: qbTokenInfo.assetAccountRef,
       },
+      // DocNumber: "placeholder", // TODO: replace with invoice number
+      TxnDate: dayjs(paymentResource.createdAt).format('YYYY-MM-DD'), // the date format for due date follows XML Schema standard (YYYY-MM-DD). For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase#the-purchase-object
       Line: [
         {
           DetailType: 'AccountBasedExpenseLineDetail' as const,
