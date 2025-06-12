@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useAuth } from '@/app/context/AuthContext'
+import { useApp } from '@/app/context/AppContext'
 import { useSwrHelper } from '@/helper/swr.helper'
 import { ProductFlattenArrayResponseType } from '@/type/dto/api.dto'
 import { getTimeInterval } from '@/utils/common'
@@ -57,8 +57,8 @@ export const useProductMappingSettings = () => {
   }>({})
 
   const [mappingItems, setMappingItems] = useState<ProductMappingItemType[]>([])
-  const { token, initialProductMap, showProductConfirm, setAuthParams } =
-    useAuth()
+  const { token, initialProductMap, showProductConfirm, setAppParams } =
+    useApp()
 
   const submitMappingItems = async () => {
     const res = await postFetcher(
@@ -71,7 +71,7 @@ export const useProductMappingSettings = () => {
       alert('Error submitting mapping items') // TODO: UI toastr if error
     } else {
       mutate(`/api/quickbooks/product/map?token=${token}`)
-      setAuthParams((prev) => ({
+      setAppParams((prev) => ({
         ...prev,
         showProductConfirm: false,
       }))
@@ -146,7 +146,7 @@ export const useProductMappingSettings = () => {
       return mapItem
     })
 
-    setAuthParams((prev) => ({
+    setAppParams((prev) => ({
       ...prev,
       showProductConfirm: !equal(initialProductMap, mappedArray),
     }))
@@ -184,7 +184,7 @@ export const useProductMappingSettings = () => {
 export const useProductTableSetting = (
   setMappingItems: (mapProducts: ProductMappingItemType[]) => void,
 ) => {
-  const { token, setAuthParams } = useAuth()
+  const { token, setAppParams } = useApp()
   const {
     data: products,
     error: productError,
@@ -262,7 +262,7 @@ export const useProductTableSetting = (
       ProductMappingItemArraySchema.parse(newMap)
       // create deep copy of the newMap.
       if (newMap) {
-        setAuthParams((prev) => ({
+        setAppParams((prev) => ({
           ...prev,
           initialProductMap: mappedItemEmpty ? [] : structuredClone(newMap), // allow confirm if not product mapping in intial state
           showProductConfirm: mappedItemEmpty, // allow confirm if not product mapping in intial state

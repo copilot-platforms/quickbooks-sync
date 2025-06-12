@@ -3,7 +3,7 @@ import { ProductMappingItemType } from '@/db/schema/qbProductSync'
 import { Token } from '@/type/common'
 import { createContext, useContext, useState, ReactNode } from 'react'
 
-type AuthContextType = {
+type AppContextType = {
   token: string
   tokenPayload: Token
   syncFlag: boolean
@@ -15,14 +15,14 @@ type AuthContextType = {
   initialProductMap?: ProductMappingItemType[]
 }
 
-const AuthContext = createContext<
-  | (AuthContextType & {
-      setAuthParams: React.Dispatch<React.SetStateAction<AuthContextType>>
+const AppContext = createContext<
+  | (AppContextType & {
+      setAppParams: React.Dispatch<React.SetStateAction<AppContextType>>
     })
   | null
 >(null)
 
-export const AuthProvider = ({
+export const AppProvider = ({
   token,
   tokenPayload,
   syncFlag,
@@ -33,8 +33,8 @@ export const AuthProvider = ({
   showProductConfirm = false,
   initialProductMap = [],
   children,
-}: AuthContextType & { children: ReactNode }) => {
-  const [authParams, setAuthParams] = useState<AuthContextType>({
+}: AppContextType & { children: ReactNode }) => {
+  const [authParams, setAppParams] = useState<AppContextType>({
     token,
     tokenPayload,
     syncFlag,
@@ -46,14 +46,14 @@ export const AuthProvider = ({
     initialProductMap,
   })
   return (
-    <AuthContext.Provider value={{ ...authParams, setAuthParams }}>
+    <AppContext.Provider value={{ ...authParams, setAppParams }}>
       {children}
-    </AuthContext.Provider>
+    </AppContext.Provider>
   )
 }
 
-export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (!context) throw new Error('useAuth must be used within AuthProvider')
+export const useApp = () => {
+  const context = useContext(AppContext)
+  if (!context) throw new Error('useApp must be used within AppProvider')
   return context
 }
