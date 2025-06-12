@@ -61,14 +61,26 @@ export class PaymentService extends BaseService {
     invoiceNumber: string,
   ) {
     const qbPaymentRes = await intuitApi.createPayment(qbPaymentPayload)
-    const paymentPayload = {
-      portalId: this.user.workspaceId,
-      invoiceNumber,
-      totalAmount: (qbPaymentRes.Payment.TotalAmt * 100).toString(), // to cents
-      qbPaymentId: qbPaymentRes.Payment.Id,
-      qbSyncToken: qbPaymentRes.Payment.SyncToken,
+    try {
+      const paymentPayload = {
+        portalId: this.user.workspaceId,
+        invoiceNumber,
+        totalAmount: (qbPaymentRes.Payment.TotalAmt * 100).toString(), // to cents
+        qbPaymentId: qbPaymentRes.Payment.Id,
+        qbSyncToken: qbPaymentRes.Payment.SyncToken,
+      }
+      await this.createQBPayment(paymentPayload, ['id'])
+    } catch (error: unknown) {
+      // revert the payment if error
+      const deletePayload = {
+        SyncToken: qbPaymentRes.Payment.SyncToken,
+        Id: qbPaymentRes.Payment.Id,
+      }
+      await intuitApi.deletePayment(deletePayload)
+
+      // TODO: track the missed payment and later backfill
+      throw error
     }
-    await this.createQBPayment(paymentPayload, ['id'])
   }
 
   async webhookPaymentSucceeded(

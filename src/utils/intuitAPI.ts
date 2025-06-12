@@ -14,6 +14,7 @@ import {
   QBVoidInvoicePayloadType,
   QBAccountCreatePayloadType,
   QBPurchaseCreatePayloadType,
+  QBPaymentDeletePayloadType,
 } from '@/type/dto/intuitAPI.dto'
 import httpStatus from 'http-status'
 
@@ -76,7 +77,7 @@ export default class IntuitAPI {
   }
 
   async _customQuery(query: string) {
-    console.log('IntuitAPI#customQuery')
+    console.info('IntuitAPI#customQuery')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/query?query=${query}&minorversion=${intuitApiMinorVersion}`
     const res = await this.getFetchWithHeader(url)
 
@@ -98,7 +99,7 @@ export default class IntuitAPI {
   }
 
   async _createInvoice(payload: QBInvoiceCreatePayloadType) {
-    console.log('IntuitAPI#createInvoice | invoice creation start')
+    console.info('IntuitAPI#createInvoice | invoice creation start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
@@ -117,7 +118,7 @@ export default class IntuitAPI {
       )
     }
 
-    console.log(
+    console.info(
       'IntuitAPI#createInvoice | invoice created with doc number=',
       invoice.Invoice?.DocNumber,
     )
@@ -125,7 +126,7 @@ export default class IntuitAPI {
   }
 
   async _createCustomer(payload: QBCustomerCreatePayloadType) {
-    console.log('IntuitAPI#createCustomer | customer creation start')
+    console.info('IntuitAPI#createCustomer | customer creation start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/customer?minorversion=${intuitApiMinorVersion}`
     const customer = await this.postFetchWithHeaders(url, payload)
 
@@ -144,7 +145,7 @@ export default class IntuitAPI {
       )
     }
 
-    console.log(
+    console.info(
       'IntuitAPI#createCustomer | customer created with name=',
       customer.Customer?.FullyQualifiedName,
     )
@@ -152,7 +153,7 @@ export default class IntuitAPI {
   }
 
   async _createItem(payload: QBItemCreatePayloadType) {
-    console.log('IntuitAPI#createItem | Item creation start')
+    console.info('IntuitAPI#createItem | Item creation start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/item?minorversion=${intuitApiMinorVersion}`
     const item = await this.postFetchWithHeaders(url, payload)
 
@@ -171,7 +172,10 @@ export default class IntuitAPI {
       )
     }
 
-    console.log('IntuitAPI#createItem | item created with Id =', item?.Item?.Id)
+    console.info(
+      'IntuitAPI#createItem | item created with Id =',
+      item?.Item?.Id,
+    )
     return item.Item
   }
 
@@ -244,7 +248,7 @@ export default class IntuitAPI {
   async _getAllItems(limit: number, columns: string[] = ['Id']) {
     const stringColumns = columns.map((column) => `${column}`).join(',')
     const customerQuery = `select ${stringColumns} from Item maxresults ${limit}`
-    console.log({ customerQuery })
+    console.info('IntuitAPI#getAllItems | ', { customerQuery })
     const qbItems = await this.customQuery(customerQuery)
 
     if (!qbItems)
@@ -266,7 +270,7 @@ export default class IntuitAPI {
   }
 
   async _invoiceSparseUpdate(payload: QBInvoiceSparseUpdatePayloadType) {
-    console.log('IntuitAPI#InvoiceSparseUpdate | invoice sparse update start')
+    console.info('IntuitAPI#InvoiceSparseUpdate | invoice sparse update start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
@@ -285,7 +289,7 @@ export default class IntuitAPI {
       )
     }
 
-    console.log(
+    console.info(
       'IntuitAPI#InvoiceSparseUpdate | invoice sparse updated for doc number=',
       invoice.Invoice?.DocNumber,
     )
@@ -293,7 +297,9 @@ export default class IntuitAPI {
   }
 
   async _customerSparseUpdate(payload: QBCustomerSparseUpdatePayloadType) {
-    console.log('IntuitAPI#customerSparseUpdate | customer sparse update start')
+    console.info(
+      'IntuitAPI#customerSparseUpdate | customer sparse update start',
+    )
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/customer?minorversion=${intuitApiMinorVersion}`
     const customer = await this.postFetchWithHeaders(url, payload)
 
@@ -312,7 +318,7 @@ export default class IntuitAPI {
       )
     }
 
-    console.log(
+    console.info(
       'IntuitAPI#customerSparseUpdate | customer sparse updated with name=',
       customer.Customer?.FullyQualifiedName,
     )
@@ -347,7 +353,7 @@ export default class IntuitAPI {
   }
 
   async _createPayment(payload: QBPaymentCreatePayloadType) {
-    console.log('IntuitAPI#createPayment | payment creation start')
+    console.info('IntuitAPI#createPayment | payment creation start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/payment?minorversion=${intuitApiMinorVersion}`
     const payment = await this.postFetchWithHeaders(url, payload)
 
@@ -366,7 +372,7 @@ export default class IntuitAPI {
       )
     }
 
-    console.log(
+    console.info(
       'IntuitAPI#createPayment | payment created with Id =',
       payment.Payment?.Id,
     )
@@ -398,6 +404,33 @@ export default class IntuitAPI {
       invoice.Invoice?.Id,
     )
     return invoice
+  }
+
+  async _deletePayment(payload: QBPaymentDeletePayloadType) {
+    console.info('IntuitAPI#deletePayment | payment delete start')
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/payment?operation=delete&minorversion=${intuitApiMinorVersion}`
+    const payment = await this.postFetchWithHeaders(url, payload)
+
+    if (!payment)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#deletePayment | message = no response',
+      )
+
+    if (payment?.Fault) {
+      console.error({ Error: payment.Fault?.Error })
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#deletePayment | Error while deleting payment',
+        payment.Fault?.Error,
+      )
+    }
+
+    console.info(
+      'IntuitAPI#deletePayment | payment deleted with Id =',
+      payment.Payment?.Id,
+    )
+    return payment
   }
 
   async _getAnAccountByName(accountName: string) {
@@ -499,4 +532,5 @@ export default class IntuitAPI {
   getAnAccountByName = this.wrapWithRetry(this._getAnAccountByName)
   createAccount = this.wrapWithRetry(this._createAccount)
   createPurchase = this.wrapWithRetry(this._createPurchase)
+  deletePayment = this.wrapWithRetry(this._deletePayment)
 }

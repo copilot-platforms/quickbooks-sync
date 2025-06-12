@@ -16,7 +16,7 @@ export class CustomerService extends BaseService {
     payload: QBCustomerCreateSchemaType,
     returningFields?: (keyof typeof QBCustomers)[],
   ) {
-    console.log(
+    console.info(
       'CustomerService#createQBCustomer | For client with Id =',
       payload.clientId,
     )
@@ -38,7 +38,7 @@ export class CustomerService extends BaseService {
     conditions: WhereClause,
     returningFields?: (keyof typeof QBCustomers)[],
   ) {
-    console.log('CustomerService#updateQBCustomer')
+    console.info('CustomerService#updateQBCustomer')
     const parsedInsertPayload = QBCustomerUpdateSchema.parse(payload)
 
     const query = this.db

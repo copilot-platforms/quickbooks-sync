@@ -1,6 +1,6 @@
 {
-  "id": "347a04b5-1f51-4d7c-82fa-7d75f601fdc4",
-  "prevId": "ef9d8980-b0c1-443a-a8cd-5a3c5b6fae5b",
+  "id": "a91bb96a-2f24-46f5-bbeb-fd97f6e41f64",
+  "prevId": "347a04b5-1f51-4d7c-82fa-7d75f601fdc4",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -472,6 +472,18 @@
         },
         "income_account_ref": {
           "name": "income_account_ref",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "asset_account_ref": {
+          "name": "asset_account_ref",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expense_account_ref": {
+          "name": "expense_account_ref",
           "type": "varchar(100)",
           "primaryKey": false,
           "notNull": true
