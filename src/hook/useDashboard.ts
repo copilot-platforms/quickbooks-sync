@@ -1,6 +1,6 @@
 'use client'
 import { AuthStatus } from '@/app/api/core/types/auth'
-import { useAuth } from '@/app/context/AuthContext'
+import { useApp } from '@/app/context/AppContext'
 import { CalloutVariant } from '@/components/type/callout'
 import { useQuickbooks } from '@/hook/useQuickbooks'
 import { useEffect, useState } from 'react'
@@ -13,7 +13,7 @@ export const useDashboardMain = () => {
     reconnect,
     lastSyncTimestamp,
     isEnabled,
-  } = useAuth()
+  } = useApp()
 
   const { handleConnect, isReconnecting, handleSyncEnable } = useQuickbooks(
     token,
