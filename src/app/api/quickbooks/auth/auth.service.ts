@@ -5,6 +5,7 @@ import { AuthStatus } from '@/app/api/core/types/auth'
 import { NotificationActions } from '@/app/api/core/types/notification'
 import { NotificationService } from '@/app/api/notification/notification.service'
 import { LogService } from '@/app/api/quickbooks/log/log.service'
+import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { TokenService } from '@/app/api/quickbooks/token/token.service'
 import { intuitRedirectUri } from '@/config'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
@@ -91,6 +92,17 @@ export class AuthService extends BaseService {
     return assetAccRef.Id
   }
 
+  async storeSettings(portalId: string) {
+    const settingsService = new SettingService(this.user)
+
+    const existingSetting = await settingsService.getOneByPortalId(['id'])
+    if (!existingSetting) {
+      await settingsService.createQBSettings({
+        portalId,
+      })
+    }
+  }
+
   async handleTokenExchange(
     body: { code: string; realmId: string },
     portalId: string,
@@ -152,6 +164,9 @@ export class AuthService extends BaseService {
           `Cannot create new token for portal ${portalId} and realmId ${realmId}.`,
         )
       }
+
+      // store settings for the portal after successful token exchange
+      await this.storeSettings(portalId)
 
       // store success connection log
       await logService.upsertLatestPendingConnectionLog({

@@ -10,7 +10,7 @@ import {
   QBTokenUpdateSchemaType,
 } from '@/db/schema/qbTokens'
 import { getPortalConnection } from '@/db/service/token.service'
-import { changeEnableStatusRequest } from '@/type/common'
+import { ChangeEnableStatusRequestType } from '@/type/common'
 import dayjs from 'dayjs'
 import { and, eq, SQL } from 'drizzle-orm'
 import httpStatus from 'http-status'
@@ -111,7 +111,7 @@ export class TokenService extends BaseService {
 
   async changeEnableStatus(
     portalId: string,
-    parsedBody: changeEnableStatusRequest,
+    parsedBody: ChangeEnableStatusRequestType,
   ) {
     const whereConditions = and(
       eq(QBTokens.portalId, portalId),

@@ -1,13 +1,20 @@
-import { useInvoiceDetailSettings } from '@/hook/useSettings'
-import { Checkbox } from 'copilot-design-system'
+import { InvoiceSettingType } from '@/type/common'
+import { Checkbox, Spinner } from 'copilot-design-system'
 
-export default function InvoiceDetail() {
-  const {
-    absorbedFeeFlag,
-    setAbsorbedFeeFlag,
-    companyNameFlag,
-    setCompanyNameFlag,
-  } = useInvoiceDetailSettings()
+type InvoiceDetailProps = {
+  settingState: InvoiceSettingType
+  changeSettings: (flag: keyof InvoiceSettingType, state: boolean) => void
+  isLoading: boolean
+}
+
+export default function InvoiceDetail({
+  settingState,
+  changeSettings,
+  isLoading,
+}: InvoiceDetailProps) {
+  if (isLoading) {
+    return <Spinner size={5} />
+  }
 
   return (
     <>
@@ -16,16 +23,23 @@ export default function InvoiceDetail() {
           <Checkbox
             label="Add absorbed fees to an Expense Account in QuickBooks"
             description="Record Copilot processing fees as expenses in the 'Copilot Fees' expense account in QuickBooks."
-            checked={absorbedFeeFlag}
-            onChange={() => setAbsorbedFeeFlag(!absorbedFeeFlag)}
+            checked={settingState.absorbedFeeFlag}
+            onChange={() =>
+              changeSettings('absorbedFeeFlag', !settingState.absorbedFeeFlag)
+            }
           />
         </div>
         <div className="mb-6">
           <Checkbox
             label="Use company name when syncing invoices billed to companies"
             description="Create QuickBooks customers using the company name rather than individual client names when invoices are billed to organizations."
-            checked={companyNameFlag}
-            onChange={() => setCompanyNameFlag(!companyNameFlag)}
+            checked={settingState.useCompanyNameFlag}
+            onChange={() =>
+              changeSettings(
+                'useCompanyNameFlag',
+                !settingState.useCompanyNameFlag,
+              )
+            }
           />
         </div>
       </div>

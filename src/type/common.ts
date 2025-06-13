@@ -251,9 +251,16 @@ export type PricesResponse = z.infer<typeof PricesResponseSchema>
 export const changeEnableStatusRequestSchema = z.object({
   enable: z.boolean(),
 })
-export type changeEnableStatusRequest = z.infer<
+export type ChangeEnableStatusRequestType = z.infer<
   typeof changeEnableStatusRequestSchema
 >
+
+export const InvoiceSettingSchema = z.object({
+  id: z.string().optional(),
+  absorbedFeeFlag: z.boolean(),
+  useCompanyNameFlag: z.boolean(),
+})
+export type InvoiceSettingType = z.infer<typeof InvoiceSettingSchema>
 
 export enum TransactionType {
   INVOICE = 'Invoice',

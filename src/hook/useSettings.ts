@@ -11,6 +11,7 @@ import {
 import { postFetcher } from '@/helper/fetch.helper'
 import { mutate } from 'swr'
 import equal from 'deep-equal'
+import { InvoiceSettingType } from '@/type/common'
 
 export type QuickbooksItemType = {
   Name: string
@@ -353,14 +354,71 @@ export const useMapItem = (
 }
 
 export const useInvoiceDetailSettings = () => {
-  const [absorbedFeeFlag, setAbsorbedFeeFlag] = useState(false)
-  const [companyNameFlag, setCompanyNameFlag] = useState(false)
+  const { token } = useApp()
+  const [settingState, setSettingState] = useState<InvoiceSettingType>({
+    absorbedFeeFlag: false,
+    useCompanyNameFlag: false,
+  })
+  const [showButton, setShowButton] = useState(false)
+  const [intialSettingState, setIntialSettingState] = useState<
+    InvoiceSettingType | undefined
+  >()
+  const {
+    data: setting,
+    error,
+    isLoading,
+  } = useSwrHelper(`/api/quickbooks/setting?type=invoice&token=${token}`)
+
+  const changeSettings = async (
+    flag: keyof InvoiceSettingType,
+    state: boolean,
+  ) => {
+    setSettingState((prev) => ({
+      ...prev,
+      [flag]: state,
+    }))
+  }
+
+  useEffect(() => {
+    if (settingState) {
+      let showButton = false
+      if (!equal(intialSettingState, settingState)) {
+        showButton = true
+      }
+      setShowButton(showButton)
+    }
+  }, [settingState])
+
+  useEffect(() => {
+    if (setting && setting?.setting) {
+      setSettingState(setting.setting)
+      setIntialSettingState(structuredClone(setting.setting))
+    }
+  }, [setting])
+
+  const submitInvoiceSettings = async () => {
+    const res = await postFetcher(
+      `/api/quickbooks/invoice/change-settings?token=${token}`,
+      {},
+      settingState,
+    )
+    if (!res || res?.error) {
+      console.error({ res })
+      alert('Error submitting invoice settings')
+    } else {
+      mutate(`/api/quickbooks/setting?type=invoice&token=${token}`)
+      setShowButton(false)
+    }
+  }
 
   return {
-    absorbedFeeFlag,
-    setAbsorbedFeeFlag,
-    companyNameFlag,
-    setCompanyNameFlag,
+    settingState,
+    changeSettings,
+    submitInvoiceSettings,
+    setting,
+    error,
+    isLoading,
+    showButton,
   }
 }
 

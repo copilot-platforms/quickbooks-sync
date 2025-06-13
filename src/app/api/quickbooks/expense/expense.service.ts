@@ -1,5 +1,4 @@
 import { BaseService } from '@/app/api/core/services/base.service'
-import { buildReturningFields } from '@/db/helper/drizzle.helper'
 import {
   QBExpenseCreateSchema,
   QBExpenseCreateSchemaType,
@@ -23,19 +22,14 @@ export class ExpenseService extends BaseService {
    */
   async createQBExpense(
     payload: QBExpenseCreateSchemaType,
-    returningFields?: (keyof typeof QBExpenseSync)[],
-  ): Promise<Partial<QBExpenseSelectSchemaType> | undefined> {
+  ): Promise<QBExpenseSelectSchemaType> {
     const parsedInsertPayload = QBExpenseCreateSchema.parse(payload)
-    const query = this.db.insert(QBExpenseSync).values(parsedInsertPayload)
-
-    const [product] =
-      returningFields && returningFields.length > 0
-        ? await query.returning(
-            buildReturningFields(QBExpenseSync, returningFields),
-          )
-        : await query.returning()
+    const [expense] = await this.db
+      .insert(QBExpenseSync)
+      .values(parsedInsertPayload)
+      .returning()
 
     console.info('ExpenseService#createQBExpense | expense map complete')
-    return product
+    return expense
   }
 }
