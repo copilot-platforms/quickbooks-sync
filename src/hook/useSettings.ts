@@ -11,7 +11,7 @@ import {
 import { postFetcher } from '@/helper/fetch.helper'
 import { mutate } from 'swr'
 import equal from 'deep-equal'
-import { InvoiceSettingType } from '@/type/common'
+import { InvoiceSettingType, SettingType } from '@/type/common'
 
 export type QuickbooksItemType = {
   Name: string
@@ -398,9 +398,9 @@ export const useInvoiceDetailSettings = () => {
 
   const submitInvoiceSettings = async () => {
     const res = await postFetcher(
-      `/api/quickbooks/invoice/change-settings?token=${token}`,
+      `/api/quickbooks/setting?token=${token}`,
       {},
-      settingState,
+      { ...settingState, type: SettingType.INVOICE },
     )
     if (!res || res?.error) {
       console.error({ res })
