@@ -1,6 +1,7 @@
 import { BaseService } from '@/app/api/core/services/base.service'
 import { InvoiceStatus } from '@/app/api/core/types/invoice'
 import { WebhookEvents } from '@/app/api/core/types/webhook'
+import { ExpenseService } from '@/app/api/quickbooks/expense/expense.service'
 import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
@@ -154,6 +155,7 @@ export class WebhookService extends BaseService {
         break
 
       case WebhookEvents.PAYMENT_SUCCEEDED:
+        console.info('###### PAYMENT SUCCEEDED webhook triggered ######')
         const parsedPaymentSucceed =
           PaymentSucceededResponseSchema.safeParse(payload)
         if (!parsedPaymentSucceed.success || !parsedPaymentSucceed.data) {
@@ -165,12 +167,35 @@ export class WebhookService extends BaseService {
         const parsedPaymentSucceedResource = parsedPaymentSucceed.data
 
         if (parsedPaymentSucceedResource.data.feeAmount.paidByPlatform > 0) {
-          // only track if the fee amount is paid by platform
-          const paymentService = new PaymentService(this.user)
-          await paymentService.webhookPaymentSucceeded(
-            parsedPaymentSucceedResource,
-            qbTokenInfo,
+          const expenseService = new ExpenseService(this.user)
+          const expense = await expenseService.getQBExpenseByPaymentId(
+            parsedPaymentSucceedResource.data.id,
           )
+
+          if (expense) {
+            console.info(
+              'WebhookService#handleWebhookEvent#payment-succeeded | Expense already exists in the db',
+            )
+            break
+          }
+
+          try {
+            // only track if the fee amount is paid by platform
+            const paymentService = new PaymentService(this.user)
+            await paymentService.webhookPaymentSucceeded(
+              parsedPaymentSucceedResource,
+              qbTokenInfo,
+            )
+          } catch (error: unknown) {
+            // store payment details for backfill
+            const expensePayload = {
+              portalId: this.user.workspaceId,
+              paymentId: parsedPaymentSucceedResource.data.id,
+              invoiceId: parsedPaymentSucceedResource.data.invoiceId,
+            }
+            await expenseService.createQBExpense(expensePayload)
+            throw error
+          }
         }
         break
 

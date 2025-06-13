@@ -1,4 +1,5 @@
 import { BaseService } from '@/app/api/core/services/base.service'
+import { ExpenseService } from '@/app/api/quickbooks/expense/expense.service'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
 import {
   QBPaymentCreateSchema,
@@ -9,10 +10,12 @@ import {
 } from '@/db/schema/qbPaymentSync'
 import { WhereClause } from '@/type/common'
 import {
+  QBPaymentCreatePayloadSchema,
   QBPaymentCreatePayloadType,
   QBPurchaseCreatePayloadSchema,
 } from '@/type/dto/intuitAPI.dto'
 import { PaymentSucceededResponseType } from '@/type/dto/webhook.dto'
+import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import dayjs from 'dayjs'
 
@@ -61,7 +64,8 @@ export class PaymentService extends BaseService {
     qbPaymentPayload: QBPaymentCreatePayloadType,
     invoiceNumber: string,
   ) {
-    const qbPaymentRes = await intuitApi.createPayment(qbPaymentPayload)
+    const parsedQbPayload = QBPaymentCreatePayloadSchema.parse(qbPaymentPayload)
+    const qbPaymentRes = await intuitApi.createPayment(parsedQbPayload)
     try {
       const paymentPayload = {
         portalId: this.user.workspaceId,
@@ -89,12 +93,14 @@ export class PaymentService extends BaseService {
     qbTokenInfo: IntuitAPITokensType,
   ): Promise<void> {
     const paymentResource = parsedPaymentSucceedResource.data
+    const copilotApp = new CopilotAPI(this.user.token)
+    const invoice = await copilotApp.getInvoice(paymentResource.invoiceId)
     const payload = {
       PaymentType: 'Cash' as const,
       AccountRef: {
         value: qbTokenInfo.assetAccountRef,
       },
-      // DocNumber: "placeholder", // TODO: replace with invoice number
+      DocNumber: invoice?.number,
       TxnDate: dayjs(paymentResource.createdAt).format('YYYY-MM-DD'), // the date format for due date follows XML Schema standard (YYYY-MM-DD). For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase#the-purchase-object
       Line: [
         {
@@ -120,5 +126,27 @@ export class PaymentService extends BaseService {
       'PaymentService#webhookPaymentSucceeded | Created expense for absorbed fees with purchase Id =',
       res.Purchase?.Id,
     )
+
+    try {
+      const expenseSyncPayload = {
+        portalId: this.user.workspaceId,
+        paymentId: paymentResource.id,
+        invoiceId: paymentResource.invoiceId,
+        invoiceNumber: invoice?.number,
+        qbPurchaseId: res.Purchase?.Id,
+        qbSyncToken: res.Purchase?.SyncToken,
+      }
+      const expenseService = new ExpenseService(this.user)
+      await expenseService.createQBExpense(expenseSyncPayload)
+    } catch (error: unknown) {
+      // revert the expense if error
+      console.info('Reverting the added expense from QuickBooks')
+      const deletePayload = {
+        SyncToken: res.Purchase?.SyncToken,
+        Id: res.Purchase?.Id,
+      }
+      await intuitApi.deletePurchase(deletePayload)
+      throw error
+    }
   }
 }

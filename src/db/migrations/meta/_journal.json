@@ -134,6 +134,13 @@
       "when": 1749728775417,
       "tag": "0018_add_acc_ref_columns_in_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1749789293037,
+      "tag": "0019_create_expense_sync_table",
+      "breakpoints": true
     }
   ]
 }

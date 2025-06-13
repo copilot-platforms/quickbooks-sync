@@ -14,7 +14,7 @@ import {
   QBVoidInvoicePayloadType,
   QBAccountCreatePayloadType,
   QBPurchaseCreatePayloadType,
-  QBPaymentDeletePayloadType,
+  QBDeletePayloadType,
 } from '@/type/dto/intuitAPI.dto'
 import httpStatus from 'http-status'
 
@@ -406,7 +406,7 @@ export default class IntuitAPI {
     return invoice
   }
 
-  async _deletePayment(payload: QBPaymentDeletePayloadType) {
+  async _deletePayment(payload: QBDeletePayloadType) {
     console.info('IntuitAPI#deletePayment | payment delete start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/payment?operation=delete&minorversion=${intuitApiMinorVersion}`
     const payment = await this.postFetchWithHeaders(url, payload)
@@ -510,6 +510,33 @@ export default class IntuitAPI {
     return purchase
   }
 
+  async _deletePurchase(payload: QBDeletePayloadType) {
+    console.info('IntuitAPI#deletePurchase | purchase delete start')
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/purchase?operation=delete&minorversion=${intuitApiMinorVersion}`
+    const purchase = await this.postFetchWithHeaders(url, payload)
+
+    if (!purchase)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#deletePurchase | message = no response',
+      )
+
+    if (purchase?.Fault) {
+      console.error({ Error: purchase.Fault?.Error })
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#deletePurchase | error while deleting purchase',
+        purchase.Fault?.Error,
+      )
+    }
+
+    console.info(
+      'IntuitAPI#deletePurchase | purchase deleted with Id =',
+      purchase.Purchase?.Id,
+    )
+    return purchase
+  }
+
   private wrapWithRetry<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
   ): (...args: Args) => Promise<R> {
@@ -533,4 +560,5 @@ export default class IntuitAPI {
   createAccount = this.wrapWithRetry(this._createAccount)
   createPurchase = this.wrapWithRetry(this._createPurchase)
   deletePayment = this.wrapWithRetry(this._deletePayment)
+  deletePurchase = this.wrapWithRetry(this._deletePurchase)
 }
