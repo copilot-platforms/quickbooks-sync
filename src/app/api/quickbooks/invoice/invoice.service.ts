@@ -27,7 +27,7 @@ import {
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import dayjs from 'dayjs'
-import { and, eq, isNull, SQL } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import httpStatus from 'http-status'
 import { bottleneck } from '@/utils/bottleneck'
 import { InvoiceStatus } from '@/app/api/core/types/invoice'
