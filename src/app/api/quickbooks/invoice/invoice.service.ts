@@ -16,6 +16,7 @@ import {
 import {
   QBNameValueSchemaType,
   QBCustomerSparseUpdatePayloadType,
+  QBVoidInvoicePayloadSchema,
 } from '@/type/dto/intuitAPI.dto'
 import { convert } from 'html-to-text'
 import {
@@ -26,7 +27,7 @@ import {
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import dayjs from 'dayjs'
-import { and, eq, isNull, SQL } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import httpStatus from 'http-status'
 import { bottleneck } from '@/utils/bottleneck'
 import { InvoiceStatus } from '@/app/api/core/types/invoice'
@@ -517,22 +518,69 @@ export class InvoiceService extends BaseService {
     }
     const intuitApi = new IntuitAPI(qbTokenInfo)
     const paymentService = new PaymentService(this.user)
-    await paymentService.createPaymentAndSync(
-      intuitApi,
-      qbPaymentPayload,
-      payload.data.number,
-    )
 
-    const whereConditions = and(
-      eq(QBInvoiceSync.id, invoiceSync.id),
-      eq(QBInvoiceSync.portalId, this.user.workspaceId),
-    ) as SQL
-    await this.updateQBInvoice(
-      {
-        status: InvoiceStatus.PAID,
-      },
-      whereConditions,
-      ['id'],
-    )
+    await Promise.all([
+      paymentService.createPaymentAndSync(
+        intuitApi,
+        qbPaymentPayload,
+        payload.data.number,
+      ),
+      this.updateQBInvoice(
+        {
+          status: InvoiceStatus.PAID,
+        },
+        eq(QBInvoiceSync.id, invoiceSync.id),
+        ['id'],
+      ),
+    ])
+  }
+
+  async webhookInvoiceVoided(
+    payload: InvoicePaidResponseType,
+    qbTokenInfo: IntuitAPITokensType,
+  ): Promise<void> {
+    // 1. check if the status of invoice is already paid in sync table
+    const invoiceSync = await this.getInvoiceByNumber(payload.data.number, [
+      'id',
+      'qbInvoiceId',
+      'status',
+      'qbSyncToken',
+    ])
+
+    if (!invoiceSync) {
+      console.error(
+        'WebhookService#webhookInvoiceVoided | Invoice not found in sync table',
+      )
+      return
+    }
+
+    if (invoiceSync?.status === InvoiceStatus.OPEN) {
+      // only implement void if invoice has open status
+      const intuitApi = new IntuitAPI(qbTokenInfo)
+      const voidPayload = {
+        Id: invoiceSync.qbInvoiceId,
+        SyncToken: invoiceSync.qbSyncToken,
+      }
+      const safeParsedPayload =
+        QBVoidInvoicePayloadSchema.safeParse(voidPayload)
+
+      if (!safeParsedPayload.success || !safeParsedPayload.data) {
+        throw new APIError(
+          httpStatus.INTERNAL_SERVER_ERROR,
+          'WebhookService#webhookInvoiceVoided | Could not parse invoice void payload',
+        )
+      }
+
+      await Promise.all([
+        intuitApi.voidInvoice(safeParsedPayload.data),
+        this.updateQBInvoice(
+          {
+            status: InvoiceStatus.VOID,
+          },
+          eq(QBInvoiceSync.id, invoiceSync.id),
+          ['id'],
+        ),
+      ])
+    }
   }
 }

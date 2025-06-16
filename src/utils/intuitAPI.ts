@@ -11,6 +11,7 @@ import {
   QBInvoiceSparseUpdatePayloadType,
   QBItemFullUpdatePayloadType,
   QBPaymentCreatePayloadType,
+  QBVoidInvoicePayloadType,
   QBPaymentDeletePayloadType,
 } from '@/type/dto/intuitAPI.dto'
 import httpStatus from 'http-status'
@@ -371,6 +372,33 @@ export default class IntuitAPI {
     return payment
   }
 
+  async _voidInvoice(payload: QBVoidInvoicePayloadType) {
+    console.info('IntuitAPI#voidInvoice | invoice void creation start')
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=void&minorversion=${intuitApiMinorVersion}`
+    const invoice = await this.postFetchWithHeaders(url, payload)
+
+    if (!invoice)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#voidInvoice | message = no response',
+      )
+
+    if (invoice?.Fault) {
+      console.error({ Error: invoice.Fault?.Error })
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#voidInvoice | Error while voiding invoice',
+        invoice.Fault?.Error,
+      )
+    }
+
+    console.info(
+      'IntuitAPI#voidInvoice | Voided invoice with Id =',
+      invoice.Invoice?.Id,
+    )
+    return invoice
+  }
+
   async _deletePayment(payload: QBPaymentDeletePayloadType) {
     console.info('IntuitAPI#deletePayment | payment delete start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/payment?operation=delete&minorversion=${intuitApiMinorVersion}`
@@ -416,5 +444,6 @@ export default class IntuitAPI {
   customerSparseUpdate = this.wrapWithRetry(this._customerSparseUpdate)
   itemFullUpdate = this.wrapWithRetry(this._itemFullUpdate)
   createPayment = this.wrapWithRetry(this._createPayment)
+  voidInvoice = this.wrapWithRetry(this._voidInvoice)
   deletePayment = this.wrapWithRetry(this._deletePayment)
 }
