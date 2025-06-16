@@ -13,6 +13,7 @@ type AppContextType = {
   lastSyncTimestamp: string | null
   showProductConfirm?: boolean
   initialProductMap?: ProductMappingItemType[]
+  itemMapped?: boolean
 }
 
 const AppContext = createContext<
@@ -32,6 +33,7 @@ export const AppProvider = ({
   lastSyncTimestamp,
   showProductConfirm = false,
   initialProductMap = [],
+  itemMapped = false,
   children,
 }: AppContextType & { children: ReactNode }) => {
   const [authParams, setAppParams] = useState<AppContextType>({
@@ -44,6 +46,7 @@ export const AppProvider = ({
     isEnabled,
     showProductConfirm,
     initialProductMap,
+    itemMapped,
   })
   return (
     <AppContext.Provider value={{ ...authParams, setAppParams }}>
