@@ -52,6 +52,7 @@ export const Main = () => {
     buttonAction,
     isReconnecting,
     lastSyncTimestamp,
+    itemMapped,
   } = useDashboardMain()
 
   const dashboardCallout: CalloutType =
@@ -73,7 +74,9 @@ export const Main = () => {
                   ? 'Reauthorizing...'
                   : dashboardCallout.actionLabel,
                 onClick: buttonAction,
-                disabled: isReconnecting,
+                disabled:
+                  isReconnecting ||
+                  (status === CalloutVariant.WARNING && !itemMapped),
                 prefixIcon: dashboardCallout.actionIcon,
                 ...(dashboardCallout.buttonVariant && {
                   variant: dashboardCallout.buttonVariant,
