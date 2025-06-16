@@ -532,19 +532,21 @@ export class InvoiceService extends BaseService {
     }
     const intuitApi = new IntuitAPI(qbTokenInfo)
     const paymentService = new PaymentService(this.user)
-    await paymentService.createPaymentAndSync(
-      intuitApi,
-      qbPaymentPayload,
-      payload.data.number,
-    )
 
-    await this.updateQBInvoice(
-      {
-        status: InvoiceStatus.PAID,
-      },
-      eq(QBInvoiceSync.id, invoiceSync.id),
-      ['id'],
-    )
+    await Promise.all([
+      paymentService.createPaymentAndSync(
+        intuitApi,
+        qbPaymentPayload,
+        payload.data.number,
+      ),
+      this.updateQBInvoice(
+        {
+          status: InvoiceStatus.PAID,
+        },
+        eq(QBInvoiceSync.id, invoiceSync.id),
+        ['id'],
+      ),
+    ])
   }
 
   async webhookInvoiceVoided(
@@ -582,15 +584,17 @@ export class InvoiceService extends BaseService {
           'WebhookService#webhookInvoiceVoided | Could not parse invoice void payload',
         )
       }
-      await intuitApi.voidInvoice(safeParsedPayload.data)
 
-      await this.updateQBInvoice(
-        {
-          status: InvoiceStatus.VOID,
-        },
-        eq(QBInvoiceSync.id, invoiceSync.id),
-        ['id'],
-      )
+      await Promise.all([
+        intuitApi.voidInvoice(safeParsedPayload.data),
+        this.updateQBInvoice(
+          {
+            status: InvoiceStatus.VOID,
+          },
+          eq(QBInvoiceSync.id, invoiceSync.id),
+          ['id'],
+        ),
+      ])
     }
   }
 }

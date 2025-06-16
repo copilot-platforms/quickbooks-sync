@@ -125,6 +125,7 @@ export const useProductMappingSettings = () => {
       setAppParams((prev) => ({
         ...prev,
         showProductConfirm: false,
+        itemMapped: true,
       }))
       setSettingShowConfirm(false)
     } else {
@@ -269,7 +270,8 @@ export const useProductTableSetting = (
   const error = productError || quickbooksError || mappedItemsError
 
   useEffect(() => {
-    let newMap: ProductMappingItemType[]
+    let newMap: ProductMappingItemType[],
+      itemMapped = false
     const mappedItemEmpty =
       !mappedItems || Object.keys(mappedItems).length === 0
     if (products && !isLoading) {
@@ -288,6 +290,7 @@ export const useProductTableSetting = (
           }
         })
       } else {
+        itemMapped = true
         newMap = products?.products?.map((product: ProductDataType) => {
           const mappedItem = mappedItems.find(
             // search for the already mapped product from the mapped list
@@ -328,6 +331,7 @@ export const useProductTableSetting = (
           ...prev,
           initialProductMap: mappedItemEmpty ? [] : structuredClone(newMap), // allow confirm if not product mapping in intial state
           showProductConfirm: mappedItemEmpty, // allow confirm if not product mapping in intial state
+          itemMapped,
         }))
       }
       setMappingItems(newMap)
