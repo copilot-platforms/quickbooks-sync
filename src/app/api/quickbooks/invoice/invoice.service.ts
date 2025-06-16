@@ -34,6 +34,7 @@ import { InvoiceStatus } from '@/app/api/core/types/invoice'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import { TransactionType, WhereClause } from '@/type/common'
 import { z } from 'zod'
+import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 
 const oneOffItem = {
   name: 'Services', // for one-off items
@@ -138,6 +139,19 @@ export class InvoiceService extends BaseService {
           productDescription: mapping.description || '',
         }
       }
+    }
+
+    // check if the flag is on for create new item
+    const settingService = new SettingService(this.user)
+    const setting = await settingService.getOneByPortalId([
+      'createInvoiceItemFlag',
+    ])
+
+    if (!setting?.createInvoiceItemFlag) {
+      console.info(
+        'WebhookService#getInvoiceItemRef | Create new invoice item flag is false',
+      )
+      return { ref: oneOffItem }
     }
 
     // 2. create a new product in QB company

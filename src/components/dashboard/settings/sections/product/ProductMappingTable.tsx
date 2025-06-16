@@ -42,7 +42,7 @@ export default function ProductMappingTable({
   getFilteredItems,
   mappingItems,
   setMappingItems,
-}: ProductMappingComponentType) {
+}: Omit<ProductMappingComponentType, 'setting'>) {
   const { products, quickbooksItems, isLoading, error } =
     useProductTableSetting(setMappingItems)
 
