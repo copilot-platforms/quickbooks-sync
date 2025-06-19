@@ -44,7 +44,6 @@ export type InvoiceCreatedResponseType = z.infer<
 
 /** Product */
 export const ProductCreatedResponseSchema = z.object({
-  eventType: z.string(),
   data: z.object({
     id: z.string(),
     name: z.string(),
@@ -57,7 +56,6 @@ export type ProductCreatedResponseType = z.infer<
 >
 
 export const ProductUpdatedResponseSchema = z.object({
-  eventType: z.string(),
   data: z.object({
     id: z.string(),
     name: z.string(),
@@ -70,7 +68,6 @@ export type ProductUpdatedResponseType = z.infer<
 >
 
 export const PriceCreatedResponseSchema = z.object({
-  eventType: z.string(),
   data: z.object({
     id: z.string(),
     productId: z.string(),
@@ -93,7 +90,6 @@ export const InvoiceResponseSchema = z.object({
 export type InvoiceResponseType = z.infer<typeof InvoiceResponseSchema>
 
 export const PaymentSucceededResponseSchema = z.object({
-  eventType: z.string(),
   data: z.object({
     id: z.string(),
     invoiceId: z.string(),
