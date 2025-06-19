@@ -259,7 +259,11 @@ export class SyncService extends BaseService {
     const failedSyncLogs =
       await this.syncLogService.getFailedSyncLogsByEntityType()
 
-    console.info('Fetched failed logs', failedSyncLogs)
+    if (failedSyncLogs.length === 0) {
+      console.info('No failed sync logs found.')
+      return
+    }
+
     // 2. for each log, perform the sync based on the event type and also update the sync log status to success after successful sync
     await this.intiateSync(failedSyncLogs)
     console.info('\n##### Re-sync process completed#####\n')
