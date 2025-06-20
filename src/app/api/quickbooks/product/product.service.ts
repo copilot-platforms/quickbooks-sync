@@ -37,7 +37,7 @@ export class ProductService extends BaseService {
     returningFields?: (keyof typeof QBProductSync)[],
   ): Promise<QBProductSelectSchemaType | undefined> {
     let columns = null
-    if (returningFields && returningFields.length > 0) {
+    if (returningFields?.length) {
       columns = buildReturningFields(QBProductSync, returningFields, true)
     }
 
@@ -58,7 +58,7 @@ export class ProductService extends BaseService {
     returningFields?: (keyof typeof QBProductSync)[],
   ): Promise<QBProductSelectSchemaType | undefined> {
     let columns = null
-    if (returningFields && returningFields.length > 0) {
+    if (returningFields?.length) {
       columns = buildReturningFields(QBProductSync, returningFields, true)
     }
 
@@ -77,7 +77,7 @@ export class ProductService extends BaseService {
     returningFields?: (keyof typeof QBProductSync)[],
   ): Promise<QBProductSelectSchemaType[] | undefined> {
     let columns = null
-    if (returningFields && returningFields.length > 0) {
+    if (returningFields?.length) {
       columns = buildReturningFields(QBProductSync, returningFields, true)
     }
 
@@ -101,7 +101,7 @@ export class ProductService extends BaseService {
     returningFields?: (keyof typeof QBProductSync)[],
   ) {
     let columns = null
-    if (returningFields && returningFields.length > 0) {
+    if (returningFields?.length) {
       columns = buildReturningFields(QBProductSync, returningFields, true)
     }
 
@@ -127,12 +127,11 @@ export class ProductService extends BaseService {
     const parsedInsertPayload = QBProductCreateSchema.parse(payload)
     const query = this.db.insert(QBProductSync).values(parsedInsertPayload)
 
-    const [product] =
-      returningFields && returningFields.length > 0
-        ? await query.returning(
-            buildReturningFields(QBProductSync, returningFields),
-          )
-        : await query.returning()
+    const [product] = returningFields?.length
+      ? await query.returning(
+          buildReturningFields(QBProductSync, returningFields),
+        )
+      : await query.returning()
 
     return product
   }
@@ -152,12 +151,11 @@ export class ProductService extends BaseService {
     })
     const query = this.db.insert(QBProductSync).values(formattedPaylaod)
 
-    const product =
-      returningFields && returningFields.length > 0
-        ? await query.returning(
-            buildReturningFields(QBProductSync, returningFields),
-          )
-        : await query.returning()
+    const product = returningFields?.length
+      ? await query.returning(
+          buildReturningFields(QBProductSync, returningFields),
+        )
+      : await query.returning()
 
     return product
   }
@@ -181,12 +179,11 @@ export class ProductService extends BaseService {
         .delete(QBProductSync)
         .where(eq(QBProductSync.portalId, this.user.workspaceId))
       const query = tx.insert(QBProductSync).values(formattedPayload)
-      const product =
-        returningFields && returningFields.length > 0
-          ? await query.returning(
-              buildReturningFields(QBProductSync, returningFields),
-            )
-          : await query.returning()
+      const product = returningFields?.length
+        ? await query.returning(
+            buildReturningFields(QBProductSync, returningFields),
+          )
+        : await query.returning()
       return product
     })
   }
@@ -203,12 +200,11 @@ export class ProductService extends BaseService {
       .set(parsedInsertPayload)
       .where(conditions)
 
-    const [product] =
-      returningFields && returningFields.length > 0
-        ? await query.returning(
-            buildReturningFields(QBProductSync, returningFields),
-          )
-        : await query.returning()
+    const [product] = returningFields?.length
+      ? await query.returning(
+          buildReturningFields(QBProductSync, returningFields),
+        )
+      : await query.returning()
 
     return product
   }

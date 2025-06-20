@@ -30,12 +30,11 @@ export class PaymentService extends BaseService {
     const parsedInsertPayload = QBPaymentCreateSchema.parse(payload)
     const query = this.db.insert(QBPaymentSync).values(parsedInsertPayload)
 
-    const [paymentSync] =
-      returningFields && returningFields.length > 0
-        ? await query.returning(
-            buildReturningFields(QBPaymentSync, returningFields),
-          )
-        : await query
+    const [paymentSync] = returningFields?.length
+      ? await query.returning(
+          buildReturningFields(QBPaymentSync, returningFields),
+        )
+      : await query.returning()
 
     return paymentSync
   }
@@ -52,12 +51,11 @@ export class PaymentService extends BaseService {
       .set(parsedInsertPayload)
       .where(conditions)
 
-    const [paymentSync] =
-      returningFields && returningFields.length > 0
-        ? await query.returning(
-            buildReturningFields(QBPaymentSync, returningFields),
-          )
-        : await query.returning()
+    const [paymentSync] = returningFields?.length
+      ? await query.returning(
+          buildReturningFields(QBPaymentSync, returningFields),
+        )
+      : await query.returning()
 
     return paymentSync
   }
