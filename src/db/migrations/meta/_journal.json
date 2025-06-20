@@ -148,6 +148,13 @@
       "when": 1749797327029,
       "tag": "0020_create_settings_table",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1750419916937,
+      "tag": "0021_create_sync_logs_table",
+      "breakpoints": true
     }
   ]
 }

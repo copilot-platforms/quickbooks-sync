@@ -1,20 +1,12 @@
 import { InvoiceStatus } from '@/app/api/core/types/invoice'
 import { timestamps } from '@/db/helper/column.helper'
+import { enumToPgEnum } from '@/db/helper/drizzle.helper'
 import { pgTable as table } from 'drizzle-orm/pg-core'
 import * as t from 'drizzle-orm/pg-core'
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
 import { z } from 'zod'
 
-export function enumToPgEnum<T extends Record<string, any>>(
-  myEnum: T,
-): [T[keyof T], ...T[keyof T][]] {
-  return Object.values(myEnum).map((value: any) => `${value}`) as [
-    T[keyof T],
-    ...T[keyof T][],
-  ]
-}
-
-const invoiceStatusEnum = t.pgEnum(
+export const invoiceStatusEnum = t.pgEnum(
   'invoice_statuses',
   enumToPgEnum(InvoiceStatus),
 )
