@@ -1,11 +1,8 @@
 import ProductMappingTable from '@/components/dashboard/settings/sections/product/ProductMappingTable'
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
-import {
-  ProductDataType,
-  QBItemDataType,
-  useProductMapping,
-} from '@/hook/useSettings'
-import { Checkbox } from 'copilot-design-system'
+import { ProductDataType, QBItemDataType } from '@/hook/useSettings'
+import { ProductSettingType } from '@/type/common'
+import { Checkbox, Spinner } from 'copilot-design-system'
 
 export type ProductMappingComponentType = {
   openDropdowns: {
@@ -30,6 +27,12 @@ export type ProductMappingComponentType = {
   ) => QBItemDataType[]
   mappingItems: ProductMappingItemType[]
   setMappingItems: (products: ProductMappingItemType[]) => void
+  setting: {
+    settingState: ProductSettingType
+    changeSettings: (flag: keyof ProductSettingType, state: boolean) => void
+    error: unknown
+    isLoading: boolean
+  }
 }
 
 export default function ProductMapping({
@@ -42,13 +45,11 @@ export default function ProductMapping({
   getFilteredItems,
   mappingItems,
   setMappingItems,
+  setting,
 }: ProductMappingComponentType) {
-  const {
-    newlyCreatedFlag,
-    itemCreateFlag,
-    setNewlyCreatedFlag,
-    setItemCreateFlag,
-  } = useProductMapping()
+  if (setting.isLoading) {
+    return <Spinner size={5} />
+  }
 
   return (
     <>
@@ -58,8 +59,13 @@ export default function ProductMapping({
             label="Add newly created products to Quickbooks"
             description="Automatically create matching items in QuickBooks with product name,
             description, and price when new products are created in Copilot."
-            checked={newlyCreatedFlag}
-            onChange={() => setNewlyCreatedFlag(!newlyCreatedFlag)}
+            checked={setting.settingState.createNewProductFlag}
+            onChange={() =>
+              setting.changeSettings(
+                'createNewProductFlag',
+                !setting.settingState.createNewProductFlag,
+              )
+            }
           />
         </div>
         <div className="mb-5">
@@ -67,8 +73,13 @@ export default function ProductMapping({
             label="Create an item in QuickBooks if Copilot product is not found"
             description="Create missing QuickBooks items when syncing invoices containing
             Copilot products that don't yet exist in QuickBooks."
-            checked={itemCreateFlag}
-            onChange={() => setItemCreateFlag(!itemCreateFlag)}
+            checked={setting.settingState.createInvoiceItemFlag}
+            onChange={() =>
+              setting.changeSettings(
+                'createInvoiceItemFlag',
+                !setting.settingState.createInvoiceItemFlag,
+              )
+            }
           />
         </div>
 
