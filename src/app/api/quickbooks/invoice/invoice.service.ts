@@ -448,8 +448,7 @@ export class InvoiceService extends BaseService {
       status: LogStatus.SUCCESS,
       copilotId: invoiceResource.id,
       quickbooksId: invoiceRes.Invoice.Id,
-      syncDate: dayjs().format('YYYY-MM-DD'),
-      syncTime: dayjs().format('HH:mm:ss'),
+      syncAt: dayjs().toDate(),
       invoiceNumber: invoiceResource.number,
       amount: invoiceResource.total.toFixed(2),
     })
@@ -640,8 +639,7 @@ export class InvoiceService extends BaseService {
         eventType: EventType.VOIDED,
         status: LogStatus.SUCCESS,
         copilotId: payload.data.id,
-        syncDate: dayjs().format('YYYY-MM-DD'),
-        syncTime: dayjs().format('HH:mm:ss'),
+        syncAt: dayjs().toDate(),
         quickbooksId: invoiceSync.qbInvoiceId,
         invoiceNumber: invoiceSync.invoiceNumber,
         // amount: invoiceSync.total.toFixed(2), // TODO: add amount in mapping table

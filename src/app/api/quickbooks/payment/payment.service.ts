@@ -84,8 +84,7 @@ export class PaymentService extends BaseService {
     try {
       const qbPaymentRes = await intuitApi.createPayment(parsedQbPayload)
       // store success sync log for payment
-      syncLogPayload.syncDate = dayjs().format('YYYY-MM-DD')
-      syncLogPayload.syncTime = dayjs().format('HH:mm:ss')
+      syncLogPayload.syncAt = dayjs().toDate()
       syncLogPayload.quickbooksId = qbPaymentRes.Payment.Id
       await syncLogService.updateOrCreateQBSyncLog(syncLogPayload)
 
@@ -119,8 +118,7 @@ export class PaymentService extends BaseService {
         eventType: EventType.SUCCEEDED,
         status: LogStatus.SUCCESS,
         copilotId: id,
-        syncDate: dayjs().format('YYYY-MM-DD'),
-        syncTime: dayjs().format('HH:mm:ss'),
+        syncAt: dayjs().toDate(),
         quickbooksId: res.Purchase.Id,
         invoiceNumber: payload.DocNumber,
         amount: (payload.Line[0].Amount * 100).toFixed(2),
