@@ -227,12 +227,33 @@ export class WebhookService extends BaseService {
           break
         }
         const parsedPaidInvoiceResource = parsedPaidInvoice.data
-        const invService = new InvoiceService(this.user)
-        await invService.webhookInvoicePaid(
-          parsedPaidInvoiceResource,
-          qbTokenInfo,
-        )
-        break
+        try {
+          if (qbTokenInfo.accessToken === '') {
+            throw new APIError(
+              httpStatus.UNAUTHORIZED,
+              'Refresh token is expired',
+            )
+          }
+          const invService = new InvoiceService(this.user)
+          await invService.webhookInvoicePaid(
+            parsedPaidInvoiceResource,
+            qbTokenInfo,
+          )
+          break
+        } catch (error: unknown) {
+          const syncLogService = new SyncLogService(this.user)
+
+          await syncLogService.updateOrCreateQBSyncLog({
+            portalId: this.user.workspaceId,
+            entityType: EntityType.INVOICE,
+            eventType: EventType.PAID,
+            status: LogStatus.FAILED,
+            copilotId: parsedPaidInvoiceResource.data.id,
+            invoiceNumber: parsedPaidInvoiceResource.data.number,
+            amount: parsedPaidInvoiceResource.data.total.toFixed(2),
+          })
+          throw error
+        }
 
       case WebhookEvents.INVOICE_VOIDED:
         console.info('###### INVOICE VOIDED ######')
