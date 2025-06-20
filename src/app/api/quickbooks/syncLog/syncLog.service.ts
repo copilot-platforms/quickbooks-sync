@@ -1,5 +1,5 @@
 import { BaseService } from '@/app/api/core/services/base.service'
-import { EventType, LogStatus } from '@/app/api/core/types/log'
+import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 import {
   QBSyncLog,
   QBSyncLogCreateSchema,
@@ -11,6 +11,21 @@ import {
 import { WhereClause } from '@/type/common'
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import postgres from 'postgres'
+
+export type CustomSyncLogRecordType = {
+  copilotId: string
+  status: LogStatus
+  eventType: EventType
+  invoiceNumber: string
+  amount: number
+  createdAt: Date
+}
+
+export type CustomSyncLogType = {
+  entityType: EntityType
+  eventType: EventType
+  records: CustomSyncLogRecordType[]
+}
 
 export class SyncLogService extends BaseService {
   /**
@@ -78,7 +93,7 @@ export class SyncLogService extends BaseService {
    * Get all failed sync logs grouped by entity type
    */
   async getFailedSyncLogsByEntityType(): Promise<
-    postgres.RowList<Record<string, any>[]>
+    postgres.RowList<CustomSyncLogType[]>
   > {
     const query = sql`SELECT 
         entity_type as "entityType",
@@ -89,7 +104,8 @@ export class SyncLogService extends BaseService {
             'status', status,
             'eventType', event_type,
             'invoiceNumber', invoice_number,
-            'amount', amount
+            'amount', amount,
+            'createdAt', created_at
           )
         ) AS records
       FROM ${QBSyncLog}
