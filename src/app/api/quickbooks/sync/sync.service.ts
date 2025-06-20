@@ -1,5 +1,9 @@
 import { BaseService } from '@/app/api/core/services/base.service'
-import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
+import {
+  CustomSyncLogRecordType,
+  CustomSyncLogType,
+  SyncLogService,
+} from '@/app/api/quickbooks/syncLog/syncLog.service'
 import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { AuthService } from '@/app/api/quickbooks/auth/auth.service'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
@@ -28,7 +32,7 @@ export class SyncService extends BaseService {
   }
 
   private async processInvoiceSync(
-    records: Record<string, any>[],
+    records: CustomSyncLogRecordType[],
     qbTokenInfo: IntuitAPITokensType,
     invoices: InvoiceResponse[] | undefined,
     eventType: EventType,
@@ -75,7 +79,7 @@ export class SyncService extends BaseService {
   }
 
   private async processPaymentSucceededSync(
-    records: Record<string, any>[],
+    records: CustomSyncLogRecordType[],
     qbTokenInfo: IntuitAPITokensType,
   ) {
     await Promise.all(
@@ -111,7 +115,7 @@ export class SyncService extends BaseService {
   }
 
   private async processProductSync(
-    records: Record<string, any>[],
+    records: CustomSyncLogRecordType[],
     qbTokenInfo: IntuitAPITokensType,
     products: ProductsResponse | undefined,
     eventType: EventType,
@@ -205,7 +209,7 @@ export class SyncService extends BaseService {
     }
   }
 
-  async intiateSync(logs: postgres.RowList<Record<string, any>[]>) {
+  async intiateSync(logs: postgres.RowList<CustomSyncLogType[]>) {
     const authService = new AuthService(this.user)
     const qbTokenInfo = await authService.getQBToken(this.user.workspaceId)
     const copilotApi = new CopilotAPI(this.user.token)
