@@ -5,6 +5,7 @@ import { ExpenseService } from '@/app/api/quickbooks/expense/expense.service'
 import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
+import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import {
   InvoiceCreatedResponseSchema,
   InvoicePaidResponseSchema,
@@ -167,6 +168,19 @@ export class WebhookService extends BaseService {
         const parsedPaymentSucceedResource = parsedPaymentSucceed.data
 
         if (parsedPaymentSucceedResource.data.feeAmount.paidByPlatform > 0) {
+          // check if absorbed fee flag is true
+          const settingService = new SettingService(this.user)
+          const setting = await settingService.getOneByPortalId([
+            'absorbedFeeFlag',
+          ])
+
+          if (!setting?.absorbedFeeFlag) {
+            console.info(
+              'WebhookService#handleWebhookEvent#payment-succeeded | Absorbed fee flag is false',
+            )
+            break
+          }
+
           const expenseService = new ExpenseService(this.user)
           const expense = await expenseService.getQBExpenseByPaymentId(
             parsedPaymentSucceedResource.data.id,

@@ -2,7 +2,11 @@ import InvoiceDetail from '@/components/dashboard/settings/sections/invoice/Invo
 import ProductMapping from '@/components/dashboard/settings/sections/product/ProductMapping'
 import Accordion from '@/components/ui/Accordion'
 import Divider from '@/components/ui/Divider'
-import { useProductMappingSettings, useSettings } from '@/hook/useSettings'
+import {
+  useInvoiceDetailSettings,
+  useProductMappingSettings,
+  useSettings,
+} from '@/hook/useSettings'
 import { Button } from 'copilot-design-system'
 
 export default function SettingAccordion() {
@@ -19,6 +23,14 @@ export default function SettingAccordion() {
     setMappingItems,
     showProductConfirm,
   } = useProductMappingSettings()
+
+  const {
+    settingState,
+    submitInvoiceSettings,
+    isLoading,
+    changeSettings,
+    showButton: showInvoiceButton,
+  } = useInvoiceDetailSettings()
 
   const accordionItems = [
     {
@@ -41,7 +53,13 @@ export default function SettingAccordion() {
     {
       id: 'invoice-detail',
       header: 'Invoice Details',
-      content: <InvoiceDetail />,
+      content: (
+        <InvoiceDetail
+          settingState={settingState}
+          changeSettings={changeSettings}
+          isLoading={isLoading}
+        />
+      ),
     },
   ]
   const { openItems, setOpenItems } = useSettings()
@@ -59,18 +77,26 @@ export default function SettingAccordion() {
       {accordionItems.map((item, index) => {
         return (
           <div key={item.id} className="relative">
-            {index === 0 && showProductConfirm && (
-              <div
-                className={`absolute top-[14px] right-0 z-10 flex items-center justify-end`}
-              >
+            <div
+              className={`absolute top-[14px] right-0 z-10 flex items-center justify-end`}
+            >
+              {index === 0 && showProductConfirm && (
                 <Button
                   label="Confirm"
                   variant="primary"
                   prefixIcon="Check"
                   onClick={submitMappingItems}
                 />
-              </div>
-            )}
+              )}
+              {index === 1 && showInvoiceButton && (
+                <Button
+                  label="Update sync"
+                  variant="primary"
+                  prefixIcon="Check"
+                  onClick={submitInvoiceSettings}
+                />
+              )}
+            </div>
             <Accordion
               item={item}
               toggleItemAction={toggleItem}

@@ -251,9 +251,68 @@ export type PricesResponse = z.infer<typeof PricesResponseSchema>
 export const changeEnableStatusRequestSchema = z.object({
   enable: z.boolean(),
 })
-export type changeEnableStatusRequest = z.infer<
+export type ChangeEnableStatusRequestType = z.infer<
   typeof changeEnableStatusRequestSchema
 >
+
+export enum SettingType {
+  INVOICE = 'invoice',
+  PRODUCT = 'product',
+}
+
+export const SettingRequestSchema = z
+  .object({
+    id: z.string().optional(),
+    type: z.nativeEnum(SettingType),
+    absorbedFeeFlag: z.boolean().optional(),
+    useCompanyNameFlag: z.boolean().optional(),
+    createNewProductFlag: z.boolean().optional(),
+    createInvoiceItemFlag: z.boolean().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.type === SettingType.INVOICE) {
+      if (typeof val.absorbedFeeFlag !== 'boolean') {
+        ctx.addIssue({
+          path: ['absorbedFeeFlag'],
+          code: z.ZodIssueCode.custom,
+          message: 'absorbedFeeFlag is required when type is invoice',
+        })
+      }
+      if (typeof val.useCompanyNameFlag !== 'boolean') {
+        ctx.addIssue({
+          path: ['useCompanyNameFlag'],
+          code: z.ZodIssueCode.custom,
+          message: 'useCompanyNameFlag is required when type is invoice',
+        })
+      }
+    }
+    if (val.type === SettingType.PRODUCT) {
+      if (typeof val.createNewProductFlag !== 'boolean') {
+        ctx.addIssue({
+          path: ['createNewProductFlag'],
+          code: z.ZodIssueCode.custom,
+          message: 'createNewProductFlag is required when type is product',
+        })
+      }
+      if (typeof val.createInvoiceItemFlag !== 'boolean') {
+        ctx.addIssue({
+          path: ['createInvoiceItemFlag'],
+          code: z.ZodIssueCode.custom,
+          message: 'createInvoiceItemFlag is required when type is product',
+        })
+      }
+    }
+  })
+
+export type SettingRequestType = z.infer<typeof SettingRequestSchema>
+
+export type InvoiceSettingType = Required<
+  Pick<SettingRequestType, 'absorbedFeeFlag' | 'useCompanyNameFlag'>
+> & { id?: string }
+
+export type ProductSettingType = Required<
+  Pick<SettingRequestType, 'createInvoiceItemFlag' | 'createNewProductFlag'>
+> & { id?: string }
 
 export enum TransactionType {
   INVOICE = 'Invoice',

@@ -5,6 +5,7 @@ import { QBTokens } from '@/db/schema/qbTokens'
 import { QBConnectionLogs } from '@/db/schema/qbConnectionLogs'
 import { QBCustomers } from '@/db/schema/qbCustomers'
 import { QBExpenseSync } from '@/db/schema/qbExpenseSync'
+import { QBSetting } from '@/db/schema/qbSettings'
 
 export const schema = {
   QBInvoiceSync,
@@ -14,4 +15,5 @@ export const schema = {
   QBConnectionLogs,
   QBCustomers,
   QBExpenseSync,
+  QBSetting,
 }

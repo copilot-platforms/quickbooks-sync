@@ -102,9 +102,9 @@ export class InvoiceService extends BaseService {
     }
 
     return await this.db.query.QBInvoiceSync.findFirst({
-      where: (QBTokens, { eq }) =>
+      where: (QBInvoiceSync, { eq }) =>
         and(
-          isNull(QBTokens.deletedAt),
+          isNull(QBInvoiceSync.deletedAt),
           eq(QBInvoiceSync.invoiceNumber, invoiceNumber),
           eq(QBInvoiceSync.portalId, this.user.workspaceId),
         ),

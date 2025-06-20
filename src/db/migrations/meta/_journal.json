@@ -141,6 +141,13 @@
       "when": 1749789293037,
       "tag": "0019_create_expense_sync_table",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1749797327029,
+      "tag": "0020_create_settings_table",
+      "breakpoints": true
     }
   ]
 }

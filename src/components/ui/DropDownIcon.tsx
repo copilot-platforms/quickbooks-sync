@@ -2,7 +2,7 @@ import { Icon } from 'copilot-design-system'
 
 export default function DropDownIcon({
   isOpen,
-  className,
+  className = '',
 }: {
   isOpen: boolean
   className?: string
