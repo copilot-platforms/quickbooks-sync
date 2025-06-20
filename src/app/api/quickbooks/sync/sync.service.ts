@@ -177,8 +177,7 @@ export class SyncService extends BaseService {
                       status: LogStatus.SUCCESS,
                       copilotId: product.id,
                       quickbooksId: item.Id,
-                      syncDate: dayjs().format('YYYY-MM-DD'),
-                      syncTime: dayjs().format('HH:mm:ss'),
+                      syncAt: dayjs().toDate(),
                     })
                   }
                   break

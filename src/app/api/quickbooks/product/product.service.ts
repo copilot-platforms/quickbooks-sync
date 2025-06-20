@@ -371,8 +371,7 @@ export class ProductService extends BaseService {
             status: LogStatus.SUCCESS,
             copilotId: productResource.id,
             quickbooksId: itemRes.Item.Id,
-            syncDate: dayjs().format('YYYY-MM-DD'),
-            syncTime: dayjs().format('HH:mm:ss'),
+            syncAt: dayjs().toDate(),
           })
         }
       }),
@@ -430,8 +429,7 @@ export class ProductService extends BaseService {
         status: LogStatus.SUCCESS,
         copilotId: productResource.id,
         quickbooksId: '',
-        syncDate: dayjs().format('YYYY-MM-DD'),
-        syncTime: dayjs().format('HH:mm:ss'),
+        syncAt: dayjs().toDate(),
       })
     } else {
       await this.createQBProduct({
@@ -495,8 +493,7 @@ export class ProductService extends BaseService {
         status: LogStatus.SUCCESS,
         copilotId: priceResource.productId,
         quickbooksId: item.Id,
-        syncDate: dayjs().format('YYYY-MM-DD'),
-        syncTime: dayjs().format('HH:mm:ss'),
+        syncAt: dayjs().toDate(),
       })
     } else {
       await this.createQBProduct({
