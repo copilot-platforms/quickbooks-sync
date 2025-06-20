@@ -1,47 +1,23 @@
 {
-  "security.workspace.trust.untrustedFiles": "open",
-  "window.title": "${folderPath} ${separator} ${activeEditorShort}",
-  "breadcrumbs.enabled": true,
-  "workbench.colorCustomizations": {
-    "[Default Dark+]": {
-      "editor.lineHighlightBackground": "#404020FF",
-      "editorLineNumber.activeForeground": "#ffff00"
-    },
-    "[Default Light+]": {
-      "editor.lineHighlightBackground": "#FFEEEE",
-      "editorLineNumber.activeForeground": "#ff0000"
-    }
+  "editor.tabSize": 2,
+  "eslint.experimental.useFlatConfig": true,
+  "editor.inlineSuggest.enabled": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
   },
-  "workbench.tree.renderIndentGuides": "always",
-  "workbench.tree.indent": 10,
-  "editor.fontSize": 13,
-  "editor.fontFamily": "Fira Code",
-  "editor.lineHeight": 24,
-  "editor.fontLigatures": true,
-  "editor.formatOnPaste": true,
-  "editor.guides.bracketPairs": true,
-  "files.trimTrailingWhitespace": true,
-
+  "typescript.preferences.importModuleSpecifier": "non-relative",
   "editor.formatOnSave": true,
-  "window.zoomLevel": 0.2,
-  "terminal.external.osxExec": "iTerm.app",
-  "terminal.integrated.shell.osx": "/bin/zsh",
-  "terminal.background": "#131212",
-  "terminal.foreground": "#6bb8e6",
-  "terminal.ansiBlack": "#000000",
-  "terminal.ansiBrightBlack": "#414141",
-  "terminal.ansiBlue": "#bceafa",
-  "terminal.ansiBrightBlue": "#77dcff",
-  "terminal.ansiCyan": "#a3e9d4",
-  "terminal.ansiBrightCyan": "#a3e9d5",
-  "terminal.ansiGreen": "#68f400",
-  "terminal.ansiBrightGreen": "#dcf152",
-  "terminal.ansiMagenta": "#f58a8d",
-  "terminal.ansiBrightMagenta": "#ffb4b8",
-  "terminal.ansiRed": "#ff4c41",
-  "terminal.ansiBrightRed": "#ff7c77",
-  "terminal.ansiWhite": "#ffffff",
-  "terminal.ansiBrightWhite": "#ffffff",
-  "terminal.ansiYellow": "#ffe100",
-  "terminal.ansiBrightYellow": "#fff68b"
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "css.lint.unknownAtRules": "ignore"
 }
