@@ -1,6 +1,6 @@
 {
-  "id": "347a04b5-1f51-4d7c-82fa-7d75f601fdc4",
-  "prevId": "ef9d8980-b0c1-443a-a8cd-5a3c5b6fae5b",
+  "id": "21d2ca58-56f4-4c4c-94b9-396dbda4d1a2",
+  "prevId": "64cda273-395d-479a-b7c3-02e4dcd8cee6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -145,6 +145,76 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.qb_expense_sync": {
+      "name": "qb_expense_sync",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "portal_id": {
+          "name": "portal_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payment_id": {
+          "name": "payment_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "invoice_id": {
+          "name": "invoice_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "invoice_number": {
+          "name": "invoice_number",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qb_purchase_id": {
+          "name": "qb_purchase_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qb_sync_token": {
+          "name": "qb_sync_token",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {},
@@ -398,6 +468,180 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.qb_settings": {
+      "name": "qb_settings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "portal_id": {
+          "name": "portal_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "absorbed_fee_flag": {
+          "name": "absorbed_fee_flag",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "company_name_flag": {
+          "name": "company_name_flag",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "create_new_product_flag": {
+          "name": "create_new_product_flag",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "create_invoice_item_flag": {
+          "name": "create_invoice_item_flag",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.qb_sync_logs": {
+      "name": "qb_sync_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "portal_id": {
+          "name": "portal_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_type": {
+          "name": "entity_type",
+          "type": "entity_types",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'invoice'"
+        },
+        "event_type": {
+          "name": "event_type",
+          "type": "event_types",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'created'"
+        },
+        "status": {
+          "name": "status",
+          "type": "log_statuses",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'success'"
+        },
+        "sync_date": {
+          "name": "sync_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sync_time": {
+          "name": "sync_time",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "copilot_id": {
+          "name": "copilot_id",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quickbooks_id": {
+          "name": "quickbooks_id",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "invoice_number": {
+          "name": "invoice_number",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "remark": {
+          "name": "remark",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.qb_tokens": {
       "name": "qb_tokens",
       "schema": "",
@@ -476,6 +720,18 @@
           "primaryKey": false,
           "notNull": true
         },
+        "asset_account_ref": {
+          "name": "asset_account_ref",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expense_account_ref": {
+          "name": "expense_account_ref",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
         "is_enabled": {
           "name": "is_enabled",
           "type": "boolean",
@@ -547,6 +803,36 @@
         "open",
         "paid",
         "void"
+      ]
+    },
+    "public.entity_types": {
+      "name": "entity_types",
+      "schema": "public",
+      "values": [
+        "invoice",
+        "product",
+        "payment"
+      ]
+    },
+    "public.event_types": {
+      "name": "event_types",
+      "schema": "public",
+      "values": [
+        "created",
+        "updated",
+        "paid",
+        "voided",
+        "deleted",
+        "succeeded"
+      ]
+    },
+    "public.log_statuses": {
+      "name": "log_statuses",
+      "schema": "public",
+      "values": [
+        "success",
+        "failed",
+        "info"
       ]
     }
   },

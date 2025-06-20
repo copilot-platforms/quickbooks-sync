@@ -615,7 +615,21 @@
     "public.connection_statuses": {
       "name": "connection_statuses",
       "schema": "public",
-      "values": ["pending", "success", "error"]
+      "values": [
+        "pending",
+        "success",
+        "error"
+      ]
+    },
+    "public.invoice_statuses": {
+      "name": "invoice_statuses",
+      "schema": "public",
+      "values": [
+        "draft",
+        "open",
+        "paid",
+        "void"
+      ]
     }
   },
   "schemas": {},

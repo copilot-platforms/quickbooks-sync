@@ -13,16 +13,46 @@ import {
   PriceCreatedResponseSchema,
   ProductCreatedResponseSchema,
   ProductUpdatedResponseSchema,
+  WebhookEventResponseSchema,
   WebhookEventResponseType,
 } from '@/type/dto/webhook.dto'
 import { IntuitAPITokensType } from '@/utils/intuitAPI'
 
 export class WebhookService extends BaseService {
   async handleWebhookEvent(
-    payload: WebhookEventResponseType,
+    body: WebhookEventResponseType,
     qbTokenInfo: IntuitAPITokensType,
   ) {
     let productService: ProductService
+
+    const parsedBody = WebhookEventResponseSchema.safeParse(body)
+    if (!parsedBody.success || !parsedBody.data) {
+      console.error(
+        'WebhookService#handleWebhookEvent | Could not parse webhook body',
+      )
+      return
+    }
+
+    const payload = parsedBody.data
+    // for webhook event product.create and price.create, terminate process if createNewProductFlag is false
+    if (
+      [WebhookEvents.PRODUCT_CREATED, WebhookEvents.PRICE_CREATED].includes(
+        payload.eventType as WebhookEvents,
+      )
+    ) {
+      const settingService = new SettingService(this.user)
+      const setting = await settingService.getOneByPortalId([
+        'createNewProductFlag',
+      ])
+
+      if (!setting?.createNewProductFlag) {
+        console.info(
+          'WebhookService#handleWebhookEvent#payment-succeeded | Create new product flag is false',
+        )
+        return
+      }
+    }
+
     switch (payload.eventType) {
       case WebhookEvents.INVOICE_CREATED:
         const parsedPayload = InvoiceCreatedResponseSchema.safeParse(payload)

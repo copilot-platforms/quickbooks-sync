@@ -11,7 +11,11 @@ import {
 import { postFetcher } from '@/helper/fetch.helper'
 import { mutate } from 'swr'
 import equal from 'deep-equal'
-import { InvoiceSettingType, SettingType } from '@/type/common'
+import {
+  InvoiceSettingType,
+  ProductSettingType,
+  SettingType,
+} from '@/type/common'
 
 export type QuickbooksItemType = {
   Name: string
@@ -36,18 +40,6 @@ export type QBItemDataType = {
   numericPrice: number
 }
 
-export const useProductMapping = () => {
-  const [newlyCreatedFlag, setNewlyCreatedFlag] = useState(false)
-  const [itemCreateFlag, setItemCreateFlag] = useState(false)
-
-  return {
-    newlyCreatedFlag,
-    setNewlyCreatedFlag,
-    itemCreateFlag,
-    setItemCreateFlag,
-  }
-}
-
 export const useProductMappingSettings = () => {
   const [openDropdowns, setOpenDropdowns] = useState<{
     [key: number]: boolean
@@ -58,25 +50,87 @@ export const useProductMappingSettings = () => {
   }>({})
 
   const [mappingItems, setMappingItems] = useState<ProductMappingItemType[]>([])
+  const [settingShowConfirm, setSettingShowConfirm] = useState<boolean>(false)
   const { token, initialProductMap, showProductConfirm, setAppParams } =
     useApp()
 
-  const submitMappingItems = async () => {
-    const res = await postFetcher(
+  // For checkbox settings
+  const [productSetting, setProductSetting] = useState<ProductSettingType>({
+    createInvoiceItemFlag: false,
+    createNewProductFlag: false,
+  })
+  const [intialSettingState, setIntialSettingState] = useState<
+    ProductSettingType | undefined
+  >()
+
+  const {
+    data: setting,
+    error: settingError,
+    isLoading: settingLoading,
+  } = useSwrHelper(`/api/quickbooks/setting?type=product&token=${token}`)
+
+  const changeSettings = async (
+    flag: keyof ProductSettingType,
+    state: boolean,
+  ) => {
+    setProductSetting((prev) => ({
+      ...prev,
+      [flag]: state,
+    }))
+  }
+
+  useEffect(() => {
+    if (productSetting) {
+      let showButton = false
+      if (!equal(intialSettingState, productSetting)) {
+        showButton = true
+      }
+      setSettingShowConfirm(showButton)
+    }
+  }, [productSetting])
+
+  useEffect(() => {
+    if (setting && setting?.setting) {
+      setProductSetting(setting.setting)
+      setIntialSettingState(structuredClone(setting.setting))
+    }
+  }, [setting])
+  // End of checkbox settings
+
+  const tableMappingSubmit = async () => {
+    return await postFetcher(
       `/api/quickbooks/product/map?token=${token}`,
       {},
       mappingItems,
     )
-    if (!res || res?.error) {
-      console.error({ res })
-      alert('Error submitting mapping items') // TODO: UI toastr if error
-    } else {
+  }
+
+  const settingSubmit = async () => {
+    return await postFetcher(
+      `/api/quickbooks/setting?token=${token}`,
+      {},
+      { ...productSetting, type: SettingType.PRODUCT },
+    )
+  }
+
+  const submitMappingItems = async () => {
+    const [tableRes, settingRes] = await Promise.all([
+      tableMappingSubmit(),
+      settingSubmit(),
+    ])
+
+    if (tableRes && settingRes) {
       mutate(`/api/quickbooks/product/map?token=${token}`)
+      mutate(`/api/quickbooks/setting?type=product&token=${token}`)
       setAppParams((prev) => ({
         ...prev,
         showProductConfirm: false,
         itemMapped: true,
       }))
+      setSettingShowConfirm(false)
+    } else {
+      console.error({ tableRes, settingRes })
+      alert('Error submitting mapping items')
     }
   }
 
@@ -180,6 +234,13 @@ export const useProductMappingSettings = () => {
     mappingItems,
     setMappingItems,
     showProductConfirm,
+    setting: {
+      settingState: productSetting,
+      changeSettings,
+      error: settingError,
+      isLoading: settingLoading,
+      settingShowConfirm,
+    },
   }
 }
 
@@ -419,7 +480,6 @@ export const useInvoiceDetailSettings = () => {
     settingState,
     changeSettings,
     submitInvoiceSettings,
-    setting,
     error,
     isLoading,
     showButton,
