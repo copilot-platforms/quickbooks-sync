@@ -8,7 +8,6 @@ import HomeClient from '@/app/(home)/HomeClient'
 import { AppProvider } from '@/app/context/AppContext'
 import { SilentError } from '@/components/template/SilentError'
 import { apiUrl } from '@/config'
-import { concatDateTime } from '@/utils/common'
 import { z } from 'zod'
 
 export async function getLatestSuccesLog(token: string) {
@@ -72,7 +71,7 @@ export default async function Main({
         reconnect={reconnect}
         portalConnectionStatus={portalConnectionStatus}
         isEnabled={isEnabled}
-        lastSyncTimestamp={concatDateTime(successLog)}
+        lastSyncTimestamp={successLog.updatedAt}
       >
         <HomeClient />
       </AppProvider>

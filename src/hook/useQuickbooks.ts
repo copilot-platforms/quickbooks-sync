@@ -5,7 +5,6 @@ import { copilotDashboardUrl } from '@/config'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
 import SupabaseClient from '@/lib/supabase'
 import { Token } from '@/type/common'
-import { concatDateTime } from '@/utils/common'
 import { useEffect, useState } from 'react'
 
 export const useQuickbooks = (
@@ -62,7 +61,6 @@ export const useQuickbooks = (
           setAppParams((prev) => ({
             ...prev,
             syncFlag: connectionStatus || false,
-            lastSyncTimestamp: connectionStatus ? newPayload.updated_at : null,
           }))
         },
       )
@@ -81,10 +79,7 @@ export const useQuickbooks = (
           setAppParams((prev) => ({
             ...prev,
             lastSyncTimestamp: isSuccess
-              ? concatDateTime({
-                  syncDate: newPayload.sync_date,
-                  syncTime: newPayload.sync_time,
-                })
+              ? newPayload.updated_at
               : prev.lastSyncTimestamp,
           }))
         },
