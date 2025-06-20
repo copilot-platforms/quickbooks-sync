@@ -12,13 +12,20 @@ import {
   QBItemFullUpdatePayloadType,
   QBPaymentCreatePayloadType,
   QBVoidInvoicePayloadType,
-  QBPaymentDeletePayloadType,
+  QBAccountCreatePayloadType,
+  QBPurchaseCreatePayloadType,
+  QBDeletePayloadType,
 } from '@/type/dto/intuitAPI.dto'
 import httpStatus from 'http-status'
 
 export type IntuitAPITokensType = Pick<
   QBTokenSelectSchemaType,
-  'accessToken' | 'refreshToken' | 'intuitRealmId' | 'incomeAccountRef'
+  | 'accessToken'
+  | 'refreshToken'
+  | 'intuitRealmId'
+  | 'incomeAccountRef'
+  | 'expenseAccountRef'
+  | 'assetAccountRef'
 >
 
 export default class IntuitAPI {
@@ -399,7 +406,7 @@ export default class IntuitAPI {
     return invoice
   }
 
-  async _deletePayment(payload: QBPaymentDeletePayloadType) {
+  async _deletePayment(payload: QBDeletePayloadType) {
     console.info('IntuitAPI#deletePayment | payment delete start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/payment?operation=delete&minorversion=${intuitApiMinorVersion}`
     const payment = await this.postFetchWithHeaders(url, payload)
@@ -426,6 +433,110 @@ export default class IntuitAPI {
     return payment
   }
 
+  async _getAnAccountByName(accountName: string) {
+    console.info('IntuitAPI#getAnAccountByName | Account query start')
+    const query = `SELECT Id FROM Account where Name = '${accountName}' AND Active = true`
+    const customQuery = await this.customQuery(query)
+
+    if (!customQuery)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#getAnAccountByName | message = no response',
+      )
+
+    if (customQuery?.Fault) {
+      console.error({ Error: customQuery.Fault?.Error })
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#getAnAccountByName | Error while fetching an account',
+        customQuery.Fault?.Error,
+      )
+    }
+
+    return customQuery.Account?.[0]
+  }
+
+  async _createAccount(payload: QBAccountCreatePayloadType) {
+    console.info('IntuitAPI#createAssetAccount | Account create start')
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/account?minorversion=${intuitApiMinorVersion}`
+    const account = await this.postFetchWithHeaders(url, payload)
+
+    if (!account)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createAssetAccount | message = no response',
+      )
+
+    if (account?.Fault) {
+      console.error({ Error: account.Fault?.Error })
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createAssetAccount | Error while creating Account',
+        account.Fault?.Error,
+      )
+    }
+
+    console.info(
+      'IntuitAPI#createAssetAccount | Account created with Id =',
+      account.Account?.Id,
+    )
+    return account
+  }
+
+  async _createPurchase(payload: QBPurchaseCreatePayloadType) {
+    console.info('IntuitAPI#createPurchase | Purchase create start')
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/purchase?minorversion=${intuitApiMinorVersion}`
+    const purchase = await this.postFetchWithHeaders(url, payload)
+
+    if (!purchase)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createPurchase | message = no response',
+      )
+
+    if (purchase?.Fault) {
+      console.error({ Error: purchase.Fault?.Error })
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createPurchase | Error while creating purchase',
+        purchase.Fault?.Error,
+      )
+    }
+
+    console.info(
+      'IntuitAPI#createPurchase | Purchase created with Id =',
+      purchase.Purchase?.Id,
+    )
+    return purchase
+  }
+
+  async _deletePurchase(payload: QBDeletePayloadType) {
+    console.info('IntuitAPI#deletePurchase | purchase delete start')
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/purchase?operation=delete&minorversion=${intuitApiMinorVersion}`
+    const purchase = await this.postFetchWithHeaders(url, payload)
+
+    if (!purchase)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#deletePurchase | message = no response',
+      )
+
+    if (purchase?.Fault) {
+      console.error({ Error: purchase.Fault?.Error })
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#deletePurchase | error while deleting purchase',
+        purchase.Fault?.Error,
+      )
+    }
+
+    console.info(
+      'IntuitAPI#deletePurchase | purchase deleted with Id =',
+      purchase.Purchase?.Id,
+    )
+    return purchase
+  }
+
   private wrapWithRetry<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
   ): (...args: Args) => Promise<R> {
@@ -445,5 +556,9 @@ export default class IntuitAPI {
   itemFullUpdate = this.wrapWithRetry(this._itemFullUpdate)
   createPayment = this.wrapWithRetry(this._createPayment)
   voidInvoice = this.wrapWithRetry(this._voidInvoice)
+  getAnAccountByName = this.wrapWithRetry(this._getAnAccountByName)
+  createAccount = this.wrapWithRetry(this._createAccount)
+  createPurchase = this.wrapWithRetry(this._createPurchase)
   deletePayment = this.wrapWithRetry(this._deletePayment)
+  deletePurchase = this.wrapWithRetry(this._deletePurchase)
 }

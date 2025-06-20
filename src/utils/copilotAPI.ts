@@ -19,6 +19,8 @@ import {
   InternalUsersResponse,
   InternalUsersResponseSchema,
   InternalUsersSchema,
+  InvoiceResponse,
+  InvoiceResponseSchema,
   IUToken,
   IUTokenSchema,
   MeResponse,
@@ -394,6 +396,13 @@ export class CopilotAPI {
     )
   }
 
+  async _getInvoice(id: string): Promise<InvoiceResponse | undefined> {
+    console.info('CopilotAPI#getInvoice | token =', this.token)
+    return InvoiceResponseSchema.parse(
+      await this.copilot.retrieveInvoice({ id }),
+    )
+  }
+
   private wrapWithRetry<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
   ): (...args: Args) => Promise<R> {
@@ -429,4 +438,5 @@ export class CopilotAPI {
   getProducts = this.wrapWithRetry(this._getProducts)
   getPrice = this.wrapWithRetry(this._getPrice)
   getPrices = this.wrapWithRetry(this._getPrices)
+  getInvoice = this.wrapWithRetry(this._getInvoice)
 }

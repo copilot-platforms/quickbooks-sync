@@ -124,11 +124,41 @@ export type QBVoidInvoicePayloadType = z.infer<
   typeof QBVoidInvoicePayloadSchema
 >
 
-export const QBPaymentDeletePayloadSchema = z.object({
+export const QBAccountCreatePayloadSchema = z.object({
+  Name: z.string(),
+  AccountType: z.string(),
+  AccountSubType: z.string().optional(),
+  Active: z.boolean(),
+  Classification: z.string(),
+})
+
+export type QBAccountCreatePayloadType = z.infer<
+  typeof QBAccountCreatePayloadSchema
+>
+
+export const QBPurchaseCreatePayloadSchema = z.object({
+  PaymentType: z.literal('Cash'),
+  AccountRef: QBNameValueSchema,
+  DocNumber: z.string(),
+  TxnDate: z.string(),
+  Line: z.array(
+    z.object({
+      DetailType: z.literal('AccountBasedExpenseLineDetail'),
+      Amount: z.number(),
+      AccountBasedExpenseLineDetail: z.object({
+        AccountRef: QBNameValueSchema,
+      }),
+    }),
+  ),
+})
+
+export type QBPurchaseCreatePayloadType = z.infer<
+  typeof QBPurchaseCreatePayloadSchema
+>
+
+export const QBDeletePayloadSchema = z.object({
   SyncToken: z.string(),
   Id: z.string(),
 })
 
-export type QBPaymentDeletePayloadType = z.infer<
-  typeof QBPaymentDeletePayloadSchema
->
+export type QBDeletePayloadType = z.infer<typeof QBDeletePayloadSchema>

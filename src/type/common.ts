@@ -260,3 +260,9 @@ export enum TransactionType {
 }
 
 export type WhereClause = SQL<unknown>
+
+export const InvoiceResponseSchema = z.object({
+  id: z.string(),
+  number: z.string(),
+})
+export type InvoiceResponse = z.infer<typeof InvoiceResponseSchema>

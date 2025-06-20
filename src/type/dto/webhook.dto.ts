@@ -1,4 +1,4 @@
-import { InvoiceStatus } from '@/app/api/core/types/invoice'
+import { InvoiceStatus, PaymentStatus } from '@/app/api/core/types/invoice'
 import { ProductStatus } from '@/app/api/core/types/product'
 import { z } from 'zod'
 
@@ -93,3 +93,22 @@ export const InvoicePaidResponseSchema = z.object({
   }),
 })
 export type InvoicePaidResponseType = z.infer<typeof InvoicePaidResponseSchema>
+
+export const PaymentSucceededResponseSchema = z.object({
+  eventType: z.string(),
+  data: z.object({
+    id: z.string(),
+    invoiceId: z.string(),
+    status: z.nativeEnum(PaymentStatus),
+    paymentMethod: z.string(),
+    brand: z.string(),
+    feeAmount: z.object({
+      paidByPlatform: z.number(),
+      paidByClient: z.number(),
+    }),
+    createdAt: z.string().datetime(),
+  }),
+})
+export type PaymentSucceededResponseType = z.infer<
+  typeof PaymentSucceededResponseSchema
+>
