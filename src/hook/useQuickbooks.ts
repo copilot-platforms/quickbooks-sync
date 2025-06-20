@@ -1,9 +1,11 @@
 import { AuthStatus } from '@/app/api/core/types/auth'
+import { LogStatus } from '@/app/api/core/types/log'
 import { useApp } from '@/app/context/AppContext'
 import { copilotDashboardUrl } from '@/config'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
 import SupabaseClient from '@/lib/supabase'
 import { Token } from '@/type/common'
+import { concatDateTime } from '@/utils/common'
 import { useEffect, useState } from 'react'
 
 export const useQuickbooks = (
@@ -61,6 +63,29 @@ export const useQuickbooks = (
             ...prev,
             syncFlag: connectionStatus || false,
             lastSyncTimestamp: connectionStatus ? newPayload.updated_at : null,
+          }))
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'qb_sync_logs',
+          filter: `portal_id=eq.${tokenPayload?.workspaceId}`,
+        },
+        (payload) => {
+          const newPayload = payload.new
+          const isSuccess =
+            newPayload.status === LogStatus.SUCCESS ? true : false
+          setAppParams((prev) => ({
+            ...prev,
+            lastSyncTimestamp: isSuccess
+              ? concatDateTime({
+                  syncDate: newPayload.sync_date,
+                  syncTime: newPayload.sync_time,
+                })
+              : prev.lastSyncTimestamp,
           }))
         },
       )

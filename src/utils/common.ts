@@ -21,3 +21,9 @@ export const getTimeInterval = (interval: string, intervalCount: number) => {
       return TimeInterval.MONTHLY
   }
 }
+
+export const concatDateTime = (
+  succesLog: { syncDate: string; syncTime: string } | null,
+) => {
+  return succesLog ? `${succesLog?.syncDate}T${succesLog?.syncTime}` : null
+}
