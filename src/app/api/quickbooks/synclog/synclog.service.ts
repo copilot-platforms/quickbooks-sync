@@ -5,7 +5,7 @@ import { LogStatus } from '@/app/api/core/types/log'
 export class SyncLogService extends BaseService {
   async getLatestSyncSuccessLog(): Promise<Pick<
     QBSyncLogSelectSchemaType,
-    'syncDate' | 'syncTime'
+    'updatedAt'
   > | null> {
     const log = await this.db.query.QBSyncLog.findFirst({
       where: (logs, { eq, and }) =>
@@ -15,8 +15,7 @@ export class SyncLogService extends BaseService {
         ),
       orderBy: (logs, { desc }) => [desc(logs.createdAt)], //ensures fetching of the latest success log
       columns: {
-        syncDate: true,
-        syncTime: true,
+        updatedAt: true,
       },
     })
     return log || null
