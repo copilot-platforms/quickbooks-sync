@@ -8,11 +8,12 @@ import HomeClient from '@/app/(home)/HomeClient'
 import { AppProvider } from '@/app/context/AppContext'
 import { SilentError } from '@/components/template/SilentError'
 import { apiUrl } from '@/config'
+import { concatDateTime } from '@/utils/common'
 import { z } from 'zod'
 
 export async function getLatestSuccesLog(token: string) {
   const response = await fetch(
-    `${apiUrl}/api/quickbooks/log/success?token=${token}`,
+    `${apiUrl}/api/quickbooks/synclog/success?token=${token}`,
   )
   return (await response.json()).data
 }
@@ -71,7 +72,7 @@ export default async function Main({
         reconnect={reconnect}
         portalConnectionStatus={portalConnectionStatus}
         isEnabled={isEnabled}
-        lastSyncTimestamp={successLog?.updatedAt || null}
+        lastSyncTimestamp={concatDateTime(successLog)}
       >
         <HomeClient />
       </AppProvider>
