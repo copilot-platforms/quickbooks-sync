@@ -19,6 +19,7 @@ export const QBSetting = table('qb_settings', {
     .boolean('create_invoice_item_flag')
     .default(false)
     .notNull(),
+  initialSettingMap: t.boolean('initial_setting_map').default(true).notNull(),
   ...newTimestamps,
 })
 

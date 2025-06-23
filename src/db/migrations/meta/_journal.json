@@ -162,6 +162,13 @@
       "when": 1750673028889,
       "tag": "0022_rename_client_id_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1750679934906,
+      "tag": "0023_add_initial_setting_flag",
+      "breakpoints": true
     }
   ]
 }

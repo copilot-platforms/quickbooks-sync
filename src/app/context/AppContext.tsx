@@ -14,6 +14,7 @@ type AppContextType = {
   showProductConfirm?: boolean
   initialProductMap?: ProductMappingItemType[] // initial product mapped value
   itemMapped?: boolean // flag to indicate if product mapping has been done or not
+  initialSettingMapFlag?: boolean // flag to determine the initial setting flag
 }
 
 const AppContext = createContext<
@@ -34,6 +35,7 @@ export const AppProvider = ({
   showProductConfirm = false,
   initialProductMap = [],
   itemMapped = false,
+  initialSettingMapFlag = false,
   children,
 }: AppContextType & { children: ReactNode }) => {
   const [authParams, setAppParams] = useState<AppContextType>({
@@ -47,6 +49,7 @@ export const AppProvider = ({
     showProductConfirm,
     initialProductMap,
     itemMapped,
+    initialSettingMapFlag,
   })
   return (
     <AppContext.Provider value={{ ...authParams, setAppParams }}>

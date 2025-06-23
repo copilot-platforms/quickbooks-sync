@@ -61,6 +61,7 @@ export const useProductMappingSettings = () => {
     showProductConfirm,
     setAppParams,
     itemMapped,
+    initialSettingMapFlag,
   } = useApp()
 
   // For checkbox settings
@@ -96,6 +97,10 @@ export const useProductMappingSettings = () => {
     if (setting && setting?.setting) {
       setProductSetting(setting.setting)
       setIntialSettingState(structuredClone(setting.setting))
+      setAppParams((prev) => ({
+        ...prev,
+        initialSettingMapFlag: setting.setting.initialSettingMap,
+      }))
     }
   }, [setting])
   // End of checkbox settings
@@ -249,6 +254,7 @@ export const useProductMappingSettings = () => {
     setMappingItems,
     showProductConfirm,
     itemMapped,
+    initialSettingMapFlag,
     setting: {
       settingState: productSetting,
       changeSettings,
@@ -346,8 +352,8 @@ export const useProductTableSetting = (
       if (newMap) {
         setAppParams((prev) => ({
           ...prev,
-          initialProductMap: mappedItemEmpty ? [] : structuredClone(newMap), // allow confirm if not product mapping in intial state
-          showProductConfirm: mappedItemEmpty, // allow confirm if not product mapping in intial state
+          initialProductMap: mappedItemEmpty ? [] : structuredClone(newMap), // clone the initial mapped items
+          showProductConfirm: mappedItemEmpty, // allow confirm button in intial mapping
           itemMapped,
         }))
       }
@@ -440,7 +446,7 @@ export const useInvoiceDetailSettings = () => {
     absorbedFeeFlag: false,
     useCompanyNameFlag: false,
   }
-  const { token } = useApp()
+  const { token, setAppParams } = useApp()
   const [settingState, setSettingState] = useState<InvoiceSettingType>(
     initialInvoiceSetting,
   )
@@ -474,6 +480,10 @@ export const useInvoiceDetailSettings = () => {
     if (setting && setting?.setting) {
       setSettingState(setting.setting)
       setIntialSettingState(structuredClone(setting.setting))
+      setAppParams((prev) => ({
+        ...prev,
+        initialSettingMapFlag: setting.setting.initialSettingMap,
+      }))
     }
   }, [setting])
 

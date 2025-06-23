@@ -10,7 +10,7 @@ import {
   QBProductUpdateSchemaType,
   QBProductUpdateSchema,
 } from '@/db/schema/qbProductSync'
-import { ProductResponse } from '@/type/common'
+import { ProductResponse, WhereClause } from '@/type/common'
 import { ProductFlattenArrayResponseType } from '@/type/dto/api.dto'
 import { bottleneck } from '@/utils/bottleneck'
 import { QBItemFullUpdatePayloadType } from '@/type/dto/intuitAPI.dto'
@@ -25,7 +25,6 @@ import { and, desc, eq, isNull, not, SQL } from 'drizzle-orm'
 import { convert } from 'html-to-text'
 import { z } from 'zod'
 
-type WhereClause = SQL<unknown>
 export class ProductService extends BaseService {
   async getMappingByProductPriceId(
     productId: string,

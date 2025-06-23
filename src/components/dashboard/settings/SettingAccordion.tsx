@@ -24,6 +24,7 @@ export default function SettingAccordion() {
     setMappingItems,
     showProductConfirm,
     setting,
+    initialSettingMapFlag,
     itemMapped,
   } = useProductMappingSettings()
 
@@ -88,7 +89,7 @@ export default function SettingAccordion() {
               {index === 0 &&
                 (showProductConfirm || setting.settingShowConfirm) && (
                   <>
-                    {itemMapped && (
+                    {!initialSettingMapFlag && (
                       <Button
                         label="Cancel"
                         variant="text"
@@ -106,14 +107,16 @@ export default function SettingAccordion() {
                 )}
               {index === 1 && showInvoiceButton && (
                 <>
+                  {!initialSettingMapFlag && (
+                    <Button
+                      label="Cancel"
+                      variant="text"
+                      className="me-2"
+                      onClick={cancelInvoiceSettings}
+                    />
+                  )}
                   <Button
-                    label="Cancel"
-                    variant="text"
-                    className="me-2"
-                    onClick={cancelInvoiceSettings}
-                  />
-                  <Button
-                    label="Update sync"
+                    label={`${!initialSettingMapFlag ? 'Update Sync' : 'Confirm'}`}
                     variant="primary"
                     prefixIcon="Check"
                     onClick={submitInvoiceSettings}
