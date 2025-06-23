@@ -1,5 +1,5 @@
 {
-  "id": "4db25a26-7bd6-4701-9147-2d53cb76960f",
+  "id": "333803ee-69bb-417e-b397-302d27620558",
   "prevId": "64cda273-395d-479a-b7c3-02e4dcd8cee6",
   "version": "7",
   "dialect": "postgresql",
@@ -84,8 +84,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "customer_id": {
-          "name": "customer_id",
+        "client_id": {
+          "name": "client_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -260,8 +260,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "recipient_id": {
-          "name": "recipient_id",
+        "client_id": {
+          "name": "client_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -536,6 +536,106 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.qb_sync_logs": {
+      "name": "qb_sync_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "portal_id": {
+          "name": "portal_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_type": {
+          "name": "entity_type",
+          "type": "entity_types",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'invoice'"
+        },
+        "event_type": {
+          "name": "event_type",
+          "type": "event_types",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'created'"
+        },
+        "status": {
+          "name": "status",
+          "type": "log_statuses",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'success'"
+        },
+        "sync_at": {
+          "name": "sync_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "copilot_id": {
+          "name": "copilot_id",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quickbooks_id": {
+          "name": "quickbooks_id",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "invoice_number": {
+          "name": "invoice_number",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "remark": {
+          "name": "remark",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.qb_tokens": {
       "name": "qb_tokens",
       "schema": "",
@@ -687,6 +787,46 @@
         "pending",
         "success",
         "error"
+      ]
+    },
+    "public.invoice_statuses": {
+      "name": "invoice_statuses",
+      "schema": "public",
+      "values": [
+        "draft",
+        "open",
+        "paid",
+        "void"
+      ]
+    },
+    "public.entity_types": {
+      "name": "entity_types",
+      "schema": "public",
+      "values": [
+        "invoice",
+        "product",
+        "payment"
+      ]
+    },
+    "public.event_types": {
+      "name": "event_types",
+      "schema": "public",
+      "values": [
+        "created",
+        "updated",
+        "paid",
+        "voided",
+        "deleted",
+        "succeeded"
+      ]
+    },
+    "public.log_statuses": {
+      "name": "log_statuses",
+      "schema": "public",
+      "values": [
+        "success",
+        "failed",
+        "info"
       ]
     }
   },

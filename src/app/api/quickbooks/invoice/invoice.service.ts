@@ -152,6 +152,19 @@ export class InvoiceService extends BaseService {
       }
     }
 
+    // check if the flag is on for create new item
+    const settingService = new SettingService(this.user)
+    const setting = await settingService.getOneByPortalId([
+      'createInvoiceItemFlag',
+    ])
+
+    if (!setting?.createInvoiceItemFlag) {
+      console.info(
+        'WebhookService#getInvoiceItemRef | Create new invoice item flag is false',
+      )
+      return { ref: oneOffItem }
+    }
+
     // 2. create a new product in QB company
     const productInfo = await this.copilot.getProduct(productId)
     const priceInfo = await this.copilot.getPrice(priceId)

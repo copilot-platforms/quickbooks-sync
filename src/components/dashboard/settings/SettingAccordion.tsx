@@ -22,6 +22,7 @@ export default function SettingAccordion() {
     mappingItems,
     setMappingItems,
     showProductConfirm,
+    setting,
   } = useProductMappingSettings()
 
   const {
@@ -47,6 +48,7 @@ export default function SettingAccordion() {
           getFilteredItems={getFilteredItems}
           mappingItems={mappingItems}
           setMappingItems={setMappingItems}
+          setting={setting}
         />
       ),
     },
@@ -80,14 +82,15 @@ export default function SettingAccordion() {
             <div
               className={`absolute top-[14px] right-0 z-10 flex items-center justify-end`}
             >
-              {index === 0 && showProductConfirm && (
-                <Button
-                  label="Confirm"
-                  variant="primary"
-                  prefixIcon="Check"
-                  onClick={submitMappingItems}
-                />
-              )}
+              {index === 0 &&
+                (showProductConfirm || setting.settingShowConfirm) && (
+                  <Button
+                    label="Confirm"
+                    variant="primary"
+                    prefixIcon="Check"
+                    onClick={submitMappingItems}
+                  />
+                )}
               {index === 1 && showInvoiceButton && (
                 <Button
                   label="Update sync"
