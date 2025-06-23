@@ -41,6 +41,10 @@ export type QBItemDataType = {
 }
 
 export const useProductMappingSettings = () => {
+  const intialProductSetting = {
+    createInvoiceItemFlag: false,
+    createNewProductFlag: false,
+  }
   const [openDropdowns, setOpenDropdowns] = useState<{
     [key: number]: boolean
   }>({})
@@ -51,14 +55,17 @@ export const useProductMappingSettings = () => {
 
   const [mappingItems, setMappingItems] = useState<ProductMappingItemType[]>([])
   const [settingShowConfirm, setSettingShowConfirm] = useState<boolean>(false)
-  const { token, initialProductMap, showProductConfirm, setAppParams } =
-    useApp()
+  const {
+    token,
+    initialProductMap,
+    showProductConfirm,
+    setAppParams,
+    itemMapped,
+  } = useApp()
 
   // For checkbox settings
-  const [productSetting, setProductSetting] = useState<ProductSettingType>({
-    createInvoiceItemFlag: false,
-    createNewProductFlag: false,
-  })
+  const [productSetting, setProductSetting] =
+    useState<ProductSettingType>(intialProductSetting)
   const [intialSettingState, setIntialSettingState] = useState<
     ProductSettingType | undefined
   >()
@@ -128,6 +135,16 @@ export const useProductMappingSettings = () => {
       console.error({ tableRes, settingRes })
       alert('Error submitting mapping items')
     }
+  }
+
+  const cancelMappedChanges = () => {
+    setSelectedItems({})
+    setMappingItems(initialProductMap || [])
+    setProductSetting(intialSettingState || intialProductSetting)
+    setAppParams((prev) => ({
+      ...prev,
+      showProductConfirm: false,
+    }))
   }
 
   const toggleDropdown = (index: number) => {
@@ -223,6 +240,7 @@ export const useProductMappingSettings = () => {
     searchTerms,
     selectedItems,
     submitMappingItems,
+    cancelMappedChanges,
     toggleDropdown,
     handleSearch,
     selectItem,
@@ -230,6 +248,7 @@ export const useProductMappingSettings = () => {
     mappingItems,
     setMappingItems,
     showProductConfirm,
+    itemMapped,
     setting: {
       settingState: productSetting,
       changeSettings,
@@ -417,11 +436,14 @@ export const useMapItem = (
 }
 
 export const useInvoiceDetailSettings = () => {
-  const { token } = useApp()
-  const [settingState, setSettingState] = useState<InvoiceSettingType>({
+  const initialInvoiceSetting = {
     absorbedFeeFlag: false,
     useCompanyNameFlag: false,
-  })
+  }
+  const { token } = useApp()
+  const [settingState, setSettingState] = useState<InvoiceSettingType>(
+    initialInvoiceSetting,
+  )
   const [showButton, setShowButton] = useState(false)
   const [intialSettingState, setIntialSettingState] = useState<
     InvoiceSettingType | undefined
@@ -470,10 +492,16 @@ export const useInvoiceDetailSettings = () => {
     }
   }
 
+  const cancelInvoiceSettings = () => {
+    setShowButton(false)
+    setSettingState(intialSettingState || initialInvoiceSetting)
+  }
+
   return {
     settingState,
     changeSettings,
     submitInvoiceSettings,
+    cancelInvoiceSettings,
     error,
     isLoading,
     showButton,

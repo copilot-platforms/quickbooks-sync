@@ -12,8 +12,8 @@ type AppContextType = {
   isEnabled: boolean
   lastSyncTimestamp: string | null
   showProductConfirm?: boolean
-  initialProductMap?: ProductMappingItemType[]
-  itemMapped?: boolean
+  initialProductMap?: ProductMappingItemType[] // initial product mapped value
+  itemMapped?: boolean // flag to indicate if product mapping has been done or not
 }
 
 const AppContext = createContext<

@@ -19,15 +19,18 @@ export default function SettingAccordion() {
     selectItem,
     getFilteredItems,
     submitMappingItems,
+    cancelMappedChanges,
     mappingItems,
     setMappingItems,
     showProductConfirm,
     setting,
+    itemMapped,
   } = useProductMappingSettings()
 
   const {
     settingState,
     submitInvoiceSettings,
+    cancelInvoiceSettings,
     isLoading,
     changeSettings,
     showButton: showInvoiceButton,
@@ -84,20 +87,38 @@ export default function SettingAccordion() {
             >
               {index === 0 &&
                 (showProductConfirm || setting.settingShowConfirm) && (
-                  <Button
-                    label="Confirm"
-                    variant="primary"
-                    prefixIcon="Check"
-                    onClick={submitMappingItems}
-                  />
+                  <>
+                    {itemMapped && (
+                      <Button
+                        label="Cancel"
+                        variant="text"
+                        className="me-2"
+                        onClick={cancelMappedChanges}
+                      />
+                    )}
+                    <Button
+                      label={`${itemMapped ? 'Update Sync' : 'Confirm'}`}
+                      variant="primary"
+                      prefixIcon="Check"
+                      onClick={submitMappingItems}
+                    />
+                  </>
                 )}
               {index === 1 && showInvoiceButton && (
-                <Button
-                  label="Update sync"
-                  variant="primary"
-                  prefixIcon="Check"
-                  onClick={submitInvoiceSettings}
-                />
+                <>
+                  <Button
+                    label="Cancel"
+                    variant="text"
+                    className="me-2"
+                    onClick={cancelInvoiceSettings}
+                  />
+                  <Button
+                    label="Update sync"
+                    variant="primary"
+                    prefixIcon="Check"
+                    onClick={submitInvoiceSettings}
+                  />
+                </>
               )}
             </div>
             <Accordion
