@@ -155,6 +155,13 @@
       "when": 1750419916937,
       "tag": "0021_create_sync_logs_table",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1750673028889,
+      "tag": "0022_rename_client_id_columns",
+      "breakpoints": true
     }
   ]
 }
