@@ -17,6 +17,7 @@ import {
   QBNameValueSchemaType,
   QBCustomerSparseUpdatePayloadType,
   QBVoidInvoicePayloadSchema,
+  QBCustomerCreatePayloadType,
 } from '@/type/dto/intuitAPI.dto'
 import { convert } from 'html-to-text'
 import {
@@ -34,6 +35,7 @@ import { InvoiceStatus } from '@/app/api/core/types/invoice'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import { TransactionType, WhereClause } from '@/type/common'
 import { z } from 'zod'
+import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 
 const oneOffItem = {
   name: 'Services', // for one-off items
@@ -43,6 +45,16 @@ const oneOffItem = {
 type InvoiceItemRefAndDescriptionType = {
   ref: QBNameValueSchemaType
   productDescription?: string
+}
+
+type ClientCompanyType = {
+  id: string
+  givenName: string
+  familyName: string
+  companyId: string
+  email: string
+  displayName: string
+  type: 'client' | 'company'
 }
 
 export class InvoiceService extends BaseService {
@@ -232,6 +244,15 @@ export class InvoiceService extends BaseService {
     qbTokenInfo: IntuitAPITokensType,
   ): Promise<void> {
     const invoiceResource = payload.data
+    let clientCompany: ClientCompanyType = {
+      id: invoiceResource.recipientId,
+      givenName: '',
+      familyName: '',
+      companyId: '',
+      email: '',
+      displayName: '',
+      type: 'client',
+    }
 
     // 1. get client (retrieve receipentId from invoice resource). Copilot: Retrieve client. If not found, retrieve company and get first client from the company
     let client = await this.copilot.getClient(invoiceResource.recipientId)
@@ -250,59 +271,100 @@ export class InvoiceService extends BaseService {
         )
       }
 
-      const clients = await this.copilot.getClients({
-        companyId: company.id,
-      })
+      // check if the company name flag is turned on.
+      const settingService = new SettingService(this.user)
+      const setting = await settingService.getOneByPortalId([
+        'useCompanyNameFlag',
+      ])
 
-      if (!clients?.data || clients.data.length === 0) {
-        throw new APIError(httpStatus.NOT_FOUND, 'No clients found')
+      if (setting?.useCompanyNameFlag) {
+        // if yes, load data to create/update a customer with company info in Quickbooks
+        clientCompany.displayName = company.name
+        clientCompany.type = 'company'
+        clientCompany.companyId = company.id
+      } else {
+        // if no, load data to create/update a customer with client info in Quickbooks
+        const clients = await this.copilot.getClients({
+          companyId: company.id,
+        })
+
+        if (!clients?.data || clients.data.length === 0) {
+          throw new APIError(httpStatus.NOT_FOUND, 'No clients found')
+        }
+        client = getLatestActiveClient(clients.data)
+        clientCompany = {
+          ...clientCompany,
+          familyName: client.familyName,
+          givenName: client.givenName,
+          displayName: client.givenName + ' ' + client.familyName,
+          type: 'client',
+          email: client.email,
+          companyId: company.id,
+        }
       }
-      client = getLatestActiveClient(clients.data)
+    } else {
+      clientCompany = {
+        ...clientCompany,
+        familyName: client.familyName,
+        givenName: client.givenName,
+        displayName: client.givenName + ' ' + client.familyName,
+        type: 'client',
+        email: client.email,
+        companyId: client.companyId,
+      }
     }
 
     // 2. search client in our mapping table
     const customerService = new CustomerService(this.user)
-    const existingCustomer = await customerService.getByClientId(client.id, [
-      'id',
-      'qbCustomerId',
-      'qbSyncToken',
-      'familyName',
-      'givenName',
-      'email',
-    ])
+    const existingCustomer = await customerService.getByCustomerId(
+      clientCompany.id,
+      [
+        'id',
+        'qbCustomerId',
+        'qbSyncToken',
+        'familyName',
+        'givenName',
+        'email',
+        'companyName',
+      ],
+    )
 
     const intuitApi = new IntuitAPI(qbTokenInfo)
     let customer
     if (!existingCustomer) {
       // 2.1. search client in qb using client's given name and family name
-      customer = await intuitApi.getACustomer(
-        client.givenName,
-        client.familyName,
-      )
+      customer = await intuitApi.getACustomer(clientCompany.displayName)
 
       // 3. if not found, create a new client in the QB
       if (!customer) {
         if (!company) {
           // Case when client is retrieved directly from recipientId
-          company = await this.copilot.getCompany(client.companyId)
+          company = await this.copilot.getCompany(clientCompany.companyId)
 
           if (!company) {
             // Indicates company is not available in any case. This only logs as error and allows to create customer in QB since company name is optional
             console.error(
               'InvoiceService#handleInvoiceCreated | Could not retrieve company for client = ',
-              client.id,
+              clientCompany.id,
             )
           }
         }
 
         // Create a new customer in QB
-        const customerPayload = {
-          GivenName: client.givenName,
-          FamilyName: client.familyName,
+        let customerPayload: QBCustomerCreatePayloadType = {
+          DisplayName: clientCompany.displayName,
           CompanyName: company?.name,
           PrimaryEmailAddr: {
-            Address: client.email,
+            Address: clientCompany.email,
           },
+        }
+
+        if (clientCompany.givenName && clientCompany.familyName) {
+          customerPayload = {
+            ...customerPayload,
+            GivenName: clientCompany.givenName,
+            FamilyName: clientCompany.familyName,
+          }
         }
 
         const customerRes = await intuitApi.createCustomer(customerPayload)
@@ -311,10 +373,10 @@ export class InvoiceService extends BaseService {
       // create map for customer into mapping table
       const customerSyncPayload = {
         portalId: this.user.workspaceId,
-        clientId: client.id,
-        givenName: client.givenName,
-        familyName: client.familyName,
-        email: client.email,
+        customerId: clientCompany.id,
+        givenName: clientCompany.givenName,
+        familyName: clientCompany.familyName,
+        email: clientCompany.email,
         companyName: company?.name,
         qbSyncToken: customer.SyncToken,
         qbCustomerId: customer.Id,
@@ -328,15 +390,15 @@ export class InvoiceService extends BaseService {
         'Id' | 'SyncToken' | 'sparse'
       > = {}
 
-      if (existingCustomer.familyName !== client.familyName) {
-        sparseUpdatePayload.FamilyName = client.familyName
+      if (existingCustomer.familyName !== clientCompany.familyName) {
+        sparseUpdatePayload.FamilyName = clientCompany.familyName
       }
-      if (existingCustomer.givenName !== client.givenName) {
-        sparseUpdatePayload.GivenName = client.givenName
+      if (existingCustomer.givenName !== clientCompany.givenName) {
+        sparseUpdatePayload.GivenName = clientCompany.givenName
       }
-      if (existingCustomer.email !== client.email) {
+      if (existingCustomer.email !== clientCompany.email) {
         sparseUpdatePayload.PrimaryEmailAddr = {
-          Address: client.email,
+          Address: clientCompany.email,
         }
       }
       if (Object.keys(sparseUpdatePayload).length > 0) {
@@ -344,7 +406,7 @@ export class InvoiceService extends BaseService {
           ...sparseUpdatePayload,
           Id: existingCustomer.qbCustomerId,
           SyncToken: existingCustomer.qbSyncToken,
-          DisplayName: `${client.givenName} ${client.familyName}`,
+          DisplayName: clientCompany.displayName,
           BillAddr: {
             Line1: `${existingCustomer.givenName} ${existingCustomer.familyName}`,
             Line2: existingCustomer.companyName,
@@ -359,9 +421,9 @@ export class InvoiceService extends BaseService {
 
         // update the customer map in our table
         const customerSyncUpPayload = {
-          givenName: client.givenName,
-          familyName: client.familyName,
-          email: client.email,
+          givenName: clientCompany.givenName,
+          familyName: clientCompany.familyName,
+          email: clientCompany.email,
           companyName: company?.name,
           qbSyncToken: customer.SyncToken,
         }
@@ -448,7 +510,7 @@ export class InvoiceService extends BaseService {
       invoiceNumber: invoiceResource.number,
       qbInvoiceId: invoiceRes.Invoice.Id,
       qbSyncToken: invoiceRes.Invoice.SyncToken,
-      clientId: client.id,
+      recipientId: clientCompany.id,
       status: invoiceResource.status,
     }
     await this.createQBInvoice(invoicePayload)
@@ -463,7 +525,7 @@ export class InvoiceService extends BaseService {
       'id',
       'qbInvoiceId',
       'status',
-      'clientId',
+      'recipientId',
     ])
 
     if (!invoiceSync) {
@@ -480,15 +542,15 @@ export class InvoiceService extends BaseService {
     }
 
     // 2. if not, create payment in QB, sync payment in payment sync table and change invoice status to paid
-    if (!invoiceSync?.clientId) {
+    if (!invoiceSync?.recipientId) {
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'WebhookService#webhookInvoicePaid | ClientId not found',
+        'WebhookService#webhookInvoicePaid | RecipientId not found',
       )
     }
     const customerService = new CustomerService(this.user)
-    const existingCustomer = await customerService.getByClientId(
-      invoiceSync.clientId,
+    const existingCustomer = await customerService.getByCustomerId(
+      invoiceSync.recipientId,
       ['id', 'qbCustomerId'],
     )
     if (!existingCustomer) {

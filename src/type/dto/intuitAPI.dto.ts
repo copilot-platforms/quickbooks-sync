@@ -51,8 +51,8 @@ export type QBInvoiceSparseUpdatePayloadType = z.infer<
 >
 
 export const QBCustomerCreatePayloadSchema = z.object({
-  GivenName: z.string(),
-  FamilyName: z.string(),
+  GivenName: z.string().optional(),
+  FamilyName: z.string().optional(),
   CompanyName: z.string().optional(),
   PrimaryEmailAddr: z.object({
     Address: z.string(),
