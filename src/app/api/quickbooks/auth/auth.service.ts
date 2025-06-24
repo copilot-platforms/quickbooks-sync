@@ -15,7 +15,10 @@ import {
   QBTokenCreateSchemaType,
   QBTokenUpdateSchemaType,
 } from '@/db/schema/qbTokens'
-import { getSyncedPortalConnection } from '@/db/service/token.service'
+import {
+  getPortalConnection,
+  getSyncedPortalConnection,
+} from '@/db/service/token.service'
 import {
   QBAuthTokenResponse,
   QBAuthTokenResponseSchema,
@@ -202,7 +205,7 @@ export class AuthService extends BaseService {
     portalId: string,
     manualSyncEnable: boolean = false,
   ): Promise<IntuitAPITokensType> {
-    const portalQBToken = await getSyncedPortalConnection(portalId)
+    const portalQBToken = await getPortalConnection(portalId)
     if (!portalQBToken) {
       throw new APIError(
         httpStatus.NOT_FOUND,
@@ -221,7 +224,22 @@ export class AuthService extends BaseService {
       expenseAccountRef,
       assetAccountRef,
       isEnabled,
+      syncFlag,
     } = portalQBToken
+
+    const emptyTokens = {
+      accessToken: '',
+      refreshToken: '',
+      intuitRealmId,
+      incomeAccountRef: '',
+      expenseAccountRef: '',
+      assetAccountRef: '',
+    }
+
+    // if sync is false but it has been enabled then don't throw error. We have to log in this case
+    if (!syncFlag && (isEnabled || manualSyncEnable)) {
+      return emptyTokens
+    }
 
     if (!isEnabled && !manualSyncEnable) {
       throw new APIError(
@@ -302,14 +320,7 @@ export class AuthService extends BaseService {
               )
             })
 
-            return {
-              accessToken: '',
-              refreshToken: '',
-              intuitRealmId,
-              incomeAccountRef: '',
-              expenseAccountRef: '',
-              assetAccountRef: '',
-            }
+            return emptyTokens
           }
         }
 
