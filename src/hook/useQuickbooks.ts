@@ -1,7 +1,9 @@
 import { AuthStatus } from '@/app/api/core/types/auth'
 import { useApp } from '@/app/context/AppContext'
+import { useActionsMenu } from '@/bridge/header'
 import { copilotDashboardUrl } from '@/config'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
+import { postFetcher } from '@/helper/fetch.helper'
 import SupabaseClient from '@/lib/supabase'
 import { Token } from '@/type/common'
 import { useEffect, useState } from 'react'
@@ -77,7 +79,6 @@ export const useQuickbooks = (
       handleConnect(AuthStatus.RECONNECT)
     }
   }, [reconnect])
-
   const getAuthUrl = async (type?: string) => {
     const redirectUrl = copilotDashboardUrl
     const url = `/api/quickbooks/auth?token=${token}${type ? `&type=${type}` : ''}`
@@ -190,4 +191,24 @@ export const useQuickbooksCallback = () => {
   }
 
   return { loading, error }
+}
+
+export const useAppBridge = (token: string, isEnabled: boolean | null) => {
+  const disconnectAction = async () => {
+    if (isEnabled) {
+      const payload = {
+        enable: false,
+      }
+      const url = `/api/quickbooks/token/change-enable-status?token=${token}`
+      await postFetcher(url, {}, payload)
+    }
+  }
+
+  const actions = [
+    {
+      label: 'Disconnect app',
+      onClick: disconnectAction,
+    },
+  ]
+  useActionsMenu(actions)
 }

@@ -6,6 +6,7 @@ export const copilotDashboardUrl =
 export const copilotAPIKey = process.env.COPILOT_API_KEY || ''
 export const appId = process.env.NEXT_PUBLIC_COPILOT_APP_API_KEY || ''
 export const databaseUrl = process.env.DATABASE_URL
+export const copilotEnv = process.env.COPILOT_ENV || ''
 
 export const apiUrl =
   process.env.VERCEL_ENV === 'production'
