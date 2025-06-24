@@ -25,7 +25,6 @@ export const InvoiceLineItemSchema = z.object({
 export type InvoiceLineItemSchemaType = z.infer<typeof InvoiceLineItemSchema>
 
 export const InvoiceCreatedResponseSchema = z.object({
-  eventType: z.string(),
   data: z.object({
     id: z.string(),
     lineItems: z.array(InvoiceLineItemSchema),
@@ -83,8 +82,7 @@ export type PriceCreatedResponseType = z.infer<
   typeof PriceCreatedResponseSchema
 >
 
-export const InvoicePaidResponseSchema = z.object({
-  eventType: z.string(),
+export const InvoiceResponseSchema = z.object({
   data: z.object({
     id: z.string(),
     number: z.string(),
@@ -92,7 +90,7 @@ export const InvoicePaidResponseSchema = z.object({
     total: z.number(),
   }),
 })
-export type InvoicePaidResponseType = z.infer<typeof InvoicePaidResponseSchema>
+export type InvoiceResponseType = z.infer<typeof InvoiceResponseSchema>
 
 export const PaymentSucceededResponseSchema = z.object({
   eventType: z.string(),
