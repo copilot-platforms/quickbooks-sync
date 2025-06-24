@@ -3,7 +3,6 @@ import { BaseService } from '@/app/api/core/services/base.service'
 import { InvoiceStatus } from '@/app/api/core/types/invoice'
 import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 import { WebhookEvents } from '@/app/api/core/types/webhook'
-import { ExpenseService } from '@/app/api/quickbooks/expense/expense.service'
 import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
@@ -130,12 +129,25 @@ export class WebhookService extends BaseService {
           break
         }
         const parsedProductResource = parsedProduct.data
-        productService = new ProductService(this.user)
-        await productService.webhookProductUpdated(
-          parsedProductResource,
-          qbTokenInfo,
-        )
-        break
+
+        try {
+          productService = new ProductService(this.user)
+          await productService.webhookProductUpdated(
+            parsedProductResource,
+            qbTokenInfo,
+          )
+          break
+        } catch (error: unknown) {
+          const syncLogService = new SyncLogService(this.user)
+          await syncLogService.updateOrCreateQBSyncLog({
+            portalId: this.user.workspaceId,
+            entityType: EntityType.PRODUCT,
+            eventType: EventType.UPDATED,
+            status: LogStatus.FAILED,
+            copilotId: parsedProductResource.data.id,
+          })
+          throw error
+        }
 
       case WebhookEvents.PRODUCT_CREATED:
         console.info('###### PRODUCT CREATED ######')
@@ -148,12 +160,32 @@ export class WebhookService extends BaseService {
           break
         }
         const parsedCreatedProductResource = parsedCreatedProduct.data
-        productService = new ProductService(this.user)
-        await productService.webhookProductCreated(
-          parsedCreatedProductResource,
-          qbTokenInfo,
-        )
-        break
+
+        try {
+          if (qbTokenInfo.accessToken === '') {
+            throw new APIError(
+              httpStatus.UNAUTHORIZED,
+              'Refresh token is expired',
+            )
+          }
+          productService = new ProductService(this.user)
+          await productService.webhookProductCreated(
+            parsedCreatedProductResource,
+            qbTokenInfo,
+          )
+          break
+        } catch (error: unknown) {
+          const syncLogService = new SyncLogService(this.user)
+
+          await syncLogService.updateOrCreateQBSyncLog({
+            portalId: this.user.workspaceId,
+            entityType: EntityType.PRODUCT,
+            eventType: EventType.CREATED,
+            status: LogStatus.FAILED,
+            copilotId: parsedCreatedProductResource.data.id,
+          })
+          throw error
+        }
 
       case WebhookEvents.PRICE_CREATED:
         console.info('###### PRICE CREATED ######')
@@ -165,12 +197,25 @@ export class WebhookService extends BaseService {
           break
         }
         const parsedCreatedPriceResource = parsedCreatedPrice.data
-        productService = new ProductService(this.user)
-        await productService.webhookPriceCreated(
-          parsedCreatedPriceResource,
-          qbTokenInfo,
-        )
-        break
+
+        try {
+          productService = new ProductService(this.user)
+          await productService.webhookPriceCreated(
+            parsedCreatedPriceResource,
+            qbTokenInfo,
+          )
+          break
+        } catch (error: unknown) {
+          const syncLogService = new SyncLogService(this.user)
+          await syncLogService.updateOrCreateQBSyncLog({
+            portalId: this.user.workspaceId,
+            entityType: EntityType.PRODUCT,
+            eventType: EventType.CREATED,
+            status: LogStatus.FAILED,
+            copilotId: parsedCreatedPriceResource.data.productId,
+          })
+          throw error
+        }
 
       case WebhookEvents.INVOICE_PAID:
         console.info('###### INVOICE PAID ######')

@@ -9,7 +9,7 @@ import {
   QBSyncLogUpdateSchemaType,
 } from '@/db/schema/qbSyncLogs'
 import { WhereClause } from '@/type/common'
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import postgres from 'postgres'
 
 export type CustomSyncLogRecordType = {
@@ -66,13 +66,14 @@ export class SyncLogService extends BaseService {
     copilotId: string,
     eventType?: EventType,
   ) {
-    const conditions = and(
+    const conditions = [
       eq(QBSyncLog.portalId, this.user.workspaceId),
       eq(QBSyncLog.copilotId, copilotId),
-      eventType && eq(QBSyncLog.eventType, eventType),
-    )
+      eventType ? eq(QBSyncLog.eventType, eventType) : undefined,
+    ].filter(Boolean) // removes undefined
+
     const query = this.db.query.QBSyncLog.findFirst({
-      where: conditions,
+      where: and(...conditions),
     })
     return await query
   }

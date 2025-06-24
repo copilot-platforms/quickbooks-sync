@@ -65,12 +65,11 @@ export class InvoiceService extends BaseService {
     const parsedInsertPayload = QBInvoiceCreateSchema.parse(payload)
     const query = this.db.insert(QBInvoiceSync).values(parsedInsertPayload)
 
-    const [invoiceSync] =
-      returningFields && returningFields.length > 0
-        ? await query.returning(
-            buildReturningFields(QBInvoiceSync, returningFields),
-          )
-        : await query
+    const [invoiceSync] = returningFields?.length
+      ? await query.returning(
+          buildReturningFields(QBInvoiceSync, returningFields),
+        )
+      : await query.returning()
 
     return invoiceSync
   }
@@ -87,12 +86,11 @@ export class InvoiceService extends BaseService {
       .set(parsedInsertPayload)
       .where(conditions)
 
-    const [invoiceSync] =
-      returningFields && returningFields.length > 0
-        ? await query.returning(
-            buildReturningFields(QBInvoiceSync, returningFields),
-          )
-        : await query.returning()
+    const [invoiceSync] = returningFields?.length
+      ? await query.returning(
+          buildReturningFields(QBInvoiceSync, returningFields),
+        )
+      : await query.returning()
 
     return invoiceSync
   }
@@ -102,7 +100,7 @@ export class InvoiceService extends BaseService {
     returningFields?: (keyof typeof QBInvoiceSync)[],
   ) {
     let columns = null
-    if (returningFields && returningFields.length > 0) {
+    if (returningFields?.length) {
       columns = buildReturningFields(QBInvoiceSync, returningFields, true)
     }
 
