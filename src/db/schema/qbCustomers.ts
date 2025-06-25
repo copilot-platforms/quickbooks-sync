@@ -7,7 +7,7 @@ import { z } from 'zod'
 export const QBCustomers = table('qb_customers', {
   id: t.uuid().defaultRandom().primaryKey(),
   portalId: t.varchar('portal_id', { length: 255 }).notNull(),
-  clientId: t.uuid('client_id').notNull(),
+  customerId: t.uuid('customer_id').notNull(), // can be copilot client Id or company Id
   givenName: t.varchar('given_name', { length: 255 }),
   familyName: t.varchar('family_name', { length: 255 }),
   email: t.varchar('email', { length: 255 }),

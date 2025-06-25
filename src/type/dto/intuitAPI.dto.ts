@@ -51,8 +51,8 @@ export type QBInvoiceSparseUpdatePayloadType = z.infer<
 >
 
 export const QBCustomerCreatePayloadSchema = z.object({
-  GivenName: z.string(),
-  FamilyName: z.string(),
+  GivenName: z.string().optional(),
+  FamilyName: z.string().optional(),
   CompanyName: z.string().optional(),
   PrimaryEmailAddr: z.object({
     Address: z.string(),
@@ -115,13 +115,14 @@ export type QBPaymentCreatePayloadType = z.infer<
   typeof QBPaymentCreatePayloadSchema
 >
 
-export const QBVoidInvoicePayloadSchema = z.object({
+// Destructive actions -> delete, void
+export const QBDestructiveInvoicePayloadSchema = z.object({
   Id: z.string(),
   SyncToken: z.string(),
 })
 
-export type QBVoidInvoicePayloadType = z.infer<
-  typeof QBVoidInvoicePayloadSchema
+export type QBDestructiveInvoicePayloadSchema = z.infer<
+  typeof QBDestructiveInvoicePayloadSchema
 >
 
 export const QBAccountCreatePayloadSchema = z.object({

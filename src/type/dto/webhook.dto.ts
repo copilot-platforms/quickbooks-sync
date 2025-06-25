@@ -42,6 +42,14 @@ export type InvoiceCreatedResponseType = z.infer<
   typeof InvoiceCreatedResponseSchema
 >
 
+export const InvoiceDeletedResponseSchema = z.object({
+  id: z.string(),
+  number: z.string(),
+})
+export type InvoiceDeletedResponse = z.infer<
+  typeof InvoiceDeletedResponseSchema
+>
+
 /** Product */
 export const ProductCreatedResponseSchema = z.object({
   data: z.object({
