@@ -95,7 +95,7 @@ export type PriceCreatedResponseType = z.infer<
 >
 
 export const InvoiceResponseSchema = z.object({
-  eventType: z.literal('invoice.paid'),
+  eventType: z.enum(['invoice.paid', 'invoice.voided']),
   data: z.object({
     id: z.string(),
     number: z.string(),
