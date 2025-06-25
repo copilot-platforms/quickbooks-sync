@@ -124,6 +124,15 @@ export type QBVoidInvoicePayloadType = z.infer<
   typeof QBVoidInvoicePayloadSchema
 >
 
+export const QBDeleteInvoicePayloadSchema = z.object({
+  Id: z.string(),
+  SyncToken: z.string(),
+})
+
+export type QBDeleteInvoicePayloadType = z.infer<
+  typeof QBDeleteInvoicePayloadSchema
+>
+
 export const QBAccountCreatePayloadSchema = z.object({
   Name: z.string(),
   AccountType: z.string(),

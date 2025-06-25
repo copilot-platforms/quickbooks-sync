@@ -21,6 +21,7 @@ import {
 import { convert } from 'html-to-text'
 import {
   InvoiceCreatedResponseType,
+  InvoiceDeletedResponse,
   InvoiceLineItemSchemaType,
   InvoiceResponseType,
 } from '@/type/dto/webhook.dto'
@@ -642,6 +643,59 @@ export class InvoiceService extends BaseService {
         invoiceNumber: invoiceSync.invoiceNumber,
         // amount: invoiceSync.total.toFixed(2), // TODO: add amount in mapping table
       }),
+    ])
+  }
+
+  async handleInvoiceDeleted(
+    payload: InvoiceDeletedResponse['data'],
+    qbTokenInfo: IntuitAPITokensType,
+  ): Promise<void> {
+    const invoiceSync = await this.getInvoiceByNumber(payload.number, [
+      'id',
+      'qbInvoiceId',
+      'status',
+      'qbSyncToken',
+    ])
+
+    if (!invoiceSync) {
+      throw new APIError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        // NOTE: this can cause an issue where there are invoices that exist before QB sync app has been installed and set up
+        // We will not be able to sync new invoice updates for them
+        'WebhookService#handleInvoiceDeleted | Invoice not found in sync table',
+      )
+    }
+    // Copilot doesn't allow to delete invoice that are not voided. So, just raise issue about possible edge cases without throwing an error
+    if (invoiceSync.status !== InvoiceStatus.VOID) {
+      console.error(
+        'WebhookService#handleInvoiceDeleted | Invoices delete was requested for non-voided record',
+      )
+    }
+
+    const intuitApi = new IntuitAPI(qbTokenInfo)
+    const deletePayload = {
+      Id: invoiceSync.qbInvoiceId,
+      SyncToken: invoiceSync.qbSyncToken,
+    }
+    const safeParsedPayload =
+      QBVoidInvoicePayloadSchema.safeParse(deletePayload)
+
+    if (!safeParsedPayload.success || !safeParsedPayload.data) {
+      throw new APIError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'WebhookService#handleInvoiceDeleted | Could not parse invoice delete payload',
+      )
+    }
+
+    await Promise.all([
+      intuitApi.deleteInvoice(safeParsedPayload.data),
+      this.updateQBInvoice(
+        {
+          status: InvoiceStatus.DELETED,
+        },
+        eq(QBInvoiceSync.id, invoiceSync.id),
+        ['id'],
+      ),
     ])
   }
 }

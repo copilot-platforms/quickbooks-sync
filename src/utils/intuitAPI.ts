@@ -99,6 +99,7 @@ export default class IntuitAPI {
   }
 
   async _createInvoice(payload: QBInvoiceCreatePayloadType) {
+    console.log('\n\n\n\n\npayload\n\n\n', payload)
     console.info('IntuitAPI#createInvoice | invoice creation start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
@@ -406,6 +407,34 @@ export default class IntuitAPI {
     return invoice
   }
 
+  async _deleteInvoice(payload: QBVoidInvoicePayloadType) {
+    console.info('IntuitAPI#deleteInvoice | invoice deletion start')
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=delete&minorversion=${intuitApiMinorVersion}`
+    const invoice = await this.postFetchWithHeaders(url, payload)
+    console.log(invoice)
+
+    // if (!invoice)
+    //   throw new APIError(
+    //     httpStatus.BAD_REQUEST,
+    //     'IntuitAPI#deleteInvoice | No invoice was received from Quickbooks API',
+    //   )
+
+    if (invoice?.Fault) {
+      console.error({ Error: invoice.Fault?.Error })
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#deleteInvoice | Error while deleting invoice',
+        invoice.Fault?.Error,
+      )
+    }
+
+    console.info(
+      'IntuitAPI#deleteInvoice | Deleted invoice with id ',
+      invoice.Invoice?.Id,
+    )
+    return invoice
+  }
+
   async _deletePayment(payload: QBDeletePayloadType) {
     console.info('IntuitAPI#deletePayment | payment delete start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/payment?operation=delete&minorversion=${intuitApiMinorVersion}`
@@ -556,6 +585,7 @@ export default class IntuitAPI {
   itemFullUpdate = this.wrapWithRetry(this._itemFullUpdate)
   createPayment = this.wrapWithRetry(this._createPayment)
   voidInvoice = this.wrapWithRetry(this._voidInvoice)
+  deleteInvoice = this.wrapWithRetry(this._deleteInvoice)
   getAnAccountByName = this.wrapWithRetry(this._getAnAccountByName)
   createAccount = this.wrapWithRetry(this._createAccount)
   createPurchase = this.wrapWithRetry(this._createPurchase)

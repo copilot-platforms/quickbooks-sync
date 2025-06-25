@@ -11,6 +11,7 @@ import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
 import {
   InvoiceCreatedResponseSchema,
   InvoiceResponseSchema,
+  InvoiceDeletedResponseSchema,
   PaymentSucceededResponseSchema,
   PriceCreatedResponseSchema,
   ProductCreatedResponseSchema,
@@ -26,7 +27,7 @@ export class WebhookService extends BaseService {
   async handleWebhookEvent(
     body: WebhookEventResponseType,
     qbTokenInfo: IntuitAPITokensType,
-  ) {
+  ): Promise<void> {
     let productService: ProductService
 
     const parsedBody = WebhookEventResponseSchema.safeParse(body)
@@ -118,6 +119,9 @@ export class WebhookService extends BaseService {
           })
           throw error
         }
+
+      case WebhookEvents.INVOICE_DELETED:
+        return await this.handleInvoiceDeleted(payload, qbTokenInfo)
 
       case WebhookEvents.PRODUCT_UPDATED:
         console.info('###### PRODUCT UPDATED ######')
@@ -260,7 +264,7 @@ export class WebhookService extends BaseService {
         const parsedVoidedInvoice = InvoiceResponseSchema.safeParse(payload)
         if (!parsedVoidedInvoice.success || !parsedVoidedInvoice.data) {
           console.error(
-            'WebhookService#handleWebhookEvent | Could not parse invoice paid response',
+            'WebhookService#handleWebhookEvent | Could not parse invoice void response',
           )
           break
         }
@@ -373,5 +377,24 @@ export class WebhookService extends BaseService {
       default:
         console.error('WebhookService#handleWebhookEvent | Unknown event type')
     }
+  }
+
+  private async handleInvoiceDeleted(
+    payload: unknown,
+    qbTokenInfo: IntuitAPITokensType,
+  ) {
+    const parsedPayload = InvoiceDeletedResponseSchema.safeParse(payload)
+    if (!parsedPayload.success || !parsedPayload.data) {
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'WebhookService#handleWebhookEvent | Could not parse invoice response',
+      )
+    }
+
+    const invoiceService = new InvoiceService(this.user)
+    await invoiceService.handleInvoiceDeleted(
+      parsedPayload.data.data,
+      qbTokenInfo,
+    )
   }
 }

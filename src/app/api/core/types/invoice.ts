@@ -3,6 +3,7 @@ export enum InvoiceStatus {
   OPEN = 'open',
   PAID = 'paid',
   VOID = 'void',
+  DELETED = 'deleted',
 }
 
 export enum PaymentStatus {
