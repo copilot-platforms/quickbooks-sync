@@ -648,10 +648,10 @@ export class InvoiceService extends BaseService {
     ])
 
     if (!invoiceSync) {
-      console.error(
+      throw new APIError(
+        httpStatus.NOT_FOUND,
         'WebhookService#webhookInvoiceVoided | Invoice not found in sync table',
       )
-      return
     }
 
     const syncLog = await this.syncLogService.getOneByCopilotIdAndEventType(
@@ -663,7 +663,6 @@ export class InvoiceService extends BaseService {
       console.info(
         'WebhookService#webhookInvoiceVoided | Invoice already voided',
       )
-      return
     }
 
     // only implement void if invoice has open status
