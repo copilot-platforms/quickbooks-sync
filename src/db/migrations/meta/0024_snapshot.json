@@ -1,6 +1,6 @@
 {
-  "id": "214e7cf2-71b5-4916-a3d3-26bbdeba86d3",
-  "prevId": "333803ee-69bb-417e-b397-302d27620558",
+  "id": "c64aa7f6-6865-40d1-b466-cf3b43b7f955",
+  "prevId": "ccdf193f-3d3a-420c-8a4a-5241e164d60e",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -84,8 +84,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "client_id": {
-          "name": "client_id",
+        "customer_id": {
+          "name": "customer_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -260,8 +260,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "client_id": {
-          "name": "client_id",
+        "recipient_id": {
+          "name": "recipient_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -512,6 +512,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "initial_setting_map": {
+          "name": "initial_setting_map",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
         },
         "created_at": {
           "name": "created_at",

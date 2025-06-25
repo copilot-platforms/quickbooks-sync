@@ -1,6 +1,6 @@
 {
-  "id": "fda632dd-1781-46dc-9c78-ca444915d3d9",
-  "prevId": "0ce34902-e3e3-47d2-8534-a55e4246d614",
+  "id": "ccdf193f-3d3a-420c-8a4a-5241e164d60e",
+  "prevId": "214e7cf2-71b5-4916-a3d3-26bbdeba86d3",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -513,13 +513,6 @@
           "notNull": true,
           "default": false
         },
-        "initial_setting_map": {
-          "name": "initial_setting_map",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -803,7 +796,8 @@
         "draft",
         "open",
         "paid",
-        "void"
+        "void",
+        "deleted"
       ]
     },
     "public.entity_types": {

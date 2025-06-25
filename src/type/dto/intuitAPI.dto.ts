@@ -115,13 +115,14 @@ export type QBPaymentCreatePayloadType = z.infer<
   typeof QBPaymentCreatePayloadSchema
 >
 
-export const QBVoidInvoicePayloadSchema = z.object({
+// Destructive actions -> delete, void
+export const QBDestructiveInvoicePayloadSchema = z.object({
   Id: z.string(),
   SyncToken: z.string(),
 })
 
-export type QBVoidInvoicePayloadType = z.infer<
-  typeof QBVoidInvoicePayloadSchema
+export type QBDestructiveInvoicePayloadSchema = z.infer<
+  typeof QBDestructiveInvoicePayloadSchema
 >
 
 export const QBAccountCreatePayloadSchema = z.object({
