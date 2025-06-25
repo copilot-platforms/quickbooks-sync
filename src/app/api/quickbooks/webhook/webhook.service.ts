@@ -112,7 +112,7 @@ export class WebhookService extends BaseService {
         }
 
       case WebhookEvents.INVOICE_DELETED:
-        return await this.handleInvoiceDeleted(payload, qbTokenInfo)
+        return await this.handleInvoiceDeleted(payload.data, qbTokenInfo)
 
       case WebhookEvents.PRODUCT_UPDATED:
         console.info('###### PRODUCT UPDATED ######')
@@ -372,12 +372,9 @@ export class WebhookService extends BaseService {
     try {
       validateAccessToken(qbTokenInfo)
       const invoiceService = new InvoiceService(this.user)
-      await invoiceService.handleInvoiceDeleted(deletePayload.data, qbTokenInfo)
+      await invoiceService.handleInvoiceDeleted(deletePayload, qbTokenInfo)
     } catch (error: unknown) {
-      await this.pushFailedInvoiceToSyncLog(
-        EventType.DELETED,
-        deletePayload.data.id,
-      )
+      await this.pushFailedInvoiceToSyncLog(EventType.DELETED, deletePayload.id)
       throw error
     }
   }

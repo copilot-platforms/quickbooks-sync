@@ -21,8 +21,8 @@ import {
 import { TransactionType, WhereClause } from '@/type/common'
 import {
   QBCustomerSparseUpdatePayloadType,
+  QBDestructiveInvoicePayloadSchema,
   QBNameValueSchemaType,
-  QBVoidInvoicePayloadSchema,
 } from '@/type/dto/intuitAPI.dto'
 import {
   InvoiceCreatedResponseType,
@@ -612,7 +612,8 @@ export class InvoiceService extends BaseService {
       Id: invoiceSync.qbInvoiceId,
       SyncToken: invoiceSync.qbSyncToken,
     }
-    const safeParsedPayload = QBVoidInvoicePayloadSchema.safeParse(voidPayload)
+    const safeParsedPayload =
+      QBDestructiveInvoicePayloadSchema.safeParse(voidPayload)
 
     if (!safeParsedPayload.success || !safeParsedPayload.data) {
       throw new APIError(
@@ -644,7 +645,7 @@ export class InvoiceService extends BaseService {
   }
 
   async handleInvoiceDeleted(
-    payload: InvoiceDeletedResponse['data'],
+    payload: InvoiceDeletedResponse,
     qbTokenInfo: IntuitAPITokensType,
   ): Promise<void> {
     const syncedInvoice = await this.getInvoiceByNumber(payload.number, [
@@ -675,8 +676,7 @@ export class InvoiceService extends BaseService {
       SyncToken: syncedInvoice.qbSyncToken,
     }
     const safeParsedPayload =
-      QBVoidInvoicePayloadSchema.safeParse(deletePayload)
-
+      QBDestructiveInvoicePayloadSchema.safeParse(deletePayload)
     if (!safeParsedPayload.success) {
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,

@@ -44,11 +44,8 @@ export type InvoiceCreatedResponseType = z.infer<
 >
 
 export const InvoiceDeletedResponseSchema = z.object({
-  eventType: z.literal('invoice.deleted'),
-  data: z.object({
-    id: z.string(),
-    number: z.string(),
-  }),
+  id: z.string(),
+  number: z.string(),
 })
 export type InvoiceDeletedResponse = z.infer<
   typeof InvoiceDeletedResponseSchema

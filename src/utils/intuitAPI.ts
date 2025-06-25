@@ -11,10 +11,10 @@ import {
   QBInvoiceSparseUpdatePayloadType,
   QBItemFullUpdatePayloadType,
   QBPaymentCreatePayloadType,
-  QBVoidInvoicePayloadType,
   QBAccountCreatePayloadType,
   QBPurchaseCreatePayloadType,
   QBDeletePayloadType,
+  QBDestructiveInvoicePayloadSchema,
 } from '@/type/dto/intuitAPI.dto'
 import httpStatus from 'http-status'
 
@@ -379,7 +379,7 @@ export default class IntuitAPI {
     return payment
   }
 
-  async _voidInvoice(payload: QBVoidInvoicePayloadType) {
+  async _voidInvoice(payload: QBDestructiveInvoicePayloadSchema) {
     console.info('IntuitAPI#voidInvoice | invoice void creation start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=void&minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
@@ -406,7 +406,7 @@ export default class IntuitAPI {
     return invoice
   }
 
-  async _deleteInvoice(payload: QBVoidInvoicePayloadType) {
+  async _deleteInvoice(payload: QBDestructiveInvoicePayloadSchema) {
     console.info('IntuitAPI#deleteInvoice | invoice deletion start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=delete&minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
