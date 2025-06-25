@@ -3,6 +3,7 @@ export enum InvoiceStatus {
   OPEN = 'open',
   PAID = 'paid',
   VOID = 'void',
+  DELETED = 'deleted',
 }
 
 export enum PaymentStatus {
@@ -10,4 +11,9 @@ export enum PaymentStatus {
   PROCESSING = 'processing',
   SUCCEEDED = 'succeeded',
   FAILED = 'failed',
+}
+
+export interface SyncableEntity {
+  qbInvoiceId: string | null
+  invoiceNumber: string
 }
