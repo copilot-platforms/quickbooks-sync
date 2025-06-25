@@ -494,7 +494,7 @@ export class InvoiceService extends BaseService {
       invoiceNumber: invoiceResource.number,
       qbInvoiceId: invoiceRes.Invoice.Id,
       qbSyncToken: invoiceRes.Invoice.SyncToken,
-      clientId: clientCompany.id,
+      recipientId: clientCompany.id,
       status: invoiceResource.status,
     }
     await this.createQBInvoice(invoicePayload)
@@ -558,11 +558,10 @@ export class InvoiceService extends BaseService {
     ])
 
     if (!invoiceSync) {
-      // very minimal chance for this. May occur when invoice with paid status is created (won't hamper the flow).
-      console.error(
+      throw new APIError(
+        httpStatus.NOT_FOUND,
         'WebhookService#webhookInvoicePaid | Invoice not found in sync table',
       )
-      return
     }
 
     // check if the entity invoice has successful event paid
