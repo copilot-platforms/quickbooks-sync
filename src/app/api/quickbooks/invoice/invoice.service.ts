@@ -622,14 +622,7 @@ export class InvoiceService extends BaseService {
       )
     }
 
-    try {
-      await intuitApi.voidInvoice(safeParsedPayload.data)
-    } catch (error: unknown) {
-      await this.logSync(payload.data.id, invoiceSync, EventType.VOIDED, {
-        failed: true,
-      })
-      throw error
-    }
+    await intuitApi.voidInvoice(safeParsedPayload.data)
 
     await Promise.all([
       // TODO: status might not need now since we have log table?
@@ -684,14 +677,7 @@ export class InvoiceService extends BaseService {
       )
     }
 
-    try {
-      await intuitApi.deleteInvoice(safeParsedPayload.data)
-    } catch (error: unknown) {
-      await this.logSync(payload.id, syncedInvoice, EventType.DELETED, {
-        failed: true,
-      })
-      throw error
-    }
+    await intuitApi.deleteInvoice(safeParsedPayload.data)
 
     await Promise.all([
       this.updateQBInvoice(
@@ -707,13 +693,12 @@ export class InvoiceService extends BaseService {
     copilotId: string,
     syncedInvoice: SyncableEntity,
     eventType: EventType,
-    opts?: { failed?: boolean },
   ) {
     await this.syncLogService.updateOrCreateQBSyncLog({
       portalId: this.user.workspaceId,
       entityType: EntityType.INVOICE,
       eventType,
-      status: opts?.failed ? LogStatus.FAILED : LogStatus.SUCCESS,
+      status: LogStatus.SUCCESS,
       copilotId,
       syncAt: dayjs().toDate(),
       quickbooksId: syncedInvoice.qbInvoiceId,
