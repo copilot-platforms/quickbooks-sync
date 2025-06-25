@@ -4,8 +4,8 @@ import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
 import * as t from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 
-export const QBTokens = table(
-  'qb_tokens',
+export const QBPortalConnection = table(
+  'qb_portal_connections',
   {
     id: t.uuid().defaultRandom().primaryKey(),
     portalId: t.varchar('portal_id', { length: 255 }).notNull(),
@@ -28,16 +28,27 @@ export const QBTokens = table(
     isEnabled: t.boolean('is_enabled').default(false),
     ...timestamps,
   },
-  (table) => [t.uniqueIndex('uq_qb_tokens_portal_id_idx').on(table.portalId)],
+  (table) => [
+    t.uniqueIndex('uq_qb_portal_connections_portal_id_idx').on(table.portalId),
+  ],
 )
 
-export const QBTokenCreateSchema = createInsertSchema(QBTokens)
-export type QBTokenCreateSchemaType = z.infer<typeof QBTokenCreateSchema>
+export const QBPortalConnectionCreateSchema =
+  createInsertSchema(QBPortalConnection)
+export type QBPortalConnectionCreateSchemaType = z.infer<
+  typeof QBPortalConnectionCreateSchema
+>
 
-export const QBTokenSelectSchema = createSelectSchema(QBTokens)
-export type QBTokenSelectSchemaType = z.infer<typeof QBTokenSelectSchema>
+export const QBPortalConnectionSelectSchema =
+  createSelectSchema(QBPortalConnection)
+export type QBPortalConnectionSelectSchemaType = z.infer<
+  typeof QBPortalConnectionSelectSchema
+>
 
-export const QBTokenUpdateSchema = QBTokenCreateSchema.omit({
-  createdAt: true,
-}).partial()
-export type QBTokenUpdateSchemaType = z.infer<typeof QBTokenUpdateSchema>
+export const QBPortalConnectionUpdateSchema =
+  QBPortalConnectionCreateSchema.omit({
+    createdAt: true,
+  }).partial()
+export type QBPortalConnectionUpdateSchemaType = z.infer<
+  typeof QBPortalConnectionUpdateSchema
+>

@@ -1,1 +1,0 @@
-ALTER TABLE "qb_invoice_sync" DROP COLUMN "qb_doc_number";

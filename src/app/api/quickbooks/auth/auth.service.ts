@@ -11,10 +11,10 @@ import { TokenService } from '@/app/api/quickbooks/token/token.service'
 import { intuitRedirectUri } from '@/config'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
 import {
-  QBTokens,
-  QBTokenCreateSchemaType,
-  QBTokenUpdateSchemaType,
-} from '@/db/schema/qbTokens'
+  QBPortalConnection,
+  QBPortalConnectionCreateSchemaType,
+  QBPortalConnectionUpdateSchemaType,
+} from '@/db/schema/qbPortalConnections'
 import {
   getPortalConnection,
   getSyncedPortalConnection,
@@ -123,7 +123,7 @@ export class AuthService extends BaseService {
       // check if the token exists
       const existingToken = await tokenService.getOneByPortalId(portalId)
 
-      const insertPayload: QBTokenCreateSchemaType = {
+      const insertPayload: QBPortalConnectionCreateSchemaType = {
         intuitRealmId: realmId,
         accessToken: tokenInfo.access_token,
         refreshToken: tokenInfo.refresh_token,
@@ -146,7 +146,7 @@ export class AuthService extends BaseService {
         expenseAccountRef: insertPayload.expenseAccountRef,
         assetAccountRef: insertPayload.assetAccountRef,
       })
-      // manage acc ref from intuit and store in qbtokens table
+      // manage acc ref from intuit and store in qbPortalConnections table
       if (!insertPayload.incomeAccountRef) {
         insertPayload.incomeAccountRef =
           await this.manageIncomeAccountRef(intuitApi)
@@ -160,7 +160,10 @@ export class AuthService extends BaseService {
           await this.manageAssetAccountRef(intuitApi)
       }
 
-      const qbTokens = await tokenService.upsertQBToken(insertPayload, ['id'])
+      const qbTokens = await tokenService.upsertQBPortalConnection(
+        insertPayload,
+        ['id'],
+      )
 
       if (!qbTokens) {
         throw new APIError(
@@ -201,7 +204,7 @@ export class AuthService extends BaseService {
     }
   }
 
-  async getQBToken(
+  async getQBPortalConnection(
     portalId: string,
     manualSyncEnable: boolean = false,
   ): Promise<IntuitAPITokensType> {
@@ -272,7 +275,7 @@ export class AuthService extends BaseService {
           refreshToken: tokenInfo.refresh_token,
         }
 
-        const updatedPayload: QBTokenUpdateSchemaType = {
+        const updatedPayload: QBPortalConnectionUpdateSchemaType = {
           accessToken: updatedTokenInfo.accessToken,
           refreshToken: updatedTokenInfo.refreshToken,
           expiresIn: tokenInfo.expires_in,
@@ -282,11 +285,11 @@ export class AuthService extends BaseService {
         }
 
         const whereConditions = and(
-          eq(QBTokens.intuitRealmId, intuitRealmId),
-          eq(QBTokens.portalId, portalId),
+          eq(QBPortalConnection.intuitRealmId, intuitRealmId),
+          eq(QBPortalConnection.portalId, portalId),
         ) as SQL
 
-        const updateSync = await tokenService.updateQBToken(
+        const updateSync = await tokenService.updateQBPortalConnection(
           updatedPayload,
           whereConditions,
           ['id'],

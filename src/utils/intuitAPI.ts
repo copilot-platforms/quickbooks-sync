@@ -1,7 +1,7 @@
 import APIError from '@/app/api/core/exceptions/api'
 import { withRetry } from '@/app/api/core/utils/withRetry'
 import { intuitApiMinorVersion, intuitBaseUrl } from '@/config'
-import { QBTokenSelectSchemaType } from '@/db/schema/qbTokens'
+import { QBPortalConnectionSelectSchemaType } from '@/db/schema/qbPortalConnections'
 import { getFetcher, postFetcher } from '@/helper/fetch.helper'
 import {
   QBCustomerCreatePayloadType,
@@ -19,7 +19,7 @@ import {
 import httpStatus from 'http-status'
 
 export type IntuitAPITokensType = Pick<
-  QBTokenSelectSchemaType,
+  QBPortalConnectionSelectSchemaType,
   | 'accessToken'
   | 'refreshToken'
   | 'intuitRealmId'

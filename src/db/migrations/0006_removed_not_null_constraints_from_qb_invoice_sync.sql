@@ -1,1 +1,0 @@
-ALTER TABLE "qb_invoice_sync" ALTER COLUMN "qb_doc_number" DROP NOT NULL, ALTER COLUMN "qb_invoice_id" DROP NOT NULL, ALTER COLUMN "qb_sync_token" DROP NOT NULL; --> statement-breakpoint

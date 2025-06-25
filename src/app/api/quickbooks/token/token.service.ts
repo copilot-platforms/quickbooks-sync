@@ -2,13 +2,13 @@ import APIError from '@/app/api/core/exceptions/api'
 import { BaseService } from '@/app/api/core/services/base.service'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
 import {
-  QBTokenCreateSchema,
-  QBTokenCreateSchemaType,
-  QBTokens,
-  QBTokenSelectSchemaType,
-  QBTokenUpdateSchema,
-  QBTokenUpdateSchemaType,
-} from '@/db/schema/qbTokens'
+  QBPortalConnectionCreateSchema,
+  QBPortalConnectionCreateSchemaType,
+  QBPortalConnection,
+  QBPortalConnectionSelectSchemaType,
+  QBPortalConnectionUpdateSchema,
+  QBPortalConnectionUpdateSchemaType,
+} from '@/db/schema/qbPortalConnections'
 import { getPortalConnection } from '@/db/service/token.service'
 import { ChangeEnableStatusRequestType } from '@/type/common'
 import dayjs from 'dayjs'
@@ -20,60 +20,66 @@ type WhereClause = SQL<unknown>
 export class TokenService extends BaseService {
   async getOneByPortalId(
     portalId: string,
-  ): Promise<QBTokenSelectSchemaType | null> {
+  ): Promise<QBPortalConnectionSelectSchemaType | null> {
     const portalConnection = await getPortalConnection(portalId)
 
     return portalConnection
   }
 
-  async createQBToken(
-    payload: QBTokenCreateSchemaType,
-    returningFields?: (keyof typeof QBTokens)[],
+  async createQBPortalConnection(
+    payload: QBPortalConnectionCreateSchemaType,
+    returningFields?: (keyof typeof QBPortalConnection)[],
   ) {
-    const parsedInsertPayload = QBTokenCreateSchema.parse(payload)
-    const query = this.db.insert(QBTokens).values(parsedInsertPayload)
+    const parsedInsertPayload = QBPortalConnectionCreateSchema.parse(payload)
+    const query = this.db.insert(QBPortalConnection).values(parsedInsertPayload)
 
     const [token] = returningFields?.length
-      ? await query.returning(buildReturningFields(QBTokens, returningFields))
+      ? await query.returning(
+          buildReturningFields(QBPortalConnection, returningFields),
+        )
       : await query.returning()
 
     return token
   }
 
-  async upsertQBToken(
-    payload: QBTokenCreateSchemaType,
-    returningFields?: (keyof typeof QBTokens)[],
+  async upsertQBPortalConnection(
+    payload: QBPortalConnectionCreateSchemaType,
+    returningFields?: (keyof typeof QBPortalConnection)[],
   ) {
-    const parsedInsertPayload = QBTokenCreateSchema.parse(payload)
+    const parsedInsertPayload = QBPortalConnectionCreateSchema.parse(payload)
     const query = this.db
-      .insert(QBTokens)
+      .insert(QBPortalConnection)
       .values(parsedInsertPayload)
       .onConflictDoUpdate({
-        target: QBTokens.portalId,
+        target: QBPortalConnection.portalId,
         set: { ...parsedInsertPayload, updatedAt: dayjs().toDate() },
       })
 
     const [token] = returningFields?.length
-      ? await query.returning(buildReturningFields(QBTokens, returningFields))
+      ? await query.returning(
+          buildReturningFields(QBPortalConnection, returningFields),
+        )
       : await query.returning()
 
     return token
   }
 
-  async updateQBToken(
-    payload: QBTokenUpdateSchemaType,
+  async updateQBPortalConnection(
+    payload: QBPortalConnectionUpdateSchemaType,
     conditions: WhereClause,
-    returningFields?: (keyof typeof QBTokens)[],
+    returningFields?: (keyof typeof QBPortalConnection)[],
   ) {
-    const parsedInsertPayload = QBTokenUpdateSchema.parse(payload)
+    const parsedInsertPayload = QBPortalConnectionUpdateSchema.parse(payload)
 
     const query = this.db
-      .update(QBTokens)
+      .update(QBPortalConnection)
       .set(parsedInsertPayload)
       .where(conditions)
 
     const [token] = returningFields?.length
-      ? await query.returning(buildReturningFields(QBTokens, returningFields))
+      ? await query.returning(
+          buildReturningFields(QBPortalConnection, returningFields),
+        )
       : await query.returning()
 
     return token
@@ -83,15 +89,15 @@ export class TokenService extends BaseService {
     const portalId = this.user.workspaceId
     // update db sync status for the defined portal
     const whereConditions = and(
-      eq(QBTokens.intuitRealmId, intuitRealmId),
-      eq(QBTokens.portalId, portalId),
+      eq(QBPortalConnection.intuitRealmId, intuitRealmId),
+      eq(QBPortalConnection.portalId, portalId),
     ) as SQL
 
-    const updateSyncPayload: QBTokenUpdateSchemaType = {
+    const updateSyncPayload: QBPortalConnectionUpdateSchemaType = {
       syncFlag: false,
     }
 
-    const updateSync = await this.updateQBToken(
+    const updateSync = await this.updateQBPortalConnection(
       updateSyncPayload,
       whereConditions,
       ['id'],
@@ -111,11 +117,11 @@ export class TokenService extends BaseService {
     parsedBody: ChangeEnableStatusRequestType,
   ) {
     const whereConditions = and(
-      eq(QBTokens.portalId, portalId),
-      eq(QBTokens.syncFlag, true),
+      eq(QBPortalConnection.portalId, portalId),
+      eq(QBPortalConnection.syncFlag, true),
     ) as SQL
 
-    const portal = await this.updateQBToken(
+    const portal = await this.updateQBPortalConnection(
       {
         isEnabled: parsedBody.enable,
       },

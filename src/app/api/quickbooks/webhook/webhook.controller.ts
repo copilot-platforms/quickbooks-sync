@@ -9,7 +9,7 @@ export async function captureWebhookEvent(req: NextRequest) {
   const authService = new AuthService(user)
   const payload = await req.json()
 
-  const qbTokenInfo = await authService.getQBToken(user.workspaceId)
+  const qbTokenInfo = await authService.getQBPortalConnection(user.workspaceId)
   const webhookService = new WebhookService(user)
   await webhookService.handleWebhookEvent(payload, qbTokenInfo)
 
