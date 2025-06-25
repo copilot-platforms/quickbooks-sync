@@ -650,14 +650,14 @@ export class InvoiceService extends BaseService {
     payload: InvoiceDeletedResponse['data'],
     qbTokenInfo: IntuitAPITokensType,
   ): Promise<void> {
-    const invoiceSync = await this.getInvoiceByNumber(payload.number, [
+    const syncedInvoice = await this.getInvoiceByNumber(payload.number, [
       'id',
       'qbInvoiceId',
       'status',
       'qbSyncToken',
     ])
 
-    if (!invoiceSync) {
+    if (!syncedInvoice) {
       throw new APIError(
         // NOTE: @sandeepbajracharya this can cause an issue where there are invoices that exist before QB sync app has been installed and set up
         // We will not be able to sync new invoice updates for them
@@ -666,7 +666,7 @@ export class InvoiceService extends BaseService {
       )
     }
     // Copilot doesn't allow to delete invoice that are not voided. So, just log an error about possible edge cases without returning an error
-    if (invoiceSync.status !== InvoiceStatus.VOID) {
+    if (syncedInvoice.status !== InvoiceStatus.VOID) {
       console.error(
         'WebhookService#handleInvoiceDeleted | Invoices delete was requested for non-voided record',
       )
@@ -674,13 +674,13 @@ export class InvoiceService extends BaseService {
 
     const intuitApi = new IntuitAPI(qbTokenInfo)
     const deletePayload = {
-      Id: invoiceSync.qbInvoiceId,
-      SyncToken: invoiceSync.qbSyncToken,
+      Id: syncedInvoice.qbInvoiceId,
+      SyncToken: syncedInvoice.qbSyncToken,
     }
     const safeParsedPayload =
       QBVoidInvoicePayloadSchema.safeParse(deletePayload)
 
-    if (!safeParsedPayload.success || !safeParsedPayload.data) {
+    if (!safeParsedPayload.success) {
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
         'WebhookService#handleInvoiceDeleted | Could not parse invoice delete payload',
@@ -693,7 +693,7 @@ export class InvoiceService extends BaseService {
         {
           status: InvoiceStatus.DELETED,
         },
-        eq(QBInvoiceSync.id, invoiceSync.id),
+        eq(QBInvoiceSync.id, syncedInvoice.id),
         ['id'],
       ),
     ])
