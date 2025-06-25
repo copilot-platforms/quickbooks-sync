@@ -12,7 +12,7 @@ import { z } from 'zod'
 
 export async function getLatestSuccesLog(token: string) {
   const response = await fetch(
-    `${apiUrl}/api/quickbooks/synclog/success?token=${token}`,
+    `${apiUrl}/api/quickbooks/syncLog/success?token=${token}`,
   )
   return (await response.json()).data
 }
