@@ -47,6 +47,7 @@ import { copilotApi } from 'copilot-node-sdk'
 import { z } from 'zod'
 import { API_DOMAIN } from '@/constant/domains'
 import httpStatus from 'http-status'
+import { MAX_INVOICE_LIST_LIMIT } from '@/app/api/core/constants/limit'
 
 export class CopilotAPI {
   copilot: SDK
@@ -403,6 +404,15 @@ export class CopilotAPI {
     )
   }
 
+  async _getInvoices(): Promise<InvoiceResponse[] | undefined> {
+    console.info('CopilotAPI#getInvoices | token =', this.token)
+    const data = await this.manualFetch('invoices', {
+      limit: MAX_INVOICE_LIST_LIMIT.toString(),
+    })
+
+    return z.array(InvoiceResponseSchema).parse(data.data)
+  }
+
   private wrapWithRetry<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
   ): (...args: Args) => Promise<R> {
@@ -439,4 +449,5 @@ export class CopilotAPI {
   getPrice = this.wrapWithRetry(this._getPrice)
   getPrices = this.wrapWithRetry(this._getPrices)
   getInvoice = this.wrapWithRetry(this._getInvoice)
+  getInvoices = this.wrapWithRetry(this._getInvoices)
 }

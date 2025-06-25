@@ -1,5 +1,5 @@
 {
-  "id": "21d2ca58-56f4-4c4c-94b9-396dbda4d1a2",
+  "id": "333803ee-69bb-417e-b397-302d27620558",
   "prevId": "64cda273-395d-479a-b7c3-02e4dcd8cee6",
   "version": "7",
   "dialect": "postgresql",
@@ -577,15 +577,9 @@
           "notNull": true,
           "default": "'success'"
         },
-        "sync_date": {
-          "name": "sync_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sync_time": {
-          "name": "sync_time",
-          "type": "time",
+        "sync_at": {
+          "name": "sync_at",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false
         },

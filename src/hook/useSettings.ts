@@ -80,13 +80,9 @@ export const useProductMappingSettings = () => {
   }
 
   useEffect(() => {
-    if (productSetting) {
-      let showButton = false
-      if (!equal(intialSettingState, productSetting)) {
-        showButton = true
-      }
-      setSettingShowConfirm(showButton)
-    }
+    if (!productSetting) return
+    const showButton = !equal(intialSettingState, productSetting)
+    setSettingShowConfirm(showButton)
   }, [productSetting])
 
   useEffect(() => {
@@ -247,6 +243,16 @@ export const useProductMappingSettings = () => {
 export const useProductTableSetting = (
   setMappingItems: (mapProducts: ProductMappingItemType[]) => void,
 ) => {
+  const emptyMappedItem = {
+    name: null,
+    description: '',
+    priceId: null,
+    productId: null,
+    unitPrice: null,
+    qbItemId: null,
+    qbSyncToken: null,
+    isExcluded: true,
+  }
   const { token, setAppParams } = useApp()
   const {
     data: products,
@@ -279,14 +285,10 @@ export const useProductTableSetting = (
         // if mapped list is empty, exclude all items by default
         newMap = products?.products?.map((product: ProductDataType) => {
           return {
-            name: null,
+            ...emptyMappedItem,
             description: product.description,
             priceId: product.priceId,
             productId: product.id,
-            unitPrice: null,
-            qbItemId: null,
-            qbSyncToken: null,
-            isExcluded: true,
           }
         })
       } else {
@@ -313,14 +315,10 @@ export const useProductTableSetting = (
             }
           }
           return {
-            name: null,
+            ...emptyMappedItem,
             description: product.description,
             priceId: product.priceId,
             productId: product.id,
-            unitPrice: null,
-            qbItemId: null,
-            qbSyncToken: null,
-            isExcluded: true,
           }
         })
       }
@@ -445,13 +443,9 @@ export const useInvoiceDetailSettings = () => {
   }
 
   useEffect(() => {
-    if (settingState) {
-      let showButton = false
-      if (!equal(intialSettingState, settingState)) {
-        showButton = true
-      }
-      setShowButton(showButton)
-    }
+    if (!settingState) return
+    const showButton = !equal(intialSettingState, settingState)
+    setShowButton(showButton)
   }, [settingState])
 
   useEffect(() => {
