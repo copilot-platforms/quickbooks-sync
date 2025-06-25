@@ -1,6 +1,4 @@
-import { InvoiceStatus } from '@/app/api/core/types/invoice'
 import { ProductStatus } from '@/app/api/core/types/product'
-import { InvoiceLineItemSchema } from '@/type/dto/webhook.dto'
 import { SQL } from 'drizzle-orm'
 import { z } from 'zod'
 
@@ -324,13 +322,6 @@ export type WhereClause = SQL<unknown>
 
 export const InvoiceResponseSchema = z.object({
   id: z.string(),
-  lineItems: z.array(InvoiceLineItemSchema),
   number: z.string(),
-  recipientId: z.string(),
-  status: z.nativeEnum(InvoiceStatus),
-  total: z.number(),
-  taxAmount: z.number().optional(),
-  sentDate: z.string().datetime().nullish(),
-  dueDate: z.string().datetime().nullish(),
 })
 export type InvoiceResponse = z.infer<typeof InvoiceResponseSchema>

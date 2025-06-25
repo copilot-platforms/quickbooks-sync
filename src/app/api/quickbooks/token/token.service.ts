@@ -33,9 +33,10 @@ export class TokenService extends BaseService {
     const parsedInsertPayload = QBTokenCreateSchema.parse(payload)
     const query = this.db.insert(QBTokens).values(parsedInsertPayload)
 
-    const [token] = returningFields?.length
-      ? await query.returning(buildReturningFields(QBTokens, returningFields))
-      : await query.returning()
+    const [token] =
+      returningFields && returningFields.length > 0
+        ? await query.returning(buildReturningFields(QBTokens, returningFields))
+        : await query.returning()
 
     return token
   }
@@ -53,9 +54,10 @@ export class TokenService extends BaseService {
         set: { ...parsedInsertPayload, updatedAt: dayjs().toDate() },
       })
 
-    const [token] = returningFields?.length
-      ? await query.returning(buildReturningFields(QBTokens, returningFields))
-      : await query.returning()
+    const [token] =
+      returningFields && returningFields.length > 0
+        ? await query.returning(buildReturningFields(QBTokens, returningFields))
+        : await query.returning()
 
     return token
   }
@@ -72,9 +74,10 @@ export class TokenService extends BaseService {
       .set(parsedInsertPayload)
       .where(conditions)
 
-    const [token] = returningFields?.length
-      ? await query.returning(buildReturningFields(QBTokens, returningFields))
-      : await query.returning()
+    const [token] =
+      returningFields && returningFields.length > 0
+        ? await query.returning(buildReturningFields(QBTokens, returningFields))
+        : await query.returning()
 
     return token
   }

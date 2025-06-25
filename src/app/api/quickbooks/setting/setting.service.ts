@@ -15,7 +15,7 @@ export class SettingService extends BaseService {
     returningFields?: (keyof typeof QBSetting)[],
   ): Promise<Partial<QBSettingsSelectSchemaType> | undefined> {
     let columns = null
-    if (returningFields?.length) {
+    if (returningFields && returningFields.length > 0) {
       columns = buildReturningFields(QBSetting, returningFields, true)
     }
 

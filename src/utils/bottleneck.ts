@@ -1,3 +1,3 @@
 import Bottleneck from 'bottleneck'
 
-export const bottleneck = new Bottleneck({ maxConcurrent: 3, minTime: 250 })
+export const bottleneck = new Bottleneck({ maxConcurrent: 2, minTime: 250 })

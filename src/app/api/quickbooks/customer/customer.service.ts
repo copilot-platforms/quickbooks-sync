@@ -23,11 +23,12 @@ export class CustomerService extends BaseService {
     const parsedInsertPayload = QBCustomerCreateSchema.parse(payload)
     const query = this.db.insert(QBCustomers).values(parsedInsertPayload)
 
-    const [customer] = returningFields?.length
-      ? await query.returning(
-          buildReturningFields(QBCustomers, returningFields),
-        )
-      : await query.returning()
+    const [customer] =
+      returningFields && returningFields.length > 0
+        ? await query.returning(
+            buildReturningFields(QBCustomers, returningFields),
+          )
+        : await query
 
     return customer
   }
@@ -45,11 +46,12 @@ export class CustomerService extends BaseService {
       .set(parsedInsertPayload)
       .where(conditions)
 
-    const [customer] = returningFields?.length
-      ? await query.returning(
-          buildReturningFields(QBCustomers, returningFields),
-        )
-      : await query.returning()
+    const [customer] =
+      returningFields && returningFields.length > 0
+        ? await query.returning(
+            buildReturningFields(QBCustomers, returningFields),
+          )
+        : await query
 
     return customer
   }
@@ -59,7 +61,7 @@ export class CustomerService extends BaseService {
     returningFields?: (keyof typeof QBCustomers)[],
   ) {
     let columns = null
-    if (returningFields?.length) {
+    if (returningFields && returningFields.length > 0) {
       columns = buildReturningFields(QBCustomers, returningFields, true)
     }
 
