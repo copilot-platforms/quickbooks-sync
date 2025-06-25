@@ -10,8 +10,8 @@ import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
 import {
   InvoiceCreatedResponseSchema,
-  InvoiceResponseSchema,
   InvoiceDeletedResponseSchema,
+  InvoiceResponseSchema,
   PaymentSucceededResponseSchema,
   PriceCreatedResponseSchema,
   ProductCreatedResponseSchema,
@@ -19,6 +19,7 @@ import {
   WebhookEventResponseSchema,
   WebhookEventResponseType,
 } from '@/type/dto/webhook.dto'
+import { validateAccessToken } from '@/utils/auth'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import { IntuitAPITokensType } from '@/utils/intuitAPI'
 import httpStatus from 'http-status'
@@ -96,29 +97,17 @@ export class WebhookService extends BaseService {
         }
 
         try {
-          // case when there is no accessToken (refreshToken fail)
-          if (qbTokenInfo.accessToken === '') {
-            throw new APIError(
-              httpStatus.UNAUTHORIZED,
-              'Refresh token is expired',
-            )
-          } else {
-            await invoiceService.webhookInvoiceCreated(
-              parsedInvoiceResource,
-              qbTokenInfo,
-            )
-            break
-          }
+          validateAccessToken(qbTokenInfo)
+          await invoiceService.webhookInvoiceCreated(
+            parsedInvoiceResource,
+            qbTokenInfo,
+          )
+          break
         } catch (error: unknown) {
-          // store the log as failed.
-          const syncLogService = new SyncLogService(this.user)
-          await syncLogService.createQBSyncLog({
-            portalId: this.user.workspaceId,
-            entityType: EntityType.INVOICE,
-            eventType: EventType.CREATED,
-            status: LogStatus.FAILED,
-            copilotId: parsedInvoiceResource.data.id,
-          })
+          await this.pushFailedInvoiceToSyncLog(
+            EventType.CREATED,
+            parsedInvoiceResource.data.id,
+          )
           throw error
         }
 
@@ -168,12 +157,7 @@ export class WebhookService extends BaseService {
         const parsedCreatedProductResource = parsedCreatedProduct.data
 
         try {
-          if (qbTokenInfo.accessToken === '') {
-            throw new APIError(
-              httpStatus.UNAUTHORIZED,
-              'Refresh token is expired',
-            )
-          }
+          validateAccessToken(qbTokenInfo)
           productService = new ProductService(this.user)
           await productService.webhookProductCreated(
             parsedCreatedProductResource,
@@ -182,7 +166,6 @@ export class WebhookService extends BaseService {
           break
         } catch (error: unknown) {
           const syncLogService = new SyncLogService(this.user)
-
           await syncLogService.updateOrCreateQBSyncLog({
             portalId: this.user.workspaceId,
             entityType: EntityType.PRODUCT,
@@ -234,12 +217,7 @@ export class WebhookService extends BaseService {
         }
         const parsedPaidInvoiceResource = parsedPaidInvoice.data
         try {
-          if (qbTokenInfo.accessToken === '') {
-            throw new APIError(
-              httpStatus.UNAUTHORIZED,
-              'Refresh token is expired',
-            )
-          }
+          validateAccessToken(qbTokenInfo)
           const invService = new InvoiceService(this.user)
           await invService.webhookInvoicePaid(
             parsedPaidInvoiceResource,
@@ -273,31 +251,20 @@ export class WebhookService extends BaseService {
         const parsedVoidedInvoiceResource = parsedVoidedInvoice.data
 
         try {
-          if (qbTokenInfo.accessToken === '') {
-            throw new APIError(
-              httpStatus.UNAUTHORIZED,
-              'Refresh token is expired',
-            )
-          } else {
-            const invoiceServce = new InvoiceService(this.user)
-            await invoiceServce.webhookInvoiceVoided(
-              parsedVoidedInvoiceResource,
-              qbTokenInfo,
-            )
-            break
-          }
+          validateAccessToken(qbTokenInfo)
+          const invoiceServce = new InvoiceService(this.user)
+          await invoiceServce.webhookInvoiceVoided(
+            parsedVoidedInvoiceResource,
+            qbTokenInfo,
+          )
         } catch (error: unknown) {
-          // store the log as failed.
-          const syncLogService = new SyncLogService(this.user)
-          await syncLogService.createQBSyncLog({
-            portalId: this.user.workspaceId,
-            entityType: EntityType.INVOICE,
-            eventType: EventType.VOIDED,
-            status: LogStatus.FAILED,
-            copilotId: parsedVoidedInvoiceResource.data.id,
-          })
+          await this.pushFailedInvoiceToSyncLog(
+            EventType.VOIDED,
+            parsedVoidedInvoiceResource.data.id,
+          )
           throw error
         }
+        break
 
       case WebhookEvents.PAYMENT_SUCCEEDED:
         console.info('###### PAYMENT SUCCEEDED ######')
@@ -343,20 +310,14 @@ export class WebhookService extends BaseService {
           )
 
           try {
-            if (qbTokenInfo.accessToken === '') {
-              throw new APIError(
-                httpStatus.UNAUTHORIZED,
-                'Refresh token is expired',
-              )
-            } else {
-              // only track if the fee amount is paid by platform
-              const paymentService = new PaymentService(this.user)
-              await paymentService.webhookPaymentSucceeded(
-                parsedPaymentSucceedResource,
-                qbTokenInfo,
-                invoice,
-              )
-            }
+            validateAccessToken(qbTokenInfo)
+            // only track if the fee amount is paid by platform
+            const paymentService = new PaymentService(this.user)
+            await paymentService.webhookPaymentSucceeded(
+              parsedPaymentSucceedResource,
+              qbTokenInfo,
+              invoice,
+            )
           } catch (error: unknown) {
             await syncLogService.updateOrCreateQBSyncLog({
               portalId: this.user.workspaceId,
@@ -381,22 +342,43 @@ export class WebhookService extends BaseService {
     }
   }
 
+  private async pushFailedInvoiceToSyncLog(
+    eventType: EventType,
+    copilotId: string,
+  ) {
+    const syncLogService = new SyncLogService(this.user)
+    await syncLogService.createQBSyncLog({
+      portalId: this.user.workspaceId,
+      entityType: EntityType.INVOICE,
+      eventType,
+      status: LogStatus.FAILED,
+      copilotId,
+    })
+  }
+
   private async handleInvoiceDeleted(
     payload: unknown,
     qbTokenInfo: IntuitAPITokensType,
   ) {
     const parsedPayload = InvoiceDeletedResponseSchema.safeParse(payload)
-    if (!parsedPayload.success || !parsedPayload.data) {
+    if (!parsedPayload.success) {
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'WebhookService#handleWebhookEvent | Could not parse invoice deletion response',
       )
     }
 
-    const invoiceService = new InvoiceService(this.user)
-    await invoiceService.handleInvoiceDeleted(
-      parsedPayload.data.data,
-      qbTokenInfo,
-    )
+    const deletePayload = parsedPayload.data
+    try {
+      validateAccessToken(qbTokenInfo)
+      const invoiceService = new InvoiceService(this.user)
+      await invoiceService.handleInvoiceDeleted(deletePayload.data, qbTokenInfo)
+    } catch (error: unknown) {
+      await this.pushFailedInvoiceToSyncLog(
+        EventType.DELETED,
+        deletePayload.data.id,
+      )
+      throw error
+    }
   }
 }

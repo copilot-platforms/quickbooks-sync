@@ -1,43 +1,43 @@
 import APIError from '@/app/api/core/exceptions/api'
 import User from '@/app/api/core/models/User.model'
 import { BaseService } from '@/app/api/core/services/base.service'
+import { InvoiceStatus, SyncableEntity } from '@/app/api/core/types/invoice'
+import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 import { CustomerService } from '@/app/api/quickbooks/customer/customer.service'
 import { getLatestActiveClient } from '@/app/api/quickbooks/invoice/invoice.helper'
+import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
+import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
+import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
 import { QBCustomers } from '@/db/schema/qbCustomers'
 import {
-  QBInvoiceSync,
   QBInvoiceCreateSchema,
   QBInvoiceCreateSchemaType,
-  QBInvoiceUpdateSchemaType,
+  QBInvoiceSync,
   QBInvoiceUpdateSchema,
+  QBInvoiceUpdateSchemaType,
 } from '@/db/schema/qbInvoiceSync'
+import { TransactionType, WhereClause } from '@/type/common'
 import {
-  QBNameValueSchemaType,
   QBCustomerSparseUpdatePayloadType,
+  QBNameValueSchemaType,
   QBVoidInvoicePayloadSchema,
 } from '@/type/dto/intuitAPI.dto'
-import { convert } from 'html-to-text'
 import {
   InvoiceCreatedResponseType,
   InvoiceDeletedResponse,
   InvoiceLineItemSchemaType,
   InvoiceResponseType,
 } from '@/type/dto/webhook.dto'
+import { bottleneck } from '@/utils/bottleneck'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import dayjs from 'dayjs'
 import { and, eq, isNull } from 'drizzle-orm'
+import { convert } from 'html-to-text'
 import httpStatus from 'http-status'
-import { bottleneck } from '@/utils/bottleneck'
-import { InvoiceStatus } from '@/app/api/core/types/invoice'
-import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
-import { TransactionType, WhereClause } from '@/type/common'
 import { z } from 'zod'
-import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
-import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
-import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 
 const oneOffItem = {
   name: 'Services', // for one-off items
@@ -621,7 +621,14 @@ export class InvoiceService extends BaseService {
       )
     }
 
-    await intuitApi.voidInvoice(safeParsedPayload.data)
+    try {
+      await intuitApi.voidInvoice(safeParsedPayload.data)
+    } catch (error: unknown) {
+      await this.logSync(payload.data.id, invoiceSync, EventType.VOIDED, {
+        failed: true,
+      })
+      throw error
+    }
 
     await Promise.all([
       // TODO: status might not need now since we have log table?
@@ -632,17 +639,7 @@ export class InvoiceService extends BaseService {
         eq(QBInvoiceSync.id, invoiceSync.id),
         ['id'],
       ),
-      this.syncLogService.updateOrCreateQBSyncLog({
-        portalId: this.user.workspaceId,
-        entityType: EntityType.INVOICE,
-        eventType: EventType.VOIDED,
-        status: LogStatus.SUCCESS,
-        copilotId: payload.data.id,
-        syncAt: dayjs().toDate(),
-        quickbooksId: invoiceSync.qbInvoiceId,
-        invoiceNumber: invoiceSync.invoiceNumber,
-        // amount: invoiceSync.total.toFixed(2), // TODO: add amount in mapping table
-      }),
+      this.logSync(payload.data.id, invoiceSync, EventType.VOIDED),
     ])
   }
 
@@ -687,15 +684,40 @@ export class InvoiceService extends BaseService {
       )
     }
 
+    try {
+      await intuitApi.deleteInvoice(safeParsedPayload.data)
+    } catch (error: unknown) {
+      await this.logSync(payload.id, syncedInvoice, EventType.DELETED, {
+        failed: true,
+      })
+      throw error
+    }
+
     await Promise.all([
-      intuitApi.deleteInvoice(safeParsedPayload.data),
       this.updateQBInvoice(
-        {
-          status: InvoiceStatus.DELETED,
-        },
+        { status: InvoiceStatus.DELETED },
         eq(QBInvoiceSync.id, syncedInvoice.id),
         ['id'],
       ),
+      this.logSync(payload.id, syncedInvoice, EventType.DELETED),
     ])
+  }
+
+  private async logSync(
+    copilotId: string,
+    syncedInvoice: SyncableEntity,
+    eventType: EventType,
+    opts?: { failed?: boolean },
+  ) {
+    await this.syncLogService.updateOrCreateQBSyncLog({
+      portalId: this.user.workspaceId,
+      entityType: EntityType.INVOICE,
+      eventType,
+      status: opts?.failed ? LogStatus.FAILED : LogStatus.SUCCESS,
+      copilotId,
+      syncAt: dayjs().toDate(),
+      quickbooksId: syncedInvoice.qbInvoiceId,
+      invoiceNumber: syncedInvoice.invoiceNumber,
+    })
   }
 }

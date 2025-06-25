@@ -12,3 +12,8 @@ export enum PaymentStatus {
   SUCCEEDED = 'succeeded',
   FAILED = 'failed',
 }
+
+export interface SyncableEntity {
+  qbInvoiceId: string | null
+  invoiceNumber: string
+}
