@@ -6,6 +6,7 @@ import { NotificationActions } from '@/app/api/core/types/notification'
 import { NotificationService } from '@/app/api/notification/notification.service'
 import { LogService } from '@/app/api/quickbooks/log/log.service'
 import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
+import { SyncService } from '@/app/api/quickbooks/sync/sync.service'
 import { TokenService } from '@/app/api/quickbooks/token/token.service'
 import { intuitRedirectUri } from '@/config'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
@@ -14,7 +15,10 @@ import {
   QBTokenCreateSchemaType,
   QBTokenUpdateSchemaType,
 } from '@/db/schema/qbTokens'
-import { getSyncedPortalConnection } from '@/db/service/token.service'
+import {
+  getPortalConnection,
+  getSyncedPortalConnection,
+} from '@/db/service/token.service'
 import {
   QBAuthTokenResponse,
   QBAuthTokenResponseSchema,
@@ -173,6 +177,15 @@ export class AuthService extends BaseService {
         portalId,
         connectionStatus: ConnectionStatus.SUCCESS,
       })
+
+      after(async () => {
+        if (existingToken) {
+          console.info('Not initial process. Starting the re-sync process')
+          const syncService = new SyncService(this.user)
+          await syncService.syncFailedRecords()
+        }
+      })
+
       return true
     } catch (error: unknown) {
       console.error('AuthService#handleTokenExchange | Error =', error)
@@ -192,7 +205,7 @@ export class AuthService extends BaseService {
     portalId: string,
     manualSyncEnable: boolean = false,
   ): Promise<IntuitAPITokensType> {
-    const portalQBToken = await getSyncedPortalConnection(portalId)
+    const portalQBToken = await getPortalConnection(portalId)
     if (!portalQBToken) {
       throw new APIError(
         httpStatus.NOT_FOUND,
@@ -211,7 +224,22 @@ export class AuthService extends BaseService {
       expenseAccountRef,
       assetAccountRef,
       isEnabled,
+      syncFlag,
     } = portalQBToken
+
+    const emptyTokens = {
+      accessToken: '',
+      refreshToken: '',
+      intuitRealmId,
+      incomeAccountRef: '',
+      expenseAccountRef: '',
+      assetAccountRef: '',
+    }
+
+    // if sync is false but it has been enabled then don't throw error. We have to log in this case
+    if (!syncFlag && (isEnabled || manualSyncEnable)) {
+      return emptyTokens
+    }
 
     if (!isEnabled && !manualSyncEnable) {
       throw new APIError(
@@ -292,14 +320,7 @@ export class AuthService extends BaseService {
               )
             })
 
-            return {
-              accessToken: '',
-              refreshToken: '',
-              intuitRealmId,
-              incomeAccountRef: '',
-              expenseAccountRef: '',
-              assetAccountRef: '',
-            }
+            return emptyTokens
           }
         }
 

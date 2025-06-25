@@ -23,7 +23,7 @@ import { convert } from 'html-to-text'
 import {
   InvoiceCreatedResponseType,
   InvoiceLineItemSchemaType,
-  InvoicePaidResponseType,
+  InvoiceResponseType,
 } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
@@ -36,6 +36,8 @@ import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import { TransactionType, WhereClause } from '@/type/common'
 import { z } from 'zod'
 import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
+import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
+import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 
 const oneOffItem = {
   name: 'Services', // for one-off items
@@ -59,10 +61,12 @@ type ClientCompanyType = {
 
 export class InvoiceService extends BaseService {
   private copilot: CopilotAPI
+  private syncLogService: SyncLogService
 
   constructor(user: User) {
     super(user)
     this.copilot = new CopilotAPI(user.token)
+    this.syncLogService = new SyncLogService(user)
   }
 
   async createQBInvoice(
@@ -72,12 +76,11 @@ export class InvoiceService extends BaseService {
     const parsedInsertPayload = QBInvoiceCreateSchema.parse(payload)
     const query = this.db.insert(QBInvoiceSync).values(parsedInsertPayload)
 
-    const [invoiceSync] =
-      returningFields && returningFields.length > 0
-        ? await query.returning(
-            buildReturningFields(QBInvoiceSync, returningFields),
-          )
-        : await query
+    const [invoiceSync] = returningFields?.length
+      ? await query.returning(
+          buildReturningFields(QBInvoiceSync, returningFields),
+        )
+      : await query.returning()
 
     return invoiceSync
   }
@@ -94,12 +97,11 @@ export class InvoiceService extends BaseService {
       .set(parsedInsertPayload)
       .where(conditions)
 
-    const [invoiceSync] =
-      returningFields && returningFields.length > 0
-        ? await query.returning(
-            buildReturningFields(QBInvoiceSync, returningFields),
-          )
-        : await query.returning()
+    const [invoiceSync] = returningFields?.length
+      ? await query.returning(
+          buildReturningFields(QBInvoiceSync, returningFields),
+        )
+      : await query.returning()
 
     return invoiceSync
   }
@@ -109,7 +111,7 @@ export class InvoiceService extends BaseService {
     returningFields?: (keyof typeof QBInvoiceSync)[],
   ) {
     let columns = null
-    if (returningFields && returningFields.length > 0) {
+    if (returningFields?.length) {
       columns = buildReturningFields(QBInvoiceSync, returningFields, true)
     }
 
@@ -487,6 +489,29 @@ export class InvoiceService extends BaseService {
     // 6. create invoice in QB
     const invoiceRes = await intuitApi.createInvoice(qbInvoicePayload)
 
+    const invoicePayload = {
+      portalId: this.user.workspaceId,
+      invoiceNumber: invoiceResource.number,
+      qbInvoiceId: invoiceRes.Invoice.Id,
+      qbSyncToken: invoiceRes.Invoice.SyncToken,
+      clientId: clientCompany.id,
+      status: invoiceResource.status,
+    }
+    await this.createQBInvoice(invoicePayload)
+
+    // update/ create the record in sync log table
+    await this.syncLogService.updateOrCreateQBSyncLog({
+      portalId: this.user.workspaceId,
+      entityType: EntityType.INVOICE,
+      eventType: EventType.CREATED,
+      status: LogStatus.SUCCESS,
+      copilotId: invoiceResource.id,
+      quickbooksId: invoiceRes.Invoice.Id,
+      syncAt: dayjs().toDate(),
+      invoiceNumber: invoiceResource.number,
+      amount: invoiceResource.total.toFixed(2),
+    })
+
     /**
      * here, creates a payment if invoice is paid. "invoice.paid" hook can trigger before "invoice.created" hook
      * this can create issue as invoice is not found when "invoice.paid" hook is triggered
@@ -515,22 +540,13 @@ export class InvoiceService extends BaseService {
         intuitApi,
         qbPaymentPayload,
         invoiceResource.number,
+        invoiceResource.id,
       )
     }
-
-    const invoicePayload = {
-      portalId: this.user.workspaceId,
-      invoiceNumber: invoiceResource.number,
-      qbInvoiceId: invoiceRes.Invoice.Id,
-      qbSyncToken: invoiceRes.Invoice.SyncToken,
-      recipientId: clientCompany.id,
-      status: invoiceResource.status,
-    }
-    await this.createQBInvoice(invoicePayload)
   }
 
   async webhookInvoicePaid(
-    payload: InvoicePaidResponseType,
+    payload: InvoiceResponseType,
     qbTokenInfo: IntuitAPITokensType,
   ): Promise<void> {
     // 1. check if the status of invoice is already paid in sync table
@@ -549,7 +565,13 @@ export class InvoiceService extends BaseService {
       return
     }
 
-    if (invoiceSync?.status === InvoiceStatus.PAID) {
+    // check if the entity invoice has successful event paid
+    const syncLog = await this.syncLogService.getOneByCopilotIdAndEventType(
+      payload.data.id,
+      EventType.PAID,
+    )
+
+    if (syncLog?.status === LogStatus.SUCCESS) {
       console.info('WebhookService#webhookInvoicePaid | Invoice already paid')
       return
     }
@@ -594,24 +616,26 @@ export class InvoiceService extends BaseService {
     const intuitApi = new IntuitAPI(qbTokenInfo)
     const paymentService = new PaymentService(this.user)
 
-    await Promise.all([
-      paymentService.createPaymentAndSync(
-        intuitApi,
-        qbPaymentPayload,
-        payload.data.number,
-      ),
-      this.updateQBInvoice(
+    const success = await paymentService.createPaymentAndSync(
+      intuitApi,
+      qbPaymentPayload,
+      payload.data.number,
+      payload.data.id,
+    )
+
+    if (success) {
+      await this.updateQBInvoice(
         {
           status: InvoiceStatus.PAID,
         },
         eq(QBInvoiceSync.id, invoiceSync.id),
         ['id'],
-      ),
-    ])
+      )
+    }
   }
 
   async webhookInvoiceVoided(
-    payload: InvoicePaidResponseType,
+    payload: InvoiceResponseType,
     qbTokenInfo: IntuitAPITokensType,
   ): Promise<void> {
     // 1. check if the status of invoice is already paid in sync table
@@ -620,6 +644,7 @@ export class InvoiceService extends BaseService {
       'qbInvoiceId',
       'status',
       'qbSyncToken',
+      'invoiceNumber',
     ])
 
     if (!invoiceSync) {
@@ -629,33 +654,54 @@ export class InvoiceService extends BaseService {
       return
     }
 
-    if (invoiceSync?.status === InvoiceStatus.OPEN) {
-      // only implement void if invoice has open status
-      const intuitApi = new IntuitAPI(qbTokenInfo)
-      const voidPayload = {
-        Id: invoiceSync.qbInvoiceId,
-        SyncToken: invoiceSync.qbSyncToken,
-      }
-      const safeParsedPayload =
-        QBVoidInvoicePayloadSchema.safeParse(voidPayload)
+    const syncLog = await this.syncLogService.getOneByCopilotIdAndEventType(
+      payload.data.id,
+      EventType.VOIDED,
+    )
 
-      if (!safeParsedPayload.success || !safeParsedPayload.data) {
-        throw new APIError(
-          httpStatus.INTERNAL_SERVER_ERROR,
-          'WebhookService#webhookInvoiceVoided | Could not parse invoice void payload',
-        )
-      }
-
-      await Promise.all([
-        intuitApi.voidInvoice(safeParsedPayload.data),
-        this.updateQBInvoice(
-          {
-            status: InvoiceStatus.VOID,
-          },
-          eq(QBInvoiceSync.id, invoiceSync.id),
-          ['id'],
-        ),
-      ])
+    if (syncLog?.status === LogStatus.SUCCESS) {
+      console.info(
+        'WebhookService#webhookInvoiceVoided | Invoice already voided',
+      )
+      return
     }
+
+    // only implement void if invoice has open status
+    const intuitApi = new IntuitAPI(qbTokenInfo)
+    const voidPayload = {
+      Id: invoiceSync.qbInvoiceId,
+      SyncToken: invoiceSync.qbSyncToken,
+    }
+    const safeParsedPayload = QBVoidInvoicePayloadSchema.safeParse(voidPayload)
+
+    if (!safeParsedPayload.success || !safeParsedPayload.data) {
+      throw new APIError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'WebhookService#webhookInvoiceVoided | Could not parse invoice void payload',
+      )
+    }
+
+    await intuitApi.voidInvoice(safeParsedPayload.data)
+
+    await Promise.all([
+      this.updateQBInvoice(
+        {
+          status: InvoiceStatus.VOID,
+        },
+        eq(QBInvoiceSync.id, invoiceSync.id),
+        ['id'],
+      ),
+      this.syncLogService.updateOrCreateQBSyncLog({
+        portalId: this.user.workspaceId,
+        entityType: EntityType.INVOICE,
+        eventType: EventType.VOIDED,
+        status: LogStatus.SUCCESS,
+        copilotId: payload.data.id,
+        syncAt: dayjs().toDate(),
+        quickbooksId: invoiceSync.qbInvoiceId,
+        invoiceNumber: invoiceSync.invoiceNumber,
+        amount: payload.data.total.toFixed(2),
+      }),
+    ])
   }
 }
