@@ -71,7 +71,7 @@ export default async function Main({
         reconnect={reconnect}
         portalConnectionStatus={portalConnectionStatus}
         isEnabled={isEnabled}
-        lastSyncTimestamp={successLog.updatedAt}
+        lastSyncTimestamp={successLog?.updatedAt || null}
       >
         <HomeClient />
       </AppProvider>
