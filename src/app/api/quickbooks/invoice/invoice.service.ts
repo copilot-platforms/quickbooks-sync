@@ -277,7 +277,8 @@ export class InvoiceService extends BaseService {
     if (!client) {
       company = await this.copilot.getCompany(invoiceResource.recipientId)
 
-      if (!company) {
+      // NOTE: If company is not a valid company, company.name will be an empty string
+      if (!company || !company.name) {
         console.info(
           'InvoiceService#handleInvoiceCreated | Could not retrieve client or company',
         )
@@ -353,11 +354,11 @@ export class InvoiceService extends BaseService {
 
       // 3. if not found, create a new client in the QB
       if (!customer) {
-        if (!company) {
+        if (!company || !company.name) {
           // Case when client is retrieved directly from recipientId
           company = await this.copilot.getCompany(clientCompany.companyId)
 
-          if (!company) {
+          if (!company || !company.name) {
             // Indicates company is not available in any case. This only logs as error and allows to create customer in QB since company name is optional
             console.error(
               'InvoiceService#handleInvoiceCreated | Could not retrieve company for client = ',
@@ -577,7 +578,7 @@ export class InvoiceService extends BaseService {
     }
 
     // 2. if not, create payment in QB, sync payment in payment sync table and change invoice status to paid
-    if (!invoiceSync?.recipientId) {
+    if (!invoiceSync.recipientId) {
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
         'WebhookService#webhookInvoicePaid | RecipientId not found',
