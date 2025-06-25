@@ -99,7 +99,6 @@ export default class IntuitAPI {
   }
 
   async _createInvoice(payload: QBInvoiceCreatePayloadType) {
-    console.log('\n\n\n\n\npayload\n\n\n', payload)
     console.info('IntuitAPI#createInvoice | invoice creation start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
@@ -411,16 +410,16 @@ export default class IntuitAPI {
     console.info('IntuitAPI#deleteInvoice | invoice deletion start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=delete&minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
-    console.log(invoice)
 
-    // if (!invoice)
-    //   throw new APIError(
-    //     httpStatus.BAD_REQUEST,
-    //     'IntuitAPI#deleteInvoice | No invoice was received from Quickbooks API',
-    //   )
+    if (!invoice) {
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#deleteInvoice | No invoice deletion confirmation was received from Quickbooks API',
+      )
+    }
 
-    if (invoice?.Fault) {
-      console.error({ Error: invoice.Fault?.Error })
+    if (invoice.Fault) {
+      console.error(invoice.Fault.Error)
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#deleteInvoice | Error while deleting invoice',

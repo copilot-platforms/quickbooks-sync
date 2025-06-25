@@ -39,6 +39,8 @@ export class WebhookService extends BaseService {
     }
 
     const payload = parsedBody.data
+    console.info('Webhook payload:\n', payload)
+
     // for webhook event product.create and price.create, terminate process if createNewProductFlag is false
     if (
       [WebhookEvents.PRODUCT_CREATED, WebhookEvents.PRICE_CREATED].includes(
@@ -387,7 +389,7 @@ export class WebhookService extends BaseService {
     if (!parsedPayload.success || !parsedPayload.data) {
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'WebhookService#handleWebhookEvent | Could not parse invoice response',
+        'WebhookService#handleWebhookEvent | Could not parse invoice deletion response',
       )
     }
 

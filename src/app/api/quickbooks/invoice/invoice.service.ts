@@ -659,13 +659,13 @@ export class InvoiceService extends BaseService {
 
     if (!invoiceSync) {
       throw new APIError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        // NOTE: this can cause an issue where there are invoices that exist before QB sync app has been installed and set up
+        // NOTE: @sandeepbajracharya this can cause an issue where there are invoices that exist before QB sync app has been installed and set up
         // We will not be able to sync new invoice updates for them
+        httpStatus.INTERNAL_SERVER_ERROR,
         'WebhookService#handleInvoiceDeleted | Invoice not found in sync table',
       )
     }
-    // Copilot doesn't allow to delete invoice that are not voided. So, just raise issue about possible edge cases without throwing an error
+    // Copilot doesn't allow to delete invoice that are not voided. So, just log an error about possible edge cases without returning an error
     if (invoiceSync.status !== InvoiceStatus.VOID) {
       console.error(
         'WebhookService#handleInvoiceDeleted | Invoices delete was requested for non-voided record',
