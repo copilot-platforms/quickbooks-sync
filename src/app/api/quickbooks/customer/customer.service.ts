@@ -18,7 +18,7 @@ export class CustomerService extends BaseService {
   ) {
     console.info(
       'CustomerService#createQBCustomer | For client with Id =',
-      payload.clientId,
+      payload.customerId,
     )
     const parsedInsertPayload = QBCustomerCreateSchema.parse(payload)
     const query = this.db.insert(QBCustomers).values(parsedInsertPayload)
@@ -54,8 +54,8 @@ export class CustomerService extends BaseService {
     return customer
   }
 
-  async getByClientId(
-    clientId: string,
+  async getByCustomerId(
+    customerId: string,
     returningFields?: (keyof typeof QBCustomers)[],
   ) {
     let columns = null
@@ -65,7 +65,10 @@ export class CustomerService extends BaseService {
 
     return await this.db.query.QBCustomers.findFirst({
       where: (QBCustomers, { eq }) =>
-        and(isNull(QBCustomers.deletedAt), eq(QBCustomers.clientId, clientId)),
+        and(
+          isNull(QBCustomers.deletedAt),
+          eq(QBCustomers.customerId, customerId),
+        ),
       ...(columns && { columns }),
     })
   }

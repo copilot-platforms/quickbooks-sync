@@ -201,8 +201,8 @@ export default class IntuitAPI {
     return qbIncomeAccountRefInfo.Account?.[0]
   }
 
-  async _getACustomer(givenName: string, familyName: string) {
-    const customerQuery = `SELECT Id, SyncToken FROM Customer WHERE GivenName = '${givenName}' AND FamilyName = '${familyName}' AND Active = true`
+  async _getACustomer(displayName: string) {
+    const customerQuery = `SELECT Id, SyncToken FROM Customer WHERE DisplayName = '${displayName}' AND Active = true`
     const qbCustomers = await this.customQuery(customerQuery)
 
     if (!qbCustomers)

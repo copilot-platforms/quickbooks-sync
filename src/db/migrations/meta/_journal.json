@@ -162,7 +162,13 @@
       "when": 1750761221498,
       "tag": "0022_add_deleted_to_invoice_statuses",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1750850792527,
+      "tag": "0023_rename_client_id_columns",
+      "breakpoints": true
     }
   ]
 }
-
