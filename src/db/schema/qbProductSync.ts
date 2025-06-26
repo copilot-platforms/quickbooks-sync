@@ -74,3 +74,29 @@ const ProductMappingItemSchema = QBProductCreateSchema.omit({
 export type ProductMappingItemType = z.infer<typeof ProductMappingItemSchema>
 
 export const ProductMappingItemArraySchema = z.array(ProductMappingItemSchema)
+
+const QBItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  syncToken: z.string(),
+  numericPrice: z.number(),
+})
+
+const ProductChangedItemReferenceSchema = z.object({
+  description: z.string().nullish(),
+  id: z.string(),
+  isExcluded: z.boolean(),
+  name: z.string(),
+  numericPrice: z.number(),
+  priceId: z.string(),
+  qbItem: QBItemSchema.nullish(),
+})
+
+export type ProductChangedItemReferenceType = z.infer<
+  typeof ProductChangedItemReferenceSchema
+>
+
+export const ProductMappingSchema = z.object({
+  mappingItems: QBProductCreateArraySchema,
+  changedItemReference: z.array(ProductChangedItemReferenceSchema),
+})

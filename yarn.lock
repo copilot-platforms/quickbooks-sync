@@ -4436,6 +4436,7 @@ __metadata:
     husky: "npm:^9.1.7"
     intuit-oauth: "npm:^4.2.0"
     javascript-time-ago: "npm:^2.5.11"
+    json-2-csv: "npm:^5.5.9"
     lint-staged: "npm:^15.5.1"
     next: "npm:15.3.0"
     open: "npm:^10.1.0"
@@ -4598,6 +4599,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"deeks@npm:3.1.0":
+  version: 3.1.0
+  resolution: "deeks@npm:3.1.0"
+  checksum: 10c0/3173ca28466cf31d550248c034c5466d93c5aecb8ee8ca547a2c9f471e62af4ebed7456c3310503be901d982867071b4411030a6b724528739895aee1dc2b482
+  languageName: node
+  linkType: hard
+
 "deep-equal@npm:^2.2.3":
   version: 2.2.3
   resolution: "deep-equal@npm:2.2.3"
@@ -4702,6 +4710,13 @@ __metadata:
   version: 2.0.3
   resolution: "detect-libc@npm:2.0.3"
   checksum: 10c0/88095bda8f90220c95f162bf92cad70bd0e424913e655c20578600e35b91edc261af27531cf160a331e185c0ced93944bc7e09939143225f56312d7fd800fdb7
+  languageName: node
+  linkType: hard
+
+"doc-path@npm:4.1.1":
+  version: 4.1.1
+  resolution: "doc-path@npm:4.1.1"
+  checksum: 10c0/5a908c4d0c8431fa60349cad1d5f0775cf9825d4d85e6bd7f55925c01d6278be8dd04f6858b8f8fdc8ea992a63545595ea77a2282551ff95538608f382b46f8a
   languageName: node
   linkType: hard
 
@@ -7317,6 +7332,16 @@ __metadata:
   bin:
     jsesc: bin/jsesc
   checksum: 10c0/531779df5ec94f47e462da26b4cbf05eb88a83d9f08aac2ba04206508fc598527a153d08bd462bae82fc78b3eaa1a908e1a4a79f886e9238641c4cdefaf118b1
+  languageName: node
+  linkType: hard
+
+"json-2-csv@npm:^5.5.9":
+  version: 5.5.9
+  resolution: "json-2-csv@npm:5.5.9"
+  dependencies:
+    deeks: "npm:3.1.0"
+    doc-path: "npm:4.1.1"
+  checksum: 10c0/109b7636ba3ef9b8c53580f89280568e1ecd106b6328f44636869a62eac1f9f2db7a52de0eee04832fa20d4bd9c592ad3fe1a4cf06af0eee3ee612b85f29ed75
   languageName: node
   linkType: hard
 

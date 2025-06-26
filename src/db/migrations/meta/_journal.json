@@ -176,6 +176,13 @@
       "when": 1750851340087,
       "tag": "0024_add_initial_setting_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1750854349752,
+      "tag": "0025_add_columns_in_sync_logs",
+      "breakpoints": true
     }
   ]
 }

@@ -107,6 +107,8 @@ export class WebhookService extends BaseService {
           await this.pushFailedInvoiceToSyncLog(
             EventType.CREATED,
             parsedInvoiceResource.data.id,
+            parsedInvoiceResource.data.number,
+            parsedInvoiceResource.data.total,
           )
           throw error
         }
@@ -140,6 +142,7 @@ export class WebhookService extends BaseService {
             eventType: EventType.UPDATED,
             status: LogStatus.FAILED,
             copilotId: parsedProductResource.data.id,
+            productName: parsedProductResource.data.name,
           })
           throw error
         }
@@ -172,6 +175,7 @@ export class WebhookService extends BaseService {
             eventType: EventType.CREATED,
             status: LogStatus.FAILED,
             copilotId: parsedCreatedProductResource.data.id,
+            productName: parsedCreatedProductResource.data.name,
           })
           throw error
         }
@@ -202,6 +206,7 @@ export class WebhookService extends BaseService {
             eventType: EventType.CREATED,
             status: LogStatus.FAILED,
             copilotId: parsedCreatedPriceResource.data.productId,
+            productPrice: parsedCreatedPriceResource.data.amount?.toFixed(2),
           })
           throw error
         }
@@ -261,6 +266,8 @@ export class WebhookService extends BaseService {
           await this.pushFailedInvoiceToSyncLog(
             EventType.VOIDED,
             parsedVoidedInvoiceResource.data.id,
+            parsedVoidedInvoiceResource.data.number,
+            parsedVoidedInvoiceResource.data.total,
           )
           throw error
         }
@@ -272,7 +279,7 @@ export class WebhookService extends BaseService {
           PaymentSucceededResponseSchema.safeParse(payload)
         if (!parsedPaymentSucceed.success || !parsedPaymentSucceed.data) {
           console.error(
-            'WebhookService#handleWebhookEvent | Could not parse invoice paid response',
+            'WebhookService#handleWebhookEvent | Could not parse payment success response',
           )
           break
         }
@@ -310,6 +317,8 @@ export class WebhookService extends BaseService {
           )
 
           try {
+            if (!invoice)
+              throw new APIError(httpStatus.NOT_FOUND, 'Invoice not found')
             validateAccessToken(qbTokenInfo)
             // only track if the fee amount is paid by platform
             const paymentService = new PaymentService(this.user)
@@ -326,11 +335,12 @@ export class WebhookService extends BaseService {
               status: LogStatus.FAILED,
               copilotId: parsedPaymentSucceedResource.data.id,
               invoiceNumber: invoice?.number,
-              amount:
+              feeAmount:
                 parsedPaymentSucceedResource.data.feeAmount.paidByPlatform.toFixed(
                   2,
                 ),
               remark: 'Absorbed fees',
+              qbItemName: 'Copilot Fees',
             })
             throw error
           }
@@ -345,6 +355,8 @@ export class WebhookService extends BaseService {
   private async pushFailedInvoiceToSyncLog(
     eventType: EventType,
     copilotId: string,
+    invoiceNumber: string,
+    total?: number,
   ) {
     const syncLogService = new SyncLogService(this.user)
     await syncLogService.createQBSyncLog({
@@ -353,6 +365,8 @@ export class WebhookService extends BaseService {
       eventType,
       status: LogStatus.FAILED,
       copilotId,
+      amount: total?.toFixed(2),
+      invoiceNumber,
     })
   }
 
@@ -374,7 +388,12 @@ export class WebhookService extends BaseService {
       const invoiceService = new InvoiceService(this.user)
       await invoiceService.handleInvoiceDeleted(deletePayload, qbTokenInfo)
     } catch (error: unknown) {
-      await this.pushFailedInvoiceToSyncLog(EventType.DELETED, deletePayload.id)
+      await this.pushFailedInvoiceToSyncLog(
+        EventType.DELETED,
+        deletePayload.id,
+        deletePayload.number,
+        deletePayload.total,
+      )
       throw error
     }
   }
