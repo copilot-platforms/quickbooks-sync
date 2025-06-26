@@ -42,6 +42,17 @@ export type InvoiceCreatedResponseType = z.infer<
   typeof InvoiceCreatedResponseSchema
 >
 
+export const InvoiceDeletedResponseSchema = z.object({
+  id: z.string(),
+  number: z.string(),
+  total: z.number(),
+  taxAmount: z.number().optional(),
+  recipientId: z.string(),
+})
+export type InvoiceDeletedResponse = z.infer<
+  typeof InvoiceDeletedResponseSchema
+>
+
 /** Product */
 export const ProductCreatedResponseSchema = z.object({
   data: z.object({
@@ -85,6 +96,8 @@ export const InvoiceResponseSchema = z.object({
     number: z.string(),
     status: z.nativeEnum(InvoiceStatus),
     total: z.number(),
+    taxAmount: z.number().optional(),
+    recipientId: z.string(),
   }),
 })
 export type InvoiceResponseType = z.infer<typeof InvoiceResponseSchema>

@@ -11,10 +11,10 @@ import {
   QBInvoiceSparseUpdatePayloadType,
   QBItemFullUpdatePayloadType,
   QBPaymentCreatePayloadType,
-  QBVoidInvoicePayloadType,
   QBAccountCreatePayloadType,
   QBPurchaseCreatePayloadType,
   QBDeletePayloadType,
+  QBDestructiveInvoicePayloadSchema,
 } from '@/type/dto/intuitAPI.dto'
 import httpStatus from 'http-status'
 
@@ -379,7 +379,7 @@ export default class IntuitAPI {
     return payment
   }
 
-  async _voidInvoice(payload: QBVoidInvoicePayloadType) {
+  async _voidInvoice(payload: QBDestructiveInvoicePayloadSchema) {
     console.info('IntuitAPI#voidInvoice | invoice void creation start')
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=void&minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
@@ -401,6 +401,34 @@ export default class IntuitAPI {
 
     console.info(
       'IntuitAPI#voidInvoice | Voided invoice with Id =',
+      invoice.Invoice?.Id,
+    )
+    return invoice
+  }
+
+  async _deleteInvoice(payload: QBDestructiveInvoicePayloadSchema) {
+    console.info('IntuitAPI#deleteInvoice | invoice deletion start')
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=delete&minorversion=${intuitApiMinorVersion}`
+    const invoice = await this.postFetchWithHeaders(url, payload)
+
+    if (!invoice) {
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#deleteInvoice | No invoice deletion confirmation was received from Quickbooks API',
+      )
+    }
+
+    if (invoice.Fault) {
+      console.error(invoice.Fault.Error)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#deleteInvoice | Error while deleting invoice',
+        invoice.Fault?.Error,
+      )
+    }
+
+    console.info(
+      'IntuitAPI#deleteInvoice | Deleted invoice with id ',
       invoice.Invoice?.Id,
     )
     return invoice
@@ -556,6 +584,7 @@ export default class IntuitAPI {
   itemFullUpdate = this.wrapWithRetry(this._itemFullUpdate)
   createPayment = this.wrapWithRetry(this._createPayment)
   voidInvoice = this.wrapWithRetry(this._voidInvoice)
+  deleteInvoice = this.wrapWithRetry(this._deleteInvoice)
   getAnAccountByName = this.wrapWithRetry(this._getAnAccountByName)
   createAccount = this.wrapWithRetry(this._createAccount)
   createPurchase = this.wrapWithRetry(this._createPurchase)

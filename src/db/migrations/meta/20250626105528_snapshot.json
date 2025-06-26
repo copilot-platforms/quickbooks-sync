@@ -1,5 +1,5 @@
 {
-  "id": "51b17397-8e35-4663-ad7b-b932ac88a266",
+  "id": "07650cb6-aa0f-40d6-b388-a3a2c262d2d0",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -762,6 +762,54 @@
           "primaryKey": false,
           "notNull": false
         },
+        "customer_name": {
+          "name": "customer_name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "customer_email": {
+          "name": "customer_email",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tax_amount": {
+          "name": "tax_amount",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fee_amount": {
+          "name": "fee_amount",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "product_name": {
+          "name": "product_name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "product_price": {
+          "name": "product_price",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qb_item_name": {
+          "name": "qb_item_name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error_message": {
+          "name": "error_message",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -803,7 +851,8 @@
         "draft",
         "open",
         "paid",
-        "void"
+        "void",
+        "deleted"
       ]
     },
     "public.entity_types": {
@@ -824,7 +873,9 @@
         "paid",
         "voided",
         "deleted",
-        "succeeded"
+        "succeeded",
+        "mapped",
+        "unmapped"
       ]
     },
     "public.log_statuses": {

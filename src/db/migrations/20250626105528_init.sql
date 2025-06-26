@@ -1,7 +1,7 @@
 CREATE TYPE "public"."connection_statuses" AS ENUM('pending', 'success', 'error');--> statement-breakpoint
-CREATE TYPE "public"."invoice_statuses" AS ENUM('draft', 'open', 'paid', 'void');--> statement-breakpoint
+CREATE TYPE "public"."invoice_statuses" AS ENUM('draft', 'open', 'paid', 'void', 'deleted');--> statement-breakpoint
 CREATE TYPE "public"."entity_types" AS ENUM('invoice', 'product', 'payment');--> statement-breakpoint
-CREATE TYPE "public"."event_types" AS ENUM('created', 'updated', 'paid', 'voided', 'deleted', 'succeeded');--> statement-breakpoint
+CREATE TYPE "public"."event_types" AS ENUM('created', 'updated', 'paid', 'voided', 'deleted', 'succeeded', 'mapped', 'unmapped');--> statement-breakpoint
 CREATE TYPE "public"."log_statuses" AS ENUM('success', 'failed', 'info');--> statement-breakpoint
 CREATE TABLE "qb_connection_logs" (
 	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "qb_connection_logs_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
@@ -125,6 +125,14 @@ CREATE TABLE "qb_sync_logs" (
 	"invoice_number" varchar(100),
 	"amount" numeric,
 	"remark" varchar(255),
+	"customer_name" varchar(100),
+	"customer_email" varchar(100),
+	"tax_amount" numeric,
+	"fee_amount" numeric,
+	"product_name" varchar(100),
+	"product_price" numeric,
+	"qb_item_name" varchar(100),
+	"error_message" varchar(255),
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
