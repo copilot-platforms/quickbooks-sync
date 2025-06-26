@@ -2,14 +2,18 @@
 import { useApp } from '@/app/context/AppContext'
 import { Main as DashboardMain } from '@/components/dashboard/Main'
 import { SilentError } from '@/components/template/SilentError'
-import { useQuickbooks } from '@/hook/useQuickbooks'
+import { useAppBridge, useQuickbooks } from '@/hook/useQuickbooks'
 import { Button, Spinner } from 'copilot-design-system'
 
 export default function HomeClient() {
-  const { token, tokenPayload, reconnect, portalConnectionStatus } = useApp()
+  const { token, tokenPayload, reconnect, portalConnectionStatus, isEnabled } =
+    useApp()
 
   const { loading, handleConnect, hasConnection, isReconnecting } =
     useQuickbooks(token, tokenPayload, reconnect)
+
+  // bridge related logics like disconnect app and download sync log csv
+  useAppBridge(token, isEnabled)
 
   if (hasConnection === null) {
     return (
