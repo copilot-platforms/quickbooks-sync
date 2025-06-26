@@ -16,7 +16,7 @@ export async function getSettings(req: NextRequest) {
 
   if (parsedType.success) {
     // return attributes as per the type. If type not provided, return all attributes
-    returnigFields.push('id')
+    returnigFields.push('id', 'initialSettingMap')
     if (parsedType.data === SettingType.INVOICE)
       returnigFields.push('absorbedFeeFlag', 'useCompanyNameFlag')
     if (parsedType.data === SettingType.PRODUCT)
@@ -33,7 +33,7 @@ export async function updateSettings(req: NextRequest) {
   const parsedBody = SettingRequestSchema.parse(body)
   const settingService = new SettingService(user)
   const setting = await settingService.updateQBSettings(
-    parsedBody,
+    { ...parsedBody, initialSettingMap: false },
     eq(QBSetting.portalId, user.workspaceId),
   )
   return NextResponse.json({ setting }, { status: httpStatus.CREATED })

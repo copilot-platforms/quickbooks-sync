@@ -169,6 +169,13 @@
       "when": 1750850792527,
       "tag": "0023_rename_client_id_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1750851340087,
+      "tag": "0024_add_initial_setting_flag",
+      "breakpoints": true
     }
   ]
 }

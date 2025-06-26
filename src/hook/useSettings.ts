@@ -41,6 +41,10 @@ export type QBItemDataType = {
 }
 
 export const useProductMappingSettings = () => {
+  const intialProductSetting = {
+    createInvoiceItemFlag: false,
+    createNewProductFlag: false,
+  }
   const [openDropdowns, setOpenDropdowns] = useState<{
     [key: number]: boolean
   }>({})
@@ -51,14 +55,18 @@ export const useProductMappingSettings = () => {
 
   const [mappingItems, setMappingItems] = useState<ProductMappingItemType[]>([])
   const [settingShowConfirm, setSettingShowConfirm] = useState<boolean>(false)
-  const { token, initialProductMap, showProductConfirm, setAppParams } =
-    useApp()
+  const {
+    token,
+    initialProductMap,
+    showProductConfirm,
+    setAppParams,
+    itemMapped,
+    initialSettingMapFlag,
+  } = useApp()
 
   // For checkbox settings
-  const [productSetting, setProductSetting] = useState<ProductSettingType>({
-    createInvoiceItemFlag: false,
-    createNewProductFlag: false,
-  })
+  const [productSetting, setProductSetting] =
+    useState<ProductSettingType>(intialProductSetting)
   const [intialSettingState, setIntialSettingState] = useState<
     ProductSettingType | undefined
   >()
@@ -89,6 +97,10 @@ export const useProductMappingSettings = () => {
     if (setting && setting?.setting) {
       setProductSetting(setting.setting)
       setIntialSettingState(structuredClone(setting.setting))
+      setAppParams((prev) => ({
+        ...prev,
+        initialSettingMapFlag: setting.setting.initialSettingMap,
+      }))
     }
   }, [setting])
   // End of checkbox settings
@@ -128,6 +140,16 @@ export const useProductMappingSettings = () => {
       console.error({ tableRes, settingRes })
       alert('Error submitting mapping items')
     }
+  }
+
+  const cancelMappedChanges = () => {
+    setSelectedItems({})
+    setMappingItems(initialProductMap || [])
+    setProductSetting(intialSettingState || intialProductSetting)
+    setAppParams((prev) => ({
+      ...prev,
+      showProductConfirm: false,
+    }))
   }
 
   const toggleDropdown = (index: number) => {
@@ -223,6 +245,7 @@ export const useProductMappingSettings = () => {
     searchTerms,
     selectedItems,
     submitMappingItems,
+    cancelMappedChanges,
     toggleDropdown,
     handleSearch,
     selectItem,
@@ -230,6 +253,8 @@ export const useProductMappingSettings = () => {
     mappingItems,
     setMappingItems,
     showProductConfirm,
+    itemMapped,
+    initialSettingMapFlag,
     setting: {
       settingState: productSetting,
       changeSettings,
@@ -327,8 +352,8 @@ export const useProductTableSetting = (
       if (newMap) {
         setAppParams((prev) => ({
           ...prev,
-          initialProductMap: mappedItemEmpty ? [] : structuredClone(newMap), // allow confirm if not product mapping in intial state
-          showProductConfirm: mappedItemEmpty, // allow confirm if not product mapping in intial state
+          initialProductMap: mappedItemEmpty ? [] : structuredClone(newMap), // clone the initial mapped items
+          showProductConfirm: mappedItemEmpty, // allow confirm button in intial mapping
           itemMapped,
         }))
       }
@@ -417,11 +442,14 @@ export const useMapItem = (
 }
 
 export const useInvoiceDetailSettings = () => {
-  const { token } = useApp()
-  const [settingState, setSettingState] = useState<InvoiceSettingType>({
+  const initialInvoiceSetting = {
     absorbedFeeFlag: false,
     useCompanyNameFlag: false,
-  })
+  }
+  const { token, setAppParams } = useApp()
+  const [settingState, setSettingState] = useState<InvoiceSettingType>(
+    initialInvoiceSetting,
+  )
   const [showButton, setShowButton] = useState(false)
   const [intialSettingState, setIntialSettingState] = useState<
     InvoiceSettingType | undefined
@@ -452,6 +480,10 @@ export const useInvoiceDetailSettings = () => {
     if (setting && setting?.setting) {
       setSettingState(setting.setting)
       setIntialSettingState(structuredClone(setting.setting))
+      setAppParams((prev) => ({
+        ...prev,
+        initialSettingMapFlag: setting.setting.initialSettingMap,
+      }))
     }
   }, [setting])
 
@@ -470,10 +502,16 @@ export const useInvoiceDetailSettings = () => {
     }
   }
 
+  const cancelInvoiceSettings = () => {
+    setShowButton(false)
+    setSettingState(intialSettingState || initialInvoiceSetting)
+  }
+
   return {
     settingState,
     changeSettings,
     submitInvoiceSettings,
+    cancelInvoiceSettings,
     error,
     isLoading,
     showButton,

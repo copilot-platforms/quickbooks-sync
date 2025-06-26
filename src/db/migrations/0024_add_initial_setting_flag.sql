@@ -1,0 +1,1 @@
+ALTER TABLE "qb_settings" ADD COLUMN "initial_setting_map" boolean DEFAULT true NOT NULL;
