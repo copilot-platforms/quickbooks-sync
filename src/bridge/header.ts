@@ -1,5 +1,6 @@
 'use client'
 
+import { DASHBOARD_DOMAIN } from '@/constant/domains'
 import { useEffect, useMemo } from 'react'
 
 type Icons = 'Archive' | 'Plus' | 'Templates' | 'Trash'
@@ -79,7 +80,13 @@ export function useBreadcrumbs(
       })),
     }
 
-    window.parent.postMessage(payload, 'https://dashboard.copilot.app')
+    if (Array.isArray(DASHBOARD_DOMAIN)) {
+      DASHBOARD_DOMAIN.forEach((domain) => {
+        window.parent.postMessage(payload, ensureHttps(domain))
+      })
+    } else {
+      window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
+    }
     if (config?.portalUrl) {
       window.parent.postMessage(payload, ensureHttps(config.portalUrl))
     }
@@ -103,10 +110,14 @@ export function useBreadcrumbs(
 
   useEffect(() => {
     const handleUnload = () => {
-      window.parent.postMessage(
-        { type: 'header.breadcrumbs', items: [] },
-        'https://dashboard.copilot.app',
-      )
+      const payload = { type: 'header.breadcrumbs', items: [] }
+      if (Array.isArray(DASHBOARD_DOMAIN)) {
+        DASHBOARD_DOMAIN.forEach((domain) => {
+          window.parent.postMessage(payload, ensureHttps(domain))
+        })
+      } else {
+        window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
+      }
     }
     addEventListener('beforeunload', handleUnload)
     return () => {
@@ -130,7 +141,13 @@ export function usePrimaryCta(
             type: 'header.primaryCta',
           }
 
-    window.parent.postMessage(payload, 'https://dashboard.copilot.app')
+    if (Array.isArray(DASHBOARD_DOMAIN)) {
+      DASHBOARD_DOMAIN.forEach((domain) => {
+        window.parent.postMessage(payload, ensureHttps(domain))
+      })
+    } else {
+      window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
+    }
     if (config?.portalUrl) {
       window.parent.postMessage(payload, ensureHttps(config.portalUrl))
     }
@@ -154,15 +171,16 @@ export function usePrimaryCta(
 
   useEffect(() => {
     const handleUnload = () => {
-      window.parent.postMessage(
-        { type: 'header.primaryCta' },
-        'https://dashboard.copilot.app',
-      )
+      const payload = { type: 'header.primaryCta' }
+      if (Array.isArray(DASHBOARD_DOMAIN)) {
+        DASHBOARD_DOMAIN.forEach((domain) => {
+          window.parent.postMessage(payload, ensureHttps(domain))
+        })
+      } else {
+        window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
+      }
       if (config?.portalUrl) {
-        window.parent.postMessage(
-          { type: 'header.primaryCta' },
-          ensureHttps(config.portalUrl),
-        )
+        window.parent.postMessage(payload, ensureHttps(config.portalUrl))
       }
     }
     addEventListener('beforeunload', handleUnload)
@@ -187,7 +205,13 @@ export function useSecondaryCta(
             onClick: 'header.secondaryCta.onClick',
           }
 
-    window.parent.postMessage(payload, 'https://dashboard.copilot.app')
+    if (Array.isArray(DASHBOARD_DOMAIN)) {
+      DASHBOARD_DOMAIN.forEach((domain) => {
+        window.parent.postMessage(payload, ensureHttps(domain))
+      })
+    } else {
+      window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
+    }
     if (config?.portalUrl) {
       window.parent.postMessage(payload, ensureHttps(config.portalUrl))
     }
@@ -211,15 +235,16 @@ export function useSecondaryCta(
 
   useEffect(() => {
     const handleUnload = () => {
-      window.parent.postMessage(
-        { type: 'header.secondaryCta' },
-        'https://dashboard.copilot.app',
-      )
+      const payload = { type: 'header.secondaryCta' }
+      if (Array.isArray(DASHBOARD_DOMAIN)) {
+        DASHBOARD_DOMAIN.forEach((domain) => {
+          window.parent.postMessage(payload, ensureHttps(domain))
+        })
+      } else {
+        window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
+      }
       if (config?.portalUrl) {
-        window.parent.postMessage(
-          { type: 'header.secondaryCta' },
-          ensureHttps(config.portalUrl),
-        )
+        window.parent.postMessage(payload, ensureHttps(config.portalUrl))
       }
     }
     addEventListener('beforeunload', handleUnload)
@@ -255,7 +280,14 @@ export function useActionsMenu(
       })),
     }
 
-    window.parent.postMessage(payload, 'https://dashboard.copilot.app')
+    if (Array.isArray(DASHBOARD_DOMAIN)) {
+      DASHBOARD_DOMAIN.forEach((domain) => {
+        window.parent.postMessage(payload, ensureHttps(domain))
+      })
+    } else {
+      window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
+    }
+
     if (config?.portalUrl) {
       window.parent.postMessage(payload, ensureHttps(config.portalUrl))
     }
@@ -279,10 +311,14 @@ export function useActionsMenu(
 
   useEffect(() => {
     const handleUnload = () => {
-      window.parent.postMessage(
-        { type: 'header.actionsMenu', items: [] },
-        'https://dashboard.copilot.app',
-      )
+      const payload = { type: 'header.actionsMenu', items: [] }
+      if (Array.isArray(DASHBOARD_DOMAIN)) {
+        DASHBOARD_DOMAIN.forEach((domain) => {
+          window.parent.postMessage(payload, ensureHttps(domain))
+        })
+      } else {
+        window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
+      }
     }
     addEventListener('beforeunload', handleUnload)
     return () => {
