@@ -4,7 +4,7 @@ CREATE TYPE "public"."entity_types" AS ENUM('invoice', 'product', 'payment');-->
 CREATE TYPE "public"."event_types" AS ENUM('created', 'updated', 'paid', 'voided', 'deleted', 'succeeded', 'mapped', 'unmapped');--> statement-breakpoint
 CREATE TYPE "public"."log_statuses" AS ENUM('success', 'failed', 'info');--> statement-breakpoint
 CREATE TABLE "qb_connection_logs" (
-	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "qb_connection_logs_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"portal_id" varchar(255) NOT NULL,
 	"connection_status" "connection_statuses" DEFAULT 'pending' NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
