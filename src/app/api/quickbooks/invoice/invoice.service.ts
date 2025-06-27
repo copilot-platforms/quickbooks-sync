@@ -207,8 +207,8 @@ export class InvoiceService extends BaseService {
       copilotId: productId,
       syncAt: dayjs().toDate(),
       quickbooksId: qbItem.Id,
-      ProductName: productInfo.name,
-      ProductPrice: Number(priceInfo.amount).toFixed(2),
+      productName: productInfo.name,
+      productPrice: Number(priceInfo.amount).toFixed(2),
       qbItemName: qbItem.Name,
     }
     await this.syncLogService.createQBSyncLog(syncLogPayload)
