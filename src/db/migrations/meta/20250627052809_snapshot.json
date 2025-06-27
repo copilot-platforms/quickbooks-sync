@@ -1,5 +1,5 @@
 {
-  "id": "07650cb6-aa0f-40d6-b388-a3a2c262d2d0",
+  "id": "47cc9d6c-6cce-4b5b-a25b-55c70422928b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -145,76 +145,6 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.qb_expense_sync": {
-      "name": "qb_expense_sync",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "portal_id": {
-          "name": "portal_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "payment_id": {
-          "name": "payment_id",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "invoice_id": {
-          "name": "invoice_id",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "invoice_number": {
-          "name": "invoice_number",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "qb_purchase_id": {
-          "name": "qb_purchase_id",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "qb_sync_token": {
-          "name": "qb_sync_token",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
         }
       },
       "indexes": {},
