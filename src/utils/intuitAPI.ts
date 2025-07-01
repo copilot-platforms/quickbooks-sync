@@ -508,7 +508,7 @@ export default class IntuitAPI {
       'IntuitAPI#createAssetAccount | Account created with Id =',
       account.Account?.Id,
     )
-    return account
+    return account.Account
   }
 
   async _createPurchase(payload: QBPurchaseCreatePayloadType) {

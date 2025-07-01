@@ -1,5 +1,6 @@
 'use client'
 
+import { DASHBOARD_DOMAIN } from '@/constant/domains'
 import { useEffect, useMemo } from 'react'
 
 type Icons = 'Archive' | 'Plus' | 'Templates' | 'Trash'
@@ -54,6 +55,16 @@ const ensureHttps = (url: string) => {
   return `https://${url}`
 }
 
+const postMessage = (payload: object) => {
+  if (Array.isArray(DASHBOARD_DOMAIN)) {
+    DASHBOARD_DOMAIN.forEach((domain) => {
+      window.parent.postMessage(payload, ensureHttps(domain))
+    })
+  } else {
+    window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
+  }
+}
+
 export function useBreadcrumbs(
   breadcrumbs: Clickable[],
   config?: {
@@ -79,7 +90,7 @@ export function useBreadcrumbs(
       })),
     }
 
-    window.parent.postMessage(payload, 'https://dashboard.copilot.app')
+    postMessage(payload)
     if (config?.portalUrl) {
       window.parent.postMessage(payload, ensureHttps(config.portalUrl))
     }
@@ -103,10 +114,8 @@ export function useBreadcrumbs(
 
   useEffect(() => {
     const handleUnload = () => {
-      window.parent.postMessage(
-        { type: 'header.breadcrumbs', items: [] },
-        'https://dashboard.copilot.app',
-      )
+      const payload = { type: 'header.breadcrumbs', items: [] }
+      postMessage(payload)
     }
     addEventListener('beforeunload', handleUnload)
     return () => {
@@ -130,7 +139,7 @@ export function usePrimaryCta(
             type: 'header.primaryCta',
           }
 
-    window.parent.postMessage(payload, 'https://dashboard.copilot.app')
+    postMessage(payload)
     if (config?.portalUrl) {
       window.parent.postMessage(payload, ensureHttps(config.portalUrl))
     }
@@ -154,15 +163,10 @@ export function usePrimaryCta(
 
   useEffect(() => {
     const handleUnload = () => {
-      window.parent.postMessage(
-        { type: 'header.primaryCta' },
-        'https://dashboard.copilot.app',
-      )
+      const payload = { type: 'header.primaryCta' }
+      postMessage(payload)
       if (config?.portalUrl) {
-        window.parent.postMessage(
-          { type: 'header.primaryCta' },
-          ensureHttps(config.portalUrl),
-        )
+        window.parent.postMessage(payload, ensureHttps(config.portalUrl))
       }
     }
     addEventListener('beforeunload', handleUnload)
@@ -187,7 +191,7 @@ export function useSecondaryCta(
             onClick: 'header.secondaryCta.onClick',
           }
 
-    window.parent.postMessage(payload, 'https://dashboard.copilot.app')
+    postMessage(payload)
     if (config?.portalUrl) {
       window.parent.postMessage(payload, ensureHttps(config.portalUrl))
     }
@@ -211,15 +215,10 @@ export function useSecondaryCta(
 
   useEffect(() => {
     const handleUnload = () => {
-      window.parent.postMessage(
-        { type: 'header.secondaryCta' },
-        'https://dashboard.copilot.app',
-      )
+      const payload = { type: 'header.secondaryCta' }
+      postMessage(payload)
       if (config?.portalUrl) {
-        window.parent.postMessage(
-          { type: 'header.secondaryCta' },
-          ensureHttps(config.portalUrl),
-        )
+        window.parent.postMessage(payload, ensureHttps(config.portalUrl))
       }
     }
     addEventListener('beforeunload', handleUnload)
@@ -255,7 +254,7 @@ export function useActionsMenu(
       })),
     }
 
-    window.parent.postMessage(payload, 'https://dashboard.copilot.app')
+    postMessage(payload)
     if (config?.portalUrl) {
       window.parent.postMessage(payload, ensureHttps(config.portalUrl))
     }
@@ -279,10 +278,8 @@ export function useActionsMenu(
 
   useEffect(() => {
     const handleUnload = () => {
-      window.parent.postMessage(
-        { type: 'header.actionsMenu', items: [] },
-        'https://dashboard.copilot.app',
-      )
+      const payload = { type: 'header.actionsMenu', items: [] }
+      postMessage(payload)
     }
     addEventListener('beforeunload', handleUnload)
     return () => {
