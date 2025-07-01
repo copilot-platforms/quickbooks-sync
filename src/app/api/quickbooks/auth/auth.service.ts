@@ -17,7 +17,7 @@ import {
 } from '@/db/schema/qbPortalConnections'
 import {
   getPortalConnection,
-  getSyncedPortalConnection,
+  getPortalSettings,
 } from '@/db/service/token.service'
 import {
   QBAuthTokenResponse,
@@ -36,7 +36,7 @@ export class AuthService extends BaseService {
     type?: string,
   ): Promise<string | null> {
     if (type && type === AuthStatus.RECONNECT) {
-      const resStatus = await getSyncedPortalConnection(this.user.workspaceId)
+      const resStatus = await getPortalSettings(this.user.workspaceId)
       const status = resStatus?.syncFlag || false
       if (status) return null
     }
@@ -96,13 +96,20 @@ export class AuthService extends BaseService {
     return assetAccRef.Id
   }
 
-  async storeSettings(portalId: string) {
+  async storeSettings({
+    portalId,
+    syncFlag,
+  }: {
+    portalId: string
+    syncFlag: boolean
+  }) {
     const settingsService = new SettingService(this.user)
 
     const existingSetting = await settingsService.getOneByPortalId(['id'])
     if (!existingSetting) {
       await settingsService.createQBSettings({
         portalId,
+        syncFlag,
       })
     }
   }
@@ -133,7 +140,6 @@ export class AuthService extends BaseService {
         tokenSetTime,
         tokenType: tokenInfo.token_type,
         intiatedBy: this.user.internalUserId as string, // considering this is defined since we know this action is intiated by an IU
-        syncFlag: true,
         incomeAccountRef: existingToken?.incomeAccountRef || '',
         expenseAccountRef: existingToken?.expenseAccountRef || '',
         assetAccountRef: existingToken?.assetAccountRef || '',
@@ -173,7 +179,7 @@ export class AuthService extends BaseService {
       }
 
       // store settings for the portal after successful token exchange
-      await this.storeSettings(portalId)
+      await this.storeSettings({ portalId, syncFlag: true })
 
       // store success connection log
       await logService.upsertLatestPendingConnectionLog({
@@ -226,9 +232,16 @@ export class AuthService extends BaseService {
       incomeAccountRef,
       expenseAccountRef,
       assetAccountRef,
-      isEnabled,
-      syncFlag,
+      setting,
     } = portalQBToken
+
+    if (!setting)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        `Sync setting is not found for portal with ID: ${portalId}`,
+      )
+
+    const { isEnabled, syncFlag } = setting
 
     const emptyTokens = {
       accessToken: '',
@@ -266,7 +279,7 @@ export class AuthService extends BaseService {
       const tokenService = new TokenService(this.user)
       try {
         const tokenInfo: QBAuthTokenResponse =
-          await Intuit.getInstance().getRefreshedQBToken(refreshToken)
+          await Intuit.getInstance().getRefreshedQBToken('refreshToken')
         const tokenSetTime = dayjs().toDate()
 
         updatedTokenInfo = {

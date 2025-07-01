@@ -1,5 +1,6 @@
 import APIError from '@/app/api/core/exceptions/api'
 import { BaseService } from '@/app/api/core/services/base.service'
+import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
 import {
   QBPortalConnectionCreateSchema,
@@ -9,6 +10,7 @@ import {
   QBPortalConnectionUpdateSchema,
   QBPortalConnectionUpdateSchemaType,
 } from '@/db/schema/qbPortalConnections'
+import { QBSetting, QBSettingsUpdateSchemaType } from '@/db/schema/qbSettings'
 import { getPortalConnection } from '@/db/service/token.service'
 import { ChangeEnableStatusRequestType } from '@/type/common'
 import dayjs from 'dayjs'
@@ -88,19 +90,16 @@ export class TokenService extends BaseService {
   async turnOffSync(intuitRealmId: string) {
     const portalId = this.user.workspaceId
     // update db sync status for the defined portal
-    const whereConditions = and(
-      eq(QBPortalConnection.intuitRealmId, intuitRealmId),
-      eq(QBPortalConnection.portalId, portalId),
-    ) as SQL
+    const whereConditions = eq(QBSetting.portalId, portalId)
 
-    const updateSyncPayload: QBPortalConnectionUpdateSchemaType = {
+    const updateSyncPayload: QBSettingsUpdateSchemaType = {
       syncFlag: false,
     }
 
-    const updateSync = await this.updateQBPortalConnection(
+    const settingService = new SettingService(this.user)
+    const updateSync = await settingService.updateQBSettings(
       updateSyncPayload,
       whereConditions,
-      ['id'],
     )
 
     if (!updateSync) {
@@ -117,11 +116,12 @@ export class TokenService extends BaseService {
     parsedBody: ChangeEnableStatusRequestType,
   ) {
     const whereConditions = and(
-      eq(QBPortalConnection.portalId, portalId),
-      eq(QBPortalConnection.syncFlag, true),
+      eq(QBSetting.portalId, portalId),
+      eq(QBSetting.syncFlag, true),
     ) as SQL
 
-    const portal = await this.updateQBPortalConnection(
+    const settingService = new SettingService(this.user)
+    const portal = await settingService.updateQBSettings(
       {
         isEnabled: parsedBody.enable,
       },
