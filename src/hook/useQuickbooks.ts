@@ -38,7 +38,6 @@ export const useQuickbooks = (
             ...prev,
             syncFlag: payload.new.sync_flag,
             isEnabled: payload.new.is_enabled,
-            lastSyncTimestamp: payload.new.updated_at,
           }))
         },
       )
@@ -64,6 +63,9 @@ export const useQuickbooks = (
           setAppParams((prev) => ({
             ...prev,
             syncFlag: connectionStatus || false,
+            lastSyncTimestamp: connectionStatus
+              ? newPayload.updated_at
+              : prev.lastSyncTimestamp,
           }))
         },
       )
