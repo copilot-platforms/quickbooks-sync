@@ -20,6 +20,19 @@ export const getPortalConnection = async (
   return portalSync || null
 }
 
+export const getAllPortalConnections = async (): Promise<
+  PortalConnectionWithSettingType[]
+> => {
+  const portals = await db.query.QBPortalConnection.findMany({
+    where: (QBPortalConnection) => isNull(QBPortalConnection.deletedAt),
+    with: {
+      setting: true,
+    },
+  })
+
+  return portals
+}
+
 export const getPortalSettings = async (
   portalId: string,
 ): Promise<QBSettingsSelectSchemaType | null> => {
