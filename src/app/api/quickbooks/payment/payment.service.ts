@@ -1,6 +1,7 @@
+import User from '@/app/api/core/models/User.model'
 import { BaseService } from '@/app/api/core/services/base.service'
+import { SyncableEntity } from '@/app/api/core/types/invoice'
 import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
-import { ExpenseService } from '@/app/api/quickbooks/expense/expense.service'
 import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
 import {
@@ -10,7 +11,6 @@ import {
   QBPaymentUpdateSchema,
   QBPaymentUpdateSchemaType,
 } from '@/db/schema/qbPaymentSync'
-import { QBSyncLogCreateSchemaType } from '@/db/schema/qbSyncLogs'
 import { InvoiceResponse, WhereClause } from '@/type/common'
 import {
   QBPaymentCreatePayloadSchema,
@@ -23,6 +23,12 @@ import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import dayjs from 'dayjs'
 
 export class PaymentService extends BaseService {
+  private syncLogService: SyncLogService
+  constructor(user: User) {
+    super(user)
+    this.syncLogService = new SyncLogService(user)
+  }
+
   async createQBPayment(
     payload: QBPaymentCreateSchemaType,
     returningFields?: (keyof typeof QBPaymentSync)[],
@@ -63,33 +69,55 @@ export class PaymentService extends BaseService {
   async createPaymentAndSync(
     intuitApi: IntuitAPI,
     qbPaymentPayload: QBPaymentCreatePayloadType,
-    invoiceNumber: string,
-    invoiceId: string,
+    invoiceInfo: {
+      invoiceNumber: string
+      invoiceId: string
+      taxAmount?: string
+    },
+    recipientInfo: {
+      displayName: string | null
+      email: string | null
+    },
   ): Promise<boolean> {
     const parsedQbPayload = QBPaymentCreatePayloadSchema.parse(qbPaymentPayload)
-    const syncLogService = new SyncLogService(this.user)
-    const syncLogPayload: QBSyncLogCreateSchemaType = {
-      portalId: this.user.workspaceId,
-      entityType: EntityType.INVOICE,
-      eventType: EventType.PAID,
-      status: LogStatus.SUCCESS,
-      copilotId: invoiceId,
-      invoiceNumber,
-      amount: (qbPaymentPayload.Line[0].Amount * 100).toFixed(2),
-    }
-
     // to save error sync log when payment creation fails in QB
     try {
       const qbPaymentRes = await intuitApi.createPayment(parsedQbPayload)
-      // store success sync log for payment
-      syncLogPayload.syncAt = dayjs().toDate()
-      syncLogPayload.quickbooksId = qbPaymentRes.Payment.Id
-      await syncLogService.updateOrCreateQBSyncLog(syncLogPayload)
+      const invoiceInfoLog = {
+        qbInvoiceId: qbPaymentRes.Payment.Id,
+        invoiceNumber: invoiceInfo.invoiceNumber,
+      }
+      await this.logSync(
+        invoiceInfo.invoiceId,
+        invoiceInfoLog,
+        EventType.PAID,
+        EntityType.INVOICE,
+        {
+          amount: (qbPaymentPayload.Line[0].Amount * 100).toFixed(2),
+          taxAmount: invoiceInfo.taxAmount,
+          customerName: recipientInfo.displayName,
+          customerEmail: recipientInfo.email,
+        },
+      )
 
       return true
     } catch (err: unknown) {
-      syncLogPayload.status = LogStatus.FAILED
-      await syncLogService.updateOrCreateQBSyncLog(syncLogPayload)
+      await this.logSync(
+        invoiceInfo.invoiceId,
+        {
+          qbInvoiceId: null,
+          invoiceNumber: invoiceInfo.invoiceNumber,
+        },
+        EventType.PAID,
+        EntityType.INVOICE,
+        {
+          amount: (qbPaymentPayload.Line[0].Amount * 100).toFixed(2),
+          taxAmount: invoiceInfo.taxAmount,
+          customerName: recipientInfo.displayName,
+          customerEmail: recipientInfo.email,
+        },
+        LogStatus.FAILED,
+      )
       console.error('PaymentService#webhookPaymentSucceeded | Error =', err)
       return false
     }
@@ -109,19 +137,20 @@ export class PaymentService extends BaseService {
 
     try {
       // store success sync log for payment
-      const syncLogService = new SyncLogService(this.user)
-      await syncLogService.updateOrCreateQBSyncLog({
-        portalId: this.user.workspaceId,
-        entityType: EntityType.PAYMENT,
-        eventType: EventType.SUCCEEDED,
-        status: LogStatus.SUCCESS,
-        copilotId: id,
-        syncAt: dayjs().toDate(),
-        quickbooksId: res.Purchase.Id,
-        invoiceNumber: payload.DocNumber,
-        amount: (payload.Line[0].Amount * 100).toFixed(2),
-        remark: 'Absorbed fees',
-      })
+      await this.logSync(
+        id,
+        {
+          qbInvoiceId: res.Purchase.Id,
+          invoiceNumber: payload.DocNumber,
+        },
+        EventType.SUCCEEDED,
+        EntityType.PAYMENT,
+        {
+          feeAmount: (payload.Line[0].Amount * 100).toFixed(2),
+          remark: 'Absorbed fees',
+          qbItemName: 'Copilot Fees',
+        },
+      )
     } catch (error: unknown) {
       // revert the expense if error
       console.info('Reverting the added expense from QuickBooks')
@@ -165,5 +194,34 @@ export class PaymentService extends BaseService {
       intuitApi,
       parsedPaymentSucceedResource.data.id,
     )
+  }
+
+  private async logSync(
+    copilotId: string,
+    syncedInvoice: SyncableEntity,
+    eventType: EventType,
+    entityType: EntityType,
+    opts: {
+      amount?: string
+      taxAmount?: string
+      feeAmount?: string
+      customerName?: string | null
+      customerEmail?: string | null
+      remark?: string
+      qbItemName?: string
+    },
+    status: LogStatus = LogStatus.SUCCESS,
+  ) {
+    await this.syncLogService.updateOrCreateQBSyncLog({
+      portalId: this.user.workspaceId,
+      entityType,
+      eventType,
+      status,
+      copilotId,
+      syncAt: dayjs().toDate(),
+      quickbooksId: syncedInvoice.qbInvoiceId,
+      invoiceNumber: syncedInvoice.invoiceNumber,
+      ...opts,
+    })
   }
 }

@@ -27,6 +27,14 @@ export const QBSyncLog = table('qb_sync_logs', {
   invoiceNumber: t.varchar('invoice_number', { length: 100 }),
   amount: t.decimal('amount'),
   remark: t.varchar('remark', { length: 255 }),
+  customerName: t.varchar('customer_name', { length: 100 }),
+  customerEmail: t.varchar('customer_email', { length: 100 }),
+  taxAmount: t.decimal('tax_amount'),
+  feeAmount: t.decimal('fee_amount'),
+  productName: t.varchar('product_name', { length: 100 }),
+  productPrice: t.decimal('product_price'),
+  qbItemName: t.varchar('qb_item_name', { length: 100 }),
+  errorMessage: t.varchar('error_message', { length: 255 }),
   ...newTimestamps,
 })
 

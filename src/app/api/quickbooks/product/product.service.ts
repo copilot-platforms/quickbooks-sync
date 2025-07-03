@@ -9,6 +9,7 @@ import {
   QBProductCreateArraySchemaType,
   QBProductUpdateSchemaType,
   QBProductUpdateSchema,
+  ProductChangedItemReferenceType,
 } from '@/db/schema/qbProductSync'
 import { ProductResponse, WhereClause } from '@/type/common'
 import { ProductFlattenArrayResponseType } from '@/type/dto/api.dto'
@@ -21,7 +22,7 @@ import {
 } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
-import { and, desc, eq, isNull, not } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, not } from 'drizzle-orm'
 import { convert } from 'html-to-text'
 import { z } from 'zod'
 import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
@@ -29,8 +30,16 @@ import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 import dayjs from 'dayjs'
 import APIError from '@/app/api/core/exceptions/api'
 import httpStatus from 'http-status'
+import { QBSyncLog, QBSyncLogCreateSchemaType } from '@/db/schema/qbSyncLogs'
+import User from '@/app/api/core/models/User.model'
 
 export class ProductService extends BaseService {
+  private syncLogService: SyncLogService
+  constructor(user: User) {
+    super(user)
+    this.syncLogService = new SyncLogService(user)
+  }
+
   async getMappingByProductPriceId(
     productId: string,
     priceId: string,
@@ -359,16 +368,16 @@ export class ProductService extends BaseService {
           const whereConditions = eq(QBProductSync.id, product.id)
           await this.updateQBProduct(mapUpdatePayload, whereConditions)
 
-          const syncLogService = new SyncLogService(this.user)
-          await syncLogService.updateOrCreateQBSyncLog({
-            portalId: this.user.workspaceId,
-            entityType: EntityType.PRODUCT,
-            eventType: EventType.UPDATED,
-            status: LogStatus.SUCCESS,
-            copilotId: productResource.id,
-            quickbooksId: itemRes.Item.Id,
-            syncAt: dayjs().toDate(),
-          })
+          await this.logSync(
+            productResource.id,
+            itemRes.Item.Id,
+            EventType.UPDATED,
+            {
+              productName: productResource.name,
+              productPrice: product.unitPrice,
+              qbItemName: product.name,
+            },
+          )
         }
       }),
     )
@@ -417,15 +426,10 @@ export class ProductService extends BaseService {
         eq(QBProductSync.id, latestMappedProduct?.id),
       )
 
-      const syncLogService = new SyncLogService(this.user)
-      await syncLogService.updateOrCreateQBSyncLog({
-        portalId: this.user.workspaceId,
-        entityType: EntityType.PRODUCT,
-        eventType: EventType.CREATED,
-        status: LogStatus.SUCCESS,
-        copilotId: productResource.id,
-        quickbooksId: '',
-        syncAt: dayjs().toDate(),
+      await this.logSync(productResource.id, item.Id, EventType.CREATED, {
+        productName: productResource.name,
+        productPrice: latestMappedProduct.unitPrice,
+        qbItemName: item.Name,
       })
     } else {
       await this.createQBProduct({
@@ -473,7 +477,7 @@ export class ProductService extends BaseService {
           portalId: this.user.workspaceId,
           productId: priceResource.productId,
           priceId: priceResource.id,
-          unitPrice: priceResource.amount.toString(),
+          unitPrice: priceResource.amount.toFixed(2),
           qbItemId: item.Id,
           qbSyncToken: item.SyncToken,
         },
@@ -481,22 +485,17 @@ export class ProductService extends BaseService {
       )
       console.info('WebhookService#webhookPriceCreated | Product created in QB')
 
-      const syncLogService = new SyncLogService(this.user)
-      await syncLogService.updateOrCreateQBSyncLog({
-        portalId: this.user.workspaceId,
-        entityType: EntityType.PRODUCT,
-        eventType: EventType.CREATED,
-        status: LogStatus.SUCCESS,
-        copilotId: priceResource.productId,
-        quickbooksId: item.Id,
-        syncAt: dayjs().toDate(),
+      await this.logSync(priceResource.productId, item.Id, EventType.CREATED, {
+        productName: latestMappedProduct.name,
+        productPrice: priceResource.amount.toFixed(2),
+        qbItemName: item.Name,
       })
     } else {
       await this.createQBProduct({
         portalId: this.user.workspaceId,
         productId: priceResource.productId,
         priceId: priceResource.id,
-        unitPrice: priceResource.amount.toString(),
+        unitPrice: priceResource.amount.toFixed(2),
       })
 
       console.info('WebhookService#webhookPriceCreated | Product mapping done')
@@ -510,5 +509,62 @@ export class ProductService extends BaseService {
   ) {
     const intuitApi = new IntuitAPI(qbTokenInfo)
     return await intuitApi.getAllItems(limit, columns)
+  }
+
+  async formatAndSyncProductLogs(payload: ProductChangedItemReferenceType[]) {
+    await Promise.all(
+      payload.map(async (item) => {
+        const copilotId = item.id
+
+        const payload: QBSyncLogCreateSchemaType = {
+          portalId: this.user.workspaceId,
+          entityType: EntityType.PRODUCT,
+          eventType: EventType.UNMAPPED,
+          status: LogStatus.INFO,
+          copilotId,
+          syncAt: dayjs().toDate(),
+          quickbooksId: item.qbItem?.id || null,
+          qbItemName: item.qbItem?.name || null,
+          productName: item.name,
+          productPrice: item.numericPrice.toFixed(2),
+        }
+        if (!item.isExcluded) {
+          payload.eventType = EventType.MAPPED
+          payload.status = LogStatus.SUCCESS
+        }
+        const conditions = and(
+          eq(QBSyncLog.copilotId, copilotId),
+          eq(QBSyncLog.portalId, this.user.workspaceId),
+          inArray(QBSyncLog.eventType, [EventType.MAPPED, EventType.UNMAPPED]),
+        )
+        return await this.syncLogService.updateOrCreateQBSyncLog(
+          payload,
+          true,
+          conditions,
+        )
+      }),
+    )
+  }
+
+  private async logSync(
+    copilotId: string,
+    quickbooksId: string,
+    eventType: EventType,
+    opts?: {
+      productPrice: string | null
+      qbItemName: string | null
+      productName: string | null
+    },
+  ) {
+    await this.syncLogService.updateOrCreateQBSyncLog({
+      portalId: this.user.workspaceId,
+      entityType: EntityType.PRODUCT,
+      eventType,
+      status: LogStatus.SUCCESS,
+      copilotId,
+      syncAt: dayjs().toDate(),
+      quickbooksId,
+      ...opts,
+    })
   }
 }

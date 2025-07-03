@@ -50,8 +50,11 @@ export const useProductMappingSettings = () => {
   }>({})
   const [searchTerms, setSearchTerms] = useState<{ [key: number]: string }>({})
   const [selectedItems, setSelectedItems] = useState<{
-    [key: number]: Record<string, string>
+    [key: number]: Record<string, any>
   }>({})
+  const [changedItemReference, setChangedItemReference] = useState<
+    Record<string, any>[]
+  >([])
 
   const [mappingItems, setMappingItems] = useState<ProductMappingItemType[]>([])
   const [settingShowConfirm, setSettingShowConfirm] = useState<boolean>(false)
@@ -109,7 +112,7 @@ export const useProductMappingSettings = () => {
     return await postFetcher(
       `/api/quickbooks/product/map?token=${token}`,
       {},
-      mappingItems,
+      { mappingItems, changedItemReference },
     )
   }
 
@@ -136,6 +139,7 @@ export const useProductMappingSettings = () => {
         itemMapped: true,
       }))
       setSettingShowConfirm(false)
+      setChangedItemReference([])
     } else {
       console.error({ tableRes, settingRes })
       alert('Error submitting mapping items')
@@ -144,6 +148,7 @@ export const useProductMappingSettings = () => {
 
   const cancelMappedChanges = () => {
     setSelectedItems({})
+    setChangedItemReference([])
     setMappingItems(initialProductMap || [])
     setProductSetting(intialSettingState || intialProductSetting)
     setAppParams((prev) => ({
@@ -198,6 +203,16 @@ export const useProductMappingSettings = () => {
       ...prev,
       [index]: '',
     }))
+    const fileteredChangedItem = changedItemReference.filter(
+      (item) => item.id !== products[index].id,
+    )
+    const newVal = [
+      ...fileteredChangedItem,
+      Object.keys(item).length > 0
+        ? { ...products[index], isExcluded: false, qbItem: item }
+        : { ...products[index], isExcluded: true, qbItem: null },
+    ]
+    setChangedItemReference(newVal)
 
     // update the mapped array
     const mappedArray = mappingItems.map((mapItem) => {
