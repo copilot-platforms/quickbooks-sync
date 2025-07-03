@@ -1,5 +1,5 @@
 import { AuthStatus } from '@/app/api/core/types/auth'
-import { QBTokenSelectSchemaType } from '@/db/schema/qbTokens'
+import { QBPortalConnectionSelectSchemaType } from '@/db/schema/qbPortalConnections'
 import {
   getPortalConnection,
   getSyncedPortalConnection,
@@ -8,7 +8,7 @@ import { z } from 'zod'
 
 export async function checkPortalConnection(
   portalId: string,
-): Promise<QBTokenSelectSchemaType | null> {
+): Promise<QBPortalConnectionSelectSchemaType | null> {
   try {
     return await getPortalConnection(portalId)
   } catch (err) {
@@ -19,7 +19,7 @@ export async function checkPortalConnection(
 
 export async function checkSyncStatus(portalId: string): Promise<boolean> {
   try {
-    const syncedPortal: QBTokenSelectSchemaType | null =
+    const syncedPortal: QBPortalConnectionSelectSchemaType | null =
       await getSyncedPortalConnection(portalId)
     return syncedPortal?.syncFlag || false
   } catch (err) {

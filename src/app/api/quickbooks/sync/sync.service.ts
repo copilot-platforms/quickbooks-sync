@@ -211,7 +211,9 @@ export class SyncService extends BaseService {
 
   async intiateSync(logs: postgres.RowList<CustomSyncLogType[]>) {
     const authService = new AuthService(this.user)
-    const qbTokenInfo = await authService.getQBToken(this.user.workspaceId)
+    const qbTokenInfo = await authService.getQBPortalConnection(
+      this.user.workspaceId,
+    )
     const copilotApi = new CopilotAPI(this.user.token)
     const invoices = await copilotApi.getInvoices()
     const products = await copilotApi.getProducts(

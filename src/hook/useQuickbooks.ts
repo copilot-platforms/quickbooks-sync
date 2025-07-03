@@ -28,12 +28,12 @@ export const useQuickbooks = (
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'qb_tokens',
+          table: 'qb_portal_connections',
           filter: `portal_id=eq.${tokenPayload?.workspaceId}`,
         },
         (payload) => {
           // TODO: parsing payload using drizzle-zod throwing error
-          // const parsedPayload = QBTokenSelectSchema.parse(payload.new)
+          // const parsedPayload = QBPortalConnectionSelectSchema.parse(payload.new)
           setAppParams((prev) => ({
             ...prev,
             syncFlag: payload.new.sync_flag,

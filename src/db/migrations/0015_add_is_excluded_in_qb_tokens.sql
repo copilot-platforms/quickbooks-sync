@@ -1,1 +1,0 @@
-ALTER TABLE "qb_tokens" ADD COLUMN "is_enabled" boolean DEFAULT false;

@@ -1,3 +1,0 @@
-ALTER TYPE "public"."event_types" ADD VALUE 'mapped';--> statement-breakpoint
-ALTER TYPE "public"."event_types" ADD VALUE 'unmapped';--> statement-breakpoint
-ALTER TABLE "qb_sync_logs" ADD COLUMN "customer_name" varchar(100), ADD COLUMN "customer_email" varchar(100), ADD COLUMN "tax_amount" numeric, ADD COLUMN "fee_amount" numeric, ADD COLUMN "product_name" varchar(100), ADD COLUMN "product_price" numeric, ADD COLUMN "qb_item_name" varchar(100), ADD COLUMN "error_message" varchar(255);
