@@ -224,7 +224,21 @@ export const useAppBridge = (token: string, isEnabled: boolean | null) => {
     }
   }
 
+  const downloadCsvAction = async () => {
+    const url = `/api/quickbooks/syncLog/download?token=${token}`
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'sync-history.csv'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  }
+
   const actions = [
+    {
+      label: 'Download sync history',
+      onClick: downloadCsvAction,
+    },
     {
       label: 'Disconnect app',
       onClick: disconnectAction,
