@@ -339,7 +339,7 @@ export class InvoiceService extends BaseService {
       }
       if (existingCustomer.email !== recipientInfo.email) {
         sparseUpdatePayload.PrimaryEmailAddr = {
-          Address: recipientInfo?.email || '',
+          Address: recipientInfo.email,
         }
       }
       if (Object.keys(sparseUpdatePayload).length > 0) {
@@ -475,7 +475,7 @@ export class InvoiceService extends BaseService {
         },
         {
           displayName: recipientInfo.displayName,
-          email: recipientInfo.email,
+          email: recipientInfo?.email || null,
         },
       )
     }
