@@ -17,6 +17,7 @@ import {
   QBInvoiceUpdateSchema,
   QBInvoiceUpdateSchemaType,
 } from '@/db/schema/qbInvoiceSync'
+import { QBProductSync } from '@/db/schema/qbProductSync'
 import { TransactionType, WhereClause } from '@/type/common'
 import {
   QBCustomerSparseUpdatePayloadType,
@@ -198,6 +199,19 @@ export class InvoiceService extends BaseService {
       unitPrice: Number(priceInfo.amount).toFixed(2), // decimal datatype expects string
     }
     await productService.createQBProduct(productMappingPayload)
+    const syncLogPayload = {
+      portalId: this.user.workspaceId,
+      entityType: EntityType.PRODUCT,
+      eventType: EventType.CREATED,
+      status: LogStatus.SUCCESS,
+      copilotId: productId,
+      syncAt: dayjs().toDate(),
+      quickbooksId: qbItem.Id,
+      productName: productInfo.name,
+      productPrice: Number(priceInfo.amount).toFixed(2),
+      qbItemName: qbItem.Name,
+    }
+    await this.syncLogService.createQBSyncLog(syncLogPayload)
 
     return { ref: { value: qbItem.Id }, productDescription }
   }

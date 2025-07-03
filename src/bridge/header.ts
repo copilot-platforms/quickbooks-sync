@@ -55,6 +55,16 @@ const ensureHttps = (url: string) => {
   return `https://${url}`
 }
 
+const postMessage = (payload: object) => {
+  if (Array.isArray(DASHBOARD_DOMAIN)) {
+    DASHBOARD_DOMAIN.forEach((domain) => {
+      window.parent.postMessage(payload, ensureHttps(domain))
+    })
+  } else {
+    window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
+  }
+}
+
 export function useBreadcrumbs(
   breadcrumbs: Clickable[],
   config?: {
@@ -80,13 +90,7 @@ export function useBreadcrumbs(
       })),
     }
 
-    if (Array.isArray(DASHBOARD_DOMAIN)) {
-      DASHBOARD_DOMAIN.forEach((domain) => {
-        window.parent.postMessage(payload, ensureHttps(domain))
-      })
-    } else {
-      window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
-    }
+    postMessage(payload)
     if (config?.portalUrl) {
       window.parent.postMessage(payload, ensureHttps(config.portalUrl))
     }
@@ -111,13 +115,7 @@ export function useBreadcrumbs(
   useEffect(() => {
     const handleUnload = () => {
       const payload = { type: 'header.breadcrumbs', items: [] }
-      if (Array.isArray(DASHBOARD_DOMAIN)) {
-        DASHBOARD_DOMAIN.forEach((domain) => {
-          window.parent.postMessage(payload, ensureHttps(domain))
-        })
-      } else {
-        window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
-      }
+      postMessage(payload)
     }
     addEventListener('beforeunload', handleUnload)
     return () => {
@@ -141,13 +139,7 @@ export function usePrimaryCta(
             type: 'header.primaryCta',
           }
 
-    if (Array.isArray(DASHBOARD_DOMAIN)) {
-      DASHBOARD_DOMAIN.forEach((domain) => {
-        window.parent.postMessage(payload, ensureHttps(domain))
-      })
-    } else {
-      window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
-    }
+    postMessage(payload)
     if (config?.portalUrl) {
       window.parent.postMessage(payload, ensureHttps(config.portalUrl))
     }
@@ -172,13 +164,7 @@ export function usePrimaryCta(
   useEffect(() => {
     const handleUnload = () => {
       const payload = { type: 'header.primaryCta' }
-      if (Array.isArray(DASHBOARD_DOMAIN)) {
-        DASHBOARD_DOMAIN.forEach((domain) => {
-          window.parent.postMessage(payload, ensureHttps(domain))
-        })
-      } else {
-        window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
-      }
+      postMessage(payload)
       if (config?.portalUrl) {
         window.parent.postMessage(payload, ensureHttps(config.portalUrl))
       }
@@ -205,13 +191,7 @@ export function useSecondaryCta(
             onClick: 'header.secondaryCta.onClick',
           }
 
-    if (Array.isArray(DASHBOARD_DOMAIN)) {
-      DASHBOARD_DOMAIN.forEach((domain) => {
-        window.parent.postMessage(payload, ensureHttps(domain))
-      })
-    } else {
-      window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
-    }
+    postMessage(payload)
     if (config?.portalUrl) {
       window.parent.postMessage(payload, ensureHttps(config.portalUrl))
     }
@@ -236,13 +216,7 @@ export function useSecondaryCta(
   useEffect(() => {
     const handleUnload = () => {
       const payload = { type: 'header.secondaryCta' }
-      if (Array.isArray(DASHBOARD_DOMAIN)) {
-        DASHBOARD_DOMAIN.forEach((domain) => {
-          window.parent.postMessage(payload, ensureHttps(domain))
-        })
-      } else {
-        window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
-      }
+      postMessage(payload)
       if (config?.portalUrl) {
         window.parent.postMessage(payload, ensureHttps(config.portalUrl))
       }
@@ -280,14 +254,7 @@ export function useActionsMenu(
       })),
     }
 
-    if (Array.isArray(DASHBOARD_DOMAIN)) {
-      DASHBOARD_DOMAIN.forEach((domain) => {
-        window.parent.postMessage(payload, ensureHttps(domain))
-      })
-    } else {
-      window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
-    }
-
+    postMessage(payload)
     if (config?.portalUrl) {
       window.parent.postMessage(payload, ensureHttps(config.portalUrl))
     }
@@ -312,13 +279,7 @@ export function useActionsMenu(
   useEffect(() => {
     const handleUnload = () => {
       const payload = { type: 'header.actionsMenu', items: [] }
-      if (Array.isArray(DASHBOARD_DOMAIN)) {
-        DASHBOARD_DOMAIN.forEach((domain) => {
-          window.parent.postMessage(payload, ensureHttps(domain))
-        })
-      } else {
-        window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
-      }
+      postMessage(payload)
     }
     addEventListener('beforeunload', handleUnload)
     return () => {
