@@ -26,7 +26,7 @@ const MapItemComponent = ({
           </div>
         </div>
       ) : (
-        '--'
+        <Icon icon="Dash" width={16} height={16} className="text-gray-600" />
       )}
     </>
   )
