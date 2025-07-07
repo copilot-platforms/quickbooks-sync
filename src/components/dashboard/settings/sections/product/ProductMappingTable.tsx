@@ -107,10 +107,10 @@ export default function ProductMappingTable({
                   </td>
 
                   {/* QuickBooks Items Column */}
-                  <td className="py-2 pl-4 pr-3 border-l border-gray-200 bg-gray-100 relative">
+                  <td className="border-l border-gray-200 bg-gray-100 relative">
                     <button
                       onClick={() => toggleDropdown(index)}
-                      className="w-full h-full flex items-center justify-between hover:bg-gray-50 transition-colors"
+                      className="w-full h-full flex items-center justify-between hover:bg-gray-50 transition-colors py-4 pl-4 pr-3"
                     >
                       {selectedItems[index] &&
                       Object.keys(selectedItems[index]).length > 0 ? (
