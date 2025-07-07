@@ -368,14 +368,13 @@ export class ProductService extends BaseService {
           const whereConditions = eq(QBProductSync.id, product.id)
           await this.updateQBProduct(mapUpdatePayload, whereConditions)
 
-          const syncLogService = new SyncLogService(this.user)
           await this.logSync(
             productResource.id,
             itemRes.Item.Id,
             EventType.UPDATED,
             {
               productName: productResource.name,
-              amount: product.unitPrice,
+              productPrice: product.unitPrice,
               qbItemName: product.name,
             },
           )
@@ -427,10 +426,9 @@ export class ProductService extends BaseService {
         eq(QBProductSync.id, latestMappedProduct?.id),
       )
 
-      const syncLogService = new SyncLogService(this.user)
       await this.logSync(productResource.id, item.Id, EventType.CREATED, {
         productName: productResource.name,
-        amount: latestMappedProduct.unitPrice,
+        productPrice: latestMappedProduct.unitPrice,
         qbItemName: item.Name,
       })
     } else {
@@ -487,10 +485,9 @@ export class ProductService extends BaseService {
       )
       console.info('WebhookService#webhookPriceCreated | Product created in QB')
 
-      const syncLogService = new SyncLogService(this.user)
       await this.logSync(priceResource.productId, item.Id, EventType.CREATED, {
         productName: latestMappedProduct.name,
-        amount: priceResource.amount.toFixed(2),
+        productPrice: priceResource.amount.toFixed(2),
         qbItemName: item.Name,
       })
     } else {
@@ -515,8 +512,6 @@ export class ProductService extends BaseService {
   }
 
   async formatAndSyncProductLogs(payload: ProductChangedItemReferenceType[]) {
-    const syncLogService = new SyncLogService(this.user)
-
     await Promise.all(
       payload.map(async (item) => {
         const copilotId = item.id
@@ -542,7 +537,7 @@ export class ProductService extends BaseService {
           eq(QBSyncLog.portalId, this.user.workspaceId),
           inArray(QBSyncLog.eventType, [EventType.MAPPED, EventType.UNMAPPED]),
         )
-        return await syncLogService.updateOrCreateQBSyncLog(
+        return await this.syncLogService.updateOrCreateQBSyncLog(
           payload,
           true,
           conditions,
@@ -556,7 +551,7 @@ export class ProductService extends BaseService {
     quickbooksId: string,
     eventType: EventType,
     opts?: {
-      amount: string | null
+      productPrice: string | null
       qbItemName: string | null
       productName: string | null
     },
