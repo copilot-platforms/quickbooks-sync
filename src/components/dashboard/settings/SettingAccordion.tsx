@@ -98,7 +98,7 @@ export default function SettingAccordion() {
                       />
                     )}
                     <Button
-                      label={itemMapped ? 'Update Sync' : 'Confirm'}
+                      label={itemMapped ? 'Update Setting' : 'Confirm'}
                       variant="primary"
                       prefixIcon="Check"
                       onClick={submitMappingItems}
@@ -116,7 +116,9 @@ export default function SettingAccordion() {
                     />
                   )}
                   <Button
-                    label={!initialSettingMapFlag ? 'Update Sync' : 'Confirm'}
+                    label={
+                      !initialSettingMapFlag ? 'Update Setting' : 'Confirm'
+                    }
                     variant="primary"
                     prefixIcon="Check"
                     onClick={submitInvoiceSettings}
