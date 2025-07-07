@@ -116,10 +116,10 @@ export default function ProductMappingTable({
                       {selectedItems[index] &&
                       Object.keys(selectedItems[index]).length > 0 ? (
                         <div className="text-left">
-                          <div className="text-sm">
+                          <div className="text-sm leading-5">
                             {selectedItems[index].name}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-body-xs leading-5 text-gray-500">
                             {selectedItems[index].price}
                           </div>
                         </div>
