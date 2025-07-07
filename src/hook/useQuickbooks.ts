@@ -28,7 +28,7 @@ export const useQuickbooks = (
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'qb_portal_connections',
+          table: 'qb_settings',
           filter: `portal_id=eq.${tokenPayload?.workspaceId}`,
         },
         (payload) => {
@@ -63,6 +63,9 @@ export const useQuickbooks = (
           setAppParams((prev) => ({
             ...prev,
             syncFlag: connectionStatus || false,
+            lastSyncTimestamp: connectionStatus
+              ? newPayload.updated_at
+              : prev.lastSyncTimestamp,
           }))
         },
       )

@@ -9,6 +9,7 @@ import {
   QBSettingsUpdateSchemaType,
 } from '@/db/schema/qbSettings'
 import { WhereClause } from '@/type/common'
+import dayjs from 'dayjs'
 
 export class SettingService extends BaseService {
   async getOneByPortalId(
@@ -50,7 +51,7 @@ export class SettingService extends BaseService {
 
     const [setting] = await this.db
       .update(QBSetting)
-      .set(parsedInsertPayload)
+      .set({ ...parsedInsertPayload, updatedAt: dayjs().toDate() })
       .where(conditions)
       .returning()
 

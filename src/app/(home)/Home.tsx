@@ -53,7 +53,7 @@ export default async function Main({
     isEnabled = false
   if (portalConnectionStatus) {
     syncFlag = await checkSyncStatus(tokenPayload.workspaceId)
-    isEnabled = portalConnection?.isEnabled || false
+    isEnabled = portalConnection?.setting?.isEnabled || false
 
     if (!syncFlag) {
       reconnect = await reconnectIfCta(type)
