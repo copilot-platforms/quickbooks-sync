@@ -108,7 +108,7 @@ export default function ProductMappingTable({
                   </td>
 
                   {/* QuickBooks Items Column */}
-                  <td className="py-2 pl-4 pr-3 border-l border-gray-200 bg-gray-150 hover:bg-gray-50 relative">
+                  <td className="py-2 pl-4 pr-3 border-l border-gray-200 bg-gray-100 hover:bg-gray-150 relative">
                     <button
                       onClick={() => toggleDropdown(index)}
                       className="w-full h-full flex items-center justify-between transition-colors"
@@ -149,9 +149,9 @@ export default function ProductMappingTable({
                             className="w-full text-sm focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-gray-500"
                           />
                         </div>
-                        <div className="px-3 py-2 border-t-1 border-b-1 border-card-divider">
+                        <div className="border-t-1 border-b-1 border-card-divider hover:bg-gray-100">
                           <button
-                            className="text-sm text-gray-600 cursor-pointer"
+                            className="w-full h-full text-left  px-3 py-2 text-sm text-gray-600 cursor-pointer"
                             onClick={() => selectItem(index, {}, products)}
                           >
                             Exclude from mapping
@@ -176,7 +176,7 @@ export default function ProductMappingTable({
                                       products,
                                     )
                                   }
-                                  className="w-full flex items-center justify-between px-3 py-1.5 text-sm hover:bg-gray-50 transition-colors cursor-pointer text-left"
+                                  className="w-full flex items-center justify-between px-3 py-1.5 text-sm hover:bg-gray-100 transition-colors cursor-pointer text-left"
                                 >
                                   <span className="text-gray-600 line-clamp-1">
                                     {item.name}
