@@ -2,7 +2,6 @@ import { ProductMappingComponentType } from '@/components/dashboard/settings/sec
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
 import { useMapItem, useProductTableSetting } from '@/hook/useSettings'
 import DropDownIcon from '@/components/ui/DropDownIcon'
-import { excerpt } from '@/utils/string'
 import { Icon, Spinner } from 'copilot-design-system'
 
 const MapItemComponent = ({
@@ -85,12 +84,14 @@ export default function ProductMappingTable({
               </tr>
             ) : products ? (
               products.map((product, index) => (
-                <tr key={index} className="hover:bg-gray-50 transition-colors">
+                <tr key={index} className="transition-colors">
                   {/* Copilot Products Column */}
                   <td className="py-2 pl-4 pr-3">
                     <div className="">
-                      <div className="text-sm leading-5">{product.name}</div>
-                      <div className="text-sm leading-5 text-gray-500">
+                      <div className="text-sm leading-5 text-gray-600">
+                        {product.name}
+                      </div>
+                      <div className="text-body-xs leading-5 text-gray-500">
                         {product.price}
                       </div>
                     </div>
@@ -107,10 +108,10 @@ export default function ProductMappingTable({
                   </td>
 
                   {/* QuickBooks Items Column */}
-                  <td className="py-2 pl-4 pr-3 border-l border-gray-200 bg-gray-100 relative">
+                  <td className="py-2 pl-4 pr-3 border-l border-gray-200 bg-gray-150 hover:bg-gray-50 relative">
                     <button
                       onClick={() => toggleDropdown(index)}
-                      className="w-full h-full flex items-center justify-between hover:bg-gray-50 transition-colors"
+                      className="w-full h-full flex items-center justify-between transition-colors"
                     >
                       {selectedItems[index] &&
                       Object.keys(selectedItems[index]).length > 0 ? (
@@ -136,7 +137,7 @@ export default function ProductMappingTable({
                     </button>
 
                     {openDropdowns[index] && (
-                      <div className="absolute right-0 left-[-145px] top-full md:left-0 md:right-0 bg-white border border-gray-200 shadow-xl rounded-sm z-100 md:min-w-[320px]">
+                      <div className="absolute right-[-1px] left-[-145px] top-full mt-[-4px] md:left-[-1px] bg-white border border-gray-150 !shadow-popover-050 rounded-sm z-100 md:min-w-[320px]">
                         <div className="px-3 py-2">
                           <input
                             type="text"
@@ -148,15 +149,15 @@ export default function ProductMappingTable({
                             className="w-full text-sm focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-gray-500"
                           />
                         </div>
-                        <div className="px-3 py-2 border-1 border-card-divider">
+                        <div className="px-3 py-2 border-t-1 border-b-1 border-card-divider">
                           <button
-                            className="text-sm text-gray-700 cursor-pointer"
+                            className="text-sm text-gray-600 cursor-pointer"
                             onClick={() => selectItem(index, {}, products)}
                           >
                             Exclude from mapping
                           </button>
                         </div>
-                        <div className="max-h-64 overflow-y-auto">
+                        <div className="max-h-56 overflow-y-auto">
                           {quickbooksItems &&
                             getFilteredItems(index, quickbooksItems).map(
                               (item, itemIndex) => (
@@ -177,8 +178,10 @@ export default function ProductMappingTable({
                                   }
                                   className="w-full flex items-center justify-between px-3 py-1.5 text-sm hover:bg-gray-50 transition-colors cursor-pointer text-left"
                                 >
-                                  <span>{excerpt(item.name, 65)}</span>
-                                  <span className="text-gray-500">
+                                  <span className="text-gray-600 line-clamp-1">
+                                    {item.name}
+                                  </span>
+                                  <span className="text-gray-500 text-body-micro leading-body-micro">
                                     {item.price}
                                   </span>
                                 </button>
