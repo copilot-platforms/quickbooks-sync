@@ -259,7 +259,9 @@ export class SyncService extends BaseService {
   }
 
   async syncFailedRecords() {
-    console.info('\n##### Start the re-sync process #####\n')
+    console.info(
+      `\n##### Start the re-sync process for Portal: ${this.user.workspaceId} #####`,
+    )
     // 1. get all failed sync logs group by the entity type
     const failedSyncLogs =
       await this.syncLogService.getFailedSyncLogsByEntityType()
@@ -271,6 +273,8 @@ export class SyncService extends BaseService {
 
     // 2. for each log, perform the sync based on the event type and also update the sync log status to success after successful sync
     await this.intiateSync(failedSyncLogs)
-    console.info('\n##### Re-sync process completed#####\n')
+    console.info(
+      `##### Re-sync process completed for Portal: ${this.user.workspaceId} #####\n`,
+    )
   }
 }
