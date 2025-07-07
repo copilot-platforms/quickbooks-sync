@@ -17,9 +17,9 @@ const MapItemComponent = ({
   return (
     <>
       {currentlyMapped ? (
-        <div className="space-y-1 text-left">
-          <div className="text-sm">{currentlyMapped?.name}</div>
-          <div className="text-sm text-gray-500">
+        <div className="text-left">
+          <div className="text-sm leading-5">{currentlyMapped?.name}</div>
+          <div className="text-body-xs leading-5 text-gray-500">
             {currentlyMapped.unitPrice &&
               `$${parseInt(currentlyMapped.unitPrice) / 100}`}
           </div>
