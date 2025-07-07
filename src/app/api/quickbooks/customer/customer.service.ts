@@ -17,13 +17,13 @@ import httpStatus from 'http-status'
 
 type ClientCompanyType = {
   id: string
-  givenName?: string
-  familyName?: string
+  givenName: string
+  familyName: string
   companyId: string
-  email?: string
+  email: string
   displayName: string
   type: 'client' | 'company'
-  companyName?: string
+  companyName: string
 }
 
 export class CustomerService extends BaseService {
@@ -95,6 +95,10 @@ export class CustomerService extends BaseService {
       companyId: '',
       displayName: '',
       type: 'client',
+      email: '',
+      givenName: '',
+      familyName: '',
+      companyName: '',
     }
 
     let client = await copilot.getClient(recipientId)
@@ -140,20 +144,21 @@ export class CustomerService extends BaseService {
           ...clientCompany,
           familyName: client.familyName,
           givenName: client.givenName,
-          displayName: client.givenName + ' ' + client.familyName,
+          displayName: `${client.givenName} ${client.familyName} (${company.name})`,
           type: 'client' as const,
-          email: client.email,
+          email: client.email || '',
           companyId: company.id,
           companyName: company.name,
         }
       }
+      return { recipientInfo: clientCompany, companyInfo: company }
     }
     return {
       recipientInfo: {
         ...clientCompany,
         familyName: client?.familyName || '',
         givenName: client?.givenName || '',
-        displayName: client?.givenName + ' ' + client?.familyName,
+        displayName: `${client?.givenName} ${client?.familyName}`,
         type: 'client' as const,
         email: client?.email || '',
         companyId: client?.companyId || '',
