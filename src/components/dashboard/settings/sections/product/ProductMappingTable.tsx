@@ -1,7 +1,6 @@
 import { ProductMappingComponentType } from '@/components/dashboard/settings/sections/product/ProductMapping'
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
 import { useMapItem, useProductTableSetting } from '@/hook/useSettings'
-import DropDownIcon from '@/components/ui/DropDownIcon'
 import { Icon, Spinner } from 'copilot-design-system'
 
 const MapItemComponent = ({
@@ -132,8 +131,10 @@ export default function ProductMappingTable({
                           priceId={product.priceId}
                         />
                       )}
-                      <DropDownIcon
-                        isOpen={openDropdowns[index]}
+                      <Icon
+                        icon="ChevronDown"
+                        width={16}
+                        height={16}
                         className={`text-gray-500`}
                       />
                     </button>
