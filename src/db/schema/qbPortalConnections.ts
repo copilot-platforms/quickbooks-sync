@@ -3,6 +3,8 @@ import { pgTable as table } from 'drizzle-orm/pg-core'
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
 import * as t from 'drizzle-orm/pg-core'
 import { z } from 'zod'
+import { relations } from 'drizzle-orm'
+import { QBSetting, QBSettingsSelectSchemaType } from '@/db/schema/qbSettings'
 
 export const QBPortalConnection = table(
   'qb_portal_connections',
@@ -14,7 +16,6 @@ export const QBPortalConnection = table(
     refreshToken: t.varchar('refresh_token').notNull(),
     expiresIn: t.integer('expires_in').notNull(),
     XRefreshTokenExpiresIn: t.integer('x_refresh_token_expires_in').notNull(),
-    syncFlag: t.boolean('sync_flag').default(false).notNull(),
     tokenType: t.varchar('token_type', { length: 255 }),
     tokenSetTime: t.timestamp('token_set_time'),
     intiatedBy: t.varchar('intiated_by', { length: 255 }).notNull(),
@@ -25,12 +26,18 @@ export const QBPortalConnection = table(
     expenseAccountRef: t
       .varchar('expense_account_ref', { length: 100 })
       .notNull(),
-    isEnabled: t.boolean('is_enabled').default(false),
     ...timestamps,
   },
   (table) => [
     t.uniqueIndex('uq_qb_portal_connections_portal_id_idx').on(table.portalId),
   ],
+)
+
+export const QBPortalConnectionRelations = relations(
+  QBPortalConnection,
+  ({ one }) => ({
+    setting: one(QBSetting),
+  }),
 )
 
 export const QBPortalConnectionCreateSchema =
@@ -44,6 +51,10 @@ export const QBPortalConnectionSelectSchema =
 export type QBPortalConnectionSelectSchemaType = z.infer<
   typeof QBPortalConnectionSelectSchema
 >
+
+export type PortalConnectionWithSettingType = {
+  setting: QBSettingsSelectSchemaType | null
+} & QBPortalConnectionSelectSchemaType
 
 export const QBPortalConnectionUpdateSchema =
   QBPortalConnectionCreateSchema.omit({
