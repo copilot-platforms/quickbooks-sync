@@ -61,7 +61,7 @@ export default function ProductMappingTable({
                 COPILOT PRODUCTS
               </th>
 
-              <th className="pt-5 pr-3 pl-4 pb-2 border-l border-gray-200 w-[7%] lg:w-[56px]">
+              <th className="pt-4 px-5 pb-2 border-l border-gray-200 w-[7%] lg:w-[56px]">
                 <Icon
                   icon="ArrowRight"
                   width={16}
@@ -88,11 +88,9 @@ export default function ProductMappingTable({
                 <tr key={index} className="hover:bg-gray-50 transition-colors">
                   {/* Copilot Products Column */}
                   <td className="py-2 pl-4 pr-3">
-                    <div className="">
-                      <div className="text-sm leading-5">{product.name}</div>
-                      <div className="text-sm leading-5 text-gray-500">
-                        {product.price}
-                      </div>
+                    <div className="text-sm leading-5">{product.name}</div>
+                    <div className="text-sm leading-5 text-gray-500">
+                      {product.price}
                     </div>
                   </td>
 
@@ -110,29 +108,30 @@ export default function ProductMappingTable({
                   <td className="py-2 pl-4 pr-3 border-l border-gray-200 bg-gray-100 relative">
                     <button
                       onClick={() => toggleDropdown(index)}
-                      className="w-full h-full flex items-center justify-between hover:bg-gray-50 transition-colors"
+                      className="w-full h-full grid grid-cols-6 md:grid-cols-14 hover:bg-gray-50 transition-colors"
                     >
-                      {selectedItems[index] &&
-                      Object.keys(selectedItems[index]).length > 0 ? (
-                        <div className="text-left">
-                          <div className="text-sm">
-                            {selectedItems[index].name}
+                      <div className="col-span-5 md:col-span-13 text-left">
+                        {selectedItems[index] &&
+                        Object.keys(selectedItems[index]).length > 0 ? (
+                          <div className="text-left">
+                            <div className="text-sm">
+                              {selectedItems[index].name}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {selectedItems[index].price}
+                            </div>
                           </div>
-                          <div className="text-sm text-gray-500">
-                            {selectedItems[index].price}
-                          </div>
-                        </div>
-                      ) : (
-                        <MapItemComponent
-                          mappingItems={mappingItems}
-                          productId={product.id}
-                          priceId={product.priceId}
-                        />
-                      )}
-                      <DropDownIcon
-                        isOpen={openDropdowns[index]}
-                        className={`text-gray-500`}
-                      />
+                        ) : (
+                          <MapItemComponent
+                            mappingItems={mappingItems}
+                            productId={product.id}
+                            priceId={product.priceId}
+                          />
+                        )}
+                      </div>
+                      <div className="col-span-1 ml-auto my-auto">
+                        <DropDownIcon className={`text-gray-500`} />
+                      </div>
                     </button>
 
                     {openDropdowns[index] && (
