@@ -60,14 +60,12 @@ CREATE TABLE "qb_portal_connections" (
 	"refresh_token" varchar NOT NULL,
 	"expires_in" integer NOT NULL,
 	"x_refresh_token_expires_in" integer NOT NULL,
-	"sync_flag" boolean DEFAULT false NOT NULL,
 	"token_type" varchar(255),
 	"token_set_time" timestamp,
 	"intiated_by" varchar(255) NOT NULL,
 	"income_account_ref" varchar(100) NOT NULL,
 	"asset_account_ref" varchar(100) NOT NULL,
 	"expense_account_ref" varchar(100) NOT NULL,
-	"is_enabled" boolean DEFAULT false,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	"deleted_at" timestamp
@@ -97,6 +95,8 @@ CREATE TABLE "qb_settings" (
 	"create_new_product_flag" boolean DEFAULT false NOT NULL,
 	"create_invoice_item_flag" boolean DEFAULT false NOT NULL,
 	"initial_setting_map" boolean DEFAULT true NOT NULL,
+	"sync_flag" boolean DEFAULT false NOT NULL,
+	"is_enabled" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -125,4 +125,5 @@ CREATE TABLE "qb_sync_logs" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX "uq_qb_portal_connections_portal_id_idx" ON "qb_portal_connections" USING btree ("portal_id");
+CREATE UNIQUE INDEX "uq_qb_portal_connections_portal_id_idx" ON "qb_portal_connections" USING btree ("portal_id");--> statement-breakpoint
+ALTER TABLE "qb_settings" ADD CONSTRAINT "qb_settings_portal_id_qb_portal_connections_portal_id_fk" FOREIGN KEY ("portal_id") REFERENCES "public"."qb_portal_connections"("portal_id") ON DELETE cascade ON UPDATE no action;
