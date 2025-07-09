@@ -4,7 +4,7 @@ export default function DropDownIcon({
   isOpen,
   className = '',
 }: {
-  isOpen: boolean
+  isOpen?: boolean
   className?: string
 }) {
   return (
