@@ -1,15 +1,18 @@
 import APIError from '@/app/api/core/exceptions/api'
 import { BaseService } from '@/app/api/core/services/base.service'
+import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
 import {
-  QBTokenCreateSchema,
-  QBTokenCreateSchemaType,
-  QBTokens,
-  QBTokenSelectSchemaType,
-  QBTokenUpdateSchema,
-  QBTokenUpdateSchemaType,
-} from '@/db/schema/qbTokens'
+  QBPortalConnectionCreateSchema,
+  QBPortalConnectionCreateSchemaType,
+  QBPortalConnection,
+  QBPortalConnectionSelectSchemaType,
+  QBPortalConnectionUpdateSchema,
+  QBPortalConnectionUpdateSchemaType,
+} from '@/db/schema/qbPortalConnections'
+import { QBSetting, QBSettingsUpdateSchemaType } from '@/db/schema/qbSettings'
 import { getPortalConnection } from '@/db/service/token.service'
+import { ChangeEnableStatusRequestType } from '@/type/common'
 import dayjs from 'dayjs'
 import { and, eq, SQL } from 'drizzle-orm'
 import httpStatus from 'http-status'
@@ -17,66 +20,69 @@ import httpStatus from 'http-status'
 type WhereClause = SQL<unknown>
 
 export class TokenService extends BaseService {
-  async checkPortalConnection(
+  async getOneByPortalId(
     portalId: string,
-  ): Promise<QBTokenSelectSchemaType | null> {
+  ): Promise<QBPortalConnectionSelectSchemaType | null> {
     const portalConnection = await getPortalConnection(portalId)
 
     return portalConnection
   }
 
-  async createQBToken(
-    payload: QBTokenCreateSchemaType,
-    returningFields?: (keyof typeof QBTokens)[],
+  async createQBPortalConnection(
+    payload: QBPortalConnectionCreateSchemaType,
+    returningFields?: (keyof typeof QBPortalConnection)[],
   ) {
-    const parsedInsertPayload = QBTokenCreateSchema.parse(payload)
-    const query = this.db.insert(QBTokens).values(parsedInsertPayload)
+    const parsedInsertPayload = QBPortalConnectionCreateSchema.parse(payload)
+    const query = this.db.insert(QBPortalConnection).values(parsedInsertPayload)
 
-    const [token] =
-      returningFields && returningFields.length > 0
-        ? await query.returning(buildReturningFields(QBTokens, returningFields))
-        : await query
+    const [token] = returningFields?.length
+      ? await query.returning(
+          buildReturningFields(QBPortalConnection, returningFields),
+        )
+      : await query.returning()
 
     return token
   }
 
-  async upsertQBToken(
-    payload: QBTokenCreateSchemaType,
-    returningFields?: (keyof typeof QBTokens)[],
+  async upsertQBPortalConnection(
+    payload: QBPortalConnectionCreateSchemaType,
+    returningFields?: (keyof typeof QBPortalConnection)[],
   ) {
-    const parsedInsertPayload = QBTokenCreateSchema.parse(payload)
+    const parsedInsertPayload = QBPortalConnectionCreateSchema.parse(payload)
     const query = this.db
-      .insert(QBTokens)
+      .insert(QBPortalConnection)
       .values(parsedInsertPayload)
       .onConflictDoUpdate({
-        target: QBTokens.portalId,
+        target: QBPortalConnection.portalId,
         set: { ...parsedInsertPayload, updatedAt: dayjs().toDate() },
       })
 
-    const [token] =
-      returningFields && returningFields.length > 0
-        ? await query.returning(buildReturningFields(QBTokens, returningFields))
-        : await query
+    const [token] = returningFields?.length
+      ? await query.returning(
+          buildReturningFields(QBPortalConnection, returningFields),
+        )
+      : await query.returning()
 
     return token
   }
 
-  async updateQBToken(
-    payload: QBTokenUpdateSchemaType,
+  async updateQBPortalConnection(
+    payload: QBPortalConnectionUpdateSchemaType,
     conditions: WhereClause,
-    returningFields?: (keyof typeof QBTokens)[],
+    returningFields?: (keyof typeof QBPortalConnection)[],
   ) {
-    const parsedInsertPayload = QBTokenUpdateSchema.parse(payload)
+    const parsedInsertPayload = QBPortalConnectionUpdateSchema.parse(payload)
 
     const query = this.db
-      .update(QBTokens)
+      .update(QBPortalConnection)
       .set(parsedInsertPayload)
       .where(conditions)
 
-    const [token] =
-      returningFields && returningFields.length > 0
-        ? await query.returning(buildReturningFields(QBTokens, returningFields))
-        : await query
+    const [token] = returningFields?.length
+      ? await query.returning(
+          buildReturningFields(QBPortalConnection, returningFields),
+        )
+      : await query.returning()
 
     return token
   }
@@ -84,20 +90,16 @@ export class TokenService extends BaseService {
   async turnOffSync(intuitRealmId: string) {
     const portalId = this.user.workspaceId
     // update db sync status for the defined portal
-    const whereConditions = and(
-      eq(QBTokens.intuitRealmId, intuitRealmId),
-      eq(QBTokens.portalId, portalId),
-    ) as SQL
+    const whereConditions = eq(QBSetting.portalId, portalId)
 
-    const updateSyncPayload: QBTokenUpdateSchemaType = {
+    const updateSyncPayload: QBSettingsUpdateSchemaType = {
       syncFlag: false,
     }
 
-    const tokenService = new TokenService(this.user)
-    const updateSync = await tokenService.updateQBToken(
+    const settingService = new SettingService(this.user)
+    const updateSync = await settingService.updateQBSettings(
       updateSyncPayload,
       whereConditions,
-      ['id'],
     )
 
     if (!updateSync) {
@@ -107,5 +109,31 @@ export class TokenService extends BaseService {
       )
     }
     return updateSync
+  }
+
+  async changeEnableStatus(
+    portalId: string,
+    parsedBody: ChangeEnableStatusRequestType,
+  ) {
+    const whereConditions = and(
+      eq(QBSetting.portalId, portalId),
+      eq(QBSetting.syncFlag, true),
+    ) as SQL
+
+    const settingService = new SettingService(this.user)
+    const portal = await settingService.updateQBSettings(
+      {
+        isEnabled: parsedBody.enable,
+      },
+      whereConditions,
+    )
+
+    if (!portal) {
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        `Cannot update sync status for portal ${portalId}.`,
+      )
+    }
+    return portal
   }
 }

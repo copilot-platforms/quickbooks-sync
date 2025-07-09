@@ -1,1 +1,0 @@
-ALTER TABLE "qb_tokens" ADD COLUMN "intiated_by" varchar(255) NOT NULL;

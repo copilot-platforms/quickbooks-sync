@@ -1,7 +1,10 @@
 import { AuthStatus } from '@/app/api/core/types/auth'
-import { useAuth } from '@/app/context/AuthContext'
+import { LogStatus } from '@/app/api/core/types/log'
+import { useApp } from '@/app/context/AppContext'
+import { useActionsMenu } from '@/bridge/header'
 import { copilotDashboardUrl } from '@/config'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
+import { postFetcher } from '@/helper/fetch.helper'
 import SupabaseClient from '@/lib/supabase'
 import { Token } from '@/type/common'
 import { useEffect, useState } from 'react'
@@ -14,7 +17,7 @@ export const useQuickbooks = (
   const [loading, setLoading] = useState(false)
   const [hasConnection, setHasConnection] = useState<boolean | null>(false) // null indicates error
   const [isReconnecting, setIsReconnecting] = useState(reconnect)
-  const { setAuthParams } = useAuth()
+  const { setAppParams } = useApp()
 
   useEffect(() => {
     const supabase = SupabaseClient.getInstance()
@@ -25,15 +28,16 @@ export const useQuickbooks = (
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'qb_tokens',
+          table: 'qb_settings',
           filter: `portal_id=eq.${tokenPayload?.workspaceId}`,
         },
         (payload) => {
           // TODO: parsing payload using drizzle-zod throwing error
-          // const parsedPayload = QBTokenSelectSchema.parse(payload.new)
-          setAuthParams((prev) => ({
+          // const parsedPayload = QBPortalConnectionSelectSchema.parse(payload.new)
+          setAppParams((prev) => ({
             ...prev,
             syncFlag: payload.new.sync_flag,
+            isEnabled: payload.new.is_enabled,
           }))
         },
       )
@@ -53,11 +57,35 @@ export const useQuickbooks = (
               : newPayload.connection_status === ConnectionStatus.PENDING
                 ? false
                 : null
+
           setHasConnection(connectionStatus)
           setIsReconnecting(!connectionStatus)
-          setAuthParams((prev) => ({
+          setAppParams((prev) => ({
             ...prev,
             syncFlag: connectionStatus || false,
+            lastSyncTimestamp: connectionStatus
+              ? newPayload.updated_at
+              : prev.lastSyncTimestamp,
+          }))
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'qb_sync_logs',
+          filter: `portal_id=eq.${tokenPayload?.workspaceId}`,
+        },
+        (payload) => {
+          const newPayload = payload.new
+          const isSuccess =
+            newPayload.status === LogStatus.SUCCESS ? true : false
+          setAppParams((prev) => ({
+            ...prev,
+            lastSyncTimestamp: isSuccess
+              ? newPayload.updated_at
+              : prev.lastSyncTimestamp,
           }))
         },
       )
@@ -71,10 +99,9 @@ export const useQuickbooks = (
   // handle reconnect logic
   useEffect(() => {
     if (reconnect) {
-      handleConnect(AuthStatus.Reconnect)
+      handleConnect(AuthStatus.RECONNECT)
     }
   }, [reconnect])
-
   const getAuthUrl = async (type?: string) => {
     const redirectUrl = copilotDashboardUrl
     const url = `/api/quickbooks/auth?token=${token}${type ? `&type=${type}` : ''}`
@@ -94,6 +121,25 @@ export const useQuickbooks = (
     if (authUrl) window.open(authUrl, '_blank')
   }
 
+  const handleSyncEnable = async () => {
+    try {
+      const enable = true
+      const url = `/api/quickbooks/token/change-enable-status?token=${token}`
+      setLoading(true)
+      const response = await fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ enable }),
+      })
+
+      const res = await response.json()
+      setLoading(false)
+      return res
+    } catch (e) {
+      setLoading(false)
+      console.error('Error: ', e)
+    }
+  }
+
   const checkPortalConnection = async () => {
     const response = await fetch(
       `/api/quickbooks/token/check-connection?token=${token}`,
@@ -108,6 +154,7 @@ export const useQuickbooks = (
     hasConnection,
     checkPortalConnection,
     isReconnecting,
+    handleSyncEnable,
   }
 }
 
@@ -167,4 +214,38 @@ export const useQuickbooksCallback = () => {
   }
 
   return { loading, error }
+}
+
+export const useAppBridge = (token: string, isEnabled: boolean | null) => {
+  const disconnectAction = async () => {
+    if (isEnabled) {
+      const payload = {
+        enable: false,
+      }
+      const url = `/api/quickbooks/token/change-enable-status?token=${token}`
+      await postFetcher(url, {}, payload)
+    }
+  }
+
+  const downloadCsvAction = async () => {
+    const url = `/api/quickbooks/syncLog/download?token=${token}`
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'sync-history.csv'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  }
+
+  const actions = [
+    {
+      label: 'Download sync history',
+      onClick: downloadCsvAction,
+    },
+    {
+      label: 'Disconnect app',
+      onClick: disconnectAction,
+    },
+  ]
+  useActionsMenu(actions)
 }

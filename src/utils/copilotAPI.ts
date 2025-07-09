@@ -19,6 +19,8 @@ import {
   InternalUsersResponse,
   InternalUsersResponseSchema,
   InternalUsersSchema,
+  InvoiceResponse,
+  InvoiceResponseSchema,
   IUToken,
   IUTokenSchema,
   MeResponse,
@@ -26,6 +28,14 @@ import {
   NotificationCreatedResponse,
   NotificationCreatedResponseSchema,
   NotificationRequestBody,
+  PriceResponse,
+  PriceResponseSchema,
+  PricesResponse,
+  PricesResponseSchema,
+  ProductResponse,
+  ProductResponseSchema,
+  ProductsResponse,
+  ProductsResponseSchema,
   Token,
   TokenSchema,
   WorkspaceResponse,
@@ -36,6 +46,8 @@ import type { CopilotAPI as SDK } from 'copilot-node-sdk'
 import { copilotApi } from 'copilot-node-sdk'
 import { z } from 'zod'
 import { API_DOMAIN } from '@/constant/domains'
+import httpStatus from 'http-status'
+import { MAX_INVOICE_LIST_LIMIT } from '@/app/api/core/constants/limit'
 
 export class CopilotAPI {
   copilot: SDK
@@ -118,14 +130,64 @@ export class CopilotAPI {
     )
   }
 
-  async _getClient(id: string): Promise<ClientResponse> {
-    console.info('CopilotAPI#getClient | token =', this.token)
-    return ClientResponseSchema.parse(await this.copilot.retrieveClient({ id }))
+  /**
+   * Get the client from copilot
+   * Error handling: if copilot throws NOT FOUND error or BAD REQUEST error, return undefined. This is done as we don't want to terminate the process
+   */
+  async _getClient(id: string): Promise<ClientResponse | undefined> {
+    try {
+      console.info('CopilotAPI#getClient | token =', this.token)
+      return ClientResponseSchema.parse(
+        await this.copilot.retrieveClient({ id }),
+      )
+    } catch (error: unknown) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'body' in error &&
+        'status' in error &&
+        typeof (error as any).body === 'object'
+      ) {
+        if (
+          error.status === httpStatus.BAD_REQUEST ||
+          error.status === httpStatus.NOT_FOUND
+        ) {
+          const errorBody = (error as { body: any }).body
+          console.info('CopilotAPI#getClient | message =', errorBody.message)
+          return
+        }
+      }
+      throw error
+    }
   }
 
+  /**
+   * Get the clients from copilot
+   * Error handling: if copilot throws NOT FOUND error or BAD REQUEST error, return undefined. This is done as we don't want to terminate the process
+   */
   async _getClients(args: CopilotListArgs & { companyId?: string } = {}) {
-    console.info('CopilotAPI#getClients | token =', this.token)
-    return ClientsResponseSchema.parse(await this.copilot.listClients(args))
+    try {
+      console.info('CopilotAPI#getClients | token =', this.token)
+      return ClientsResponseSchema.parse(await this.copilot.listClients(args))
+    } catch (error: unknown) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'body' in error &&
+        'status' in error &&
+        typeof (error as any).body === 'object'
+      ) {
+        if (
+          error.status === httpStatus.BAD_REQUEST ||
+          error.status === httpStatus.NOT_FOUND
+        ) {
+          const errorBody = (error as { body: any }).body
+          console.info('CopilotAPI#getClients | message =', errorBody.message)
+          return
+        }
+      }
+      throw error
+    }
   }
 
   async _updateClient(
@@ -150,11 +212,35 @@ export class CopilotAPI {
     )
   }
 
-  async _getCompany(id: string): Promise<CompanyResponse> {
-    console.info('CopilotAPI#getCompany | token =', this.token)
-    return CompanyResponseSchema.parse(
-      await this.copilot.retrieveCompany({ id }),
-    )
+  /**
+   * Get the company from copilot
+   * Error handling: if copilot throws NOT FOUND error or BAD REQUEST error, return undefined. This is done as we don't want to terminate the process
+   */
+  async _getCompany(id: string): Promise<CompanyResponse | undefined> {
+    try {
+      console.info('CopilotAPI#getCompany | token =', this.token)
+      return CompanyResponseSchema.parse(
+        await this.copilot.retrieveCompany({ id }),
+      )
+    } catch (error: unknown) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'body' in error &&
+        'status' in error &&
+        typeof (error as any).body === 'object'
+      ) {
+        if (
+          error.status === httpStatus.BAD_REQUEST ||
+          error.status === httpStatus.NOT_FOUND
+        ) {
+          const errorBody = (error as { body: any }).body
+          console.info('CopilotAPI#getCompany | message =', errorBody.message)
+          return
+        }
+      }
+      throw error
+    }
   }
 
   async _getCompanies(args: CopilotListArgs = {}): Promise<CompaniesResponse> {
@@ -164,7 +250,7 @@ export class CopilotAPI {
 
   async _getCompanyClients(companyId: string): Promise<ClientResponse[]> {
     console.info('CopilotAPI#getCompanyClients | token =', this.token)
-    return (await this.getClients({ limit: 10000, companyId })).data || []
+    return (await this.getClients({ limit: 10000, companyId }))?.data || []
   }
 
   async _getCustomFields(): Promise<CustomFieldResponse> {
@@ -277,6 +363,56 @@ export class CopilotAPI {
     )
   }
 
+  async _getProduct(id: string): Promise<ProductResponse | undefined> {
+    console.info('CopilotAPI#getProduct | token =', this.token)
+    return ProductResponseSchema.parse(
+      await this.copilot.retrieveProduct({ id }),
+    )
+  }
+
+  async _getProducts(
+    name?: string,
+    nextToken?: string,
+    limit?: number,
+  ): Promise<ProductsResponse | undefined> {
+    console.info('CopilotAPI#getProducts | token =', this.token)
+    return ProductsResponseSchema.parse(
+      await this.copilot.listProducts({ name, nextToken, limit }),
+    )
+  }
+
+  async _getPrice(id: string): Promise<PriceResponse | undefined> {
+    console.info('CopilotAPI#getPrice | token =', this.token)
+    return PriceResponseSchema.parse(await this.copilot.retrievePrice({ id }))
+  }
+
+  async _getPrices(
+    productId?: string,
+    nextToken?: string,
+    limit?: string,
+  ): Promise<PricesResponse | undefined> {
+    console.info('CopilotAPI#getPrices | token =', this.token)
+    return PricesResponseSchema.parse(
+      await this.copilot.listPrices({ productId, nextToken, limit }),
+    )
+  }
+
+  async _getInvoice(id: string): Promise<InvoiceResponse | undefined> {
+    console.info('CopilotAPI#getInvoice | token =', this.token)
+    return InvoiceResponseSchema.parse(
+      await this.copilot.retrieveInvoice({ id }),
+    )
+  }
+
+  async _getInvoices(): Promise<InvoiceResponse[] | undefined> {
+    console.info('CopilotAPI#getInvoices | token =', this.token)
+    const data = await this.manualFetch('invoices', {
+      limit: MAX_INVOICE_LIST_LIMIT.toString(),
+    })
+
+    return z.array(InvoiceResponseSchema).parse(data.data)
+  }
+
   private wrapWithRetry<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
   ): (...args: Args) => Promise<R> {
@@ -308,4 +444,10 @@ export class CopilotAPI {
   )
   bulkDeleteNotifications = this.wrapWithRetry(this._bulkDeleteNotifications)
   deleteNotification = this.wrapWithRetry(this._deleteNotification)
+  getProduct = this.wrapWithRetry(this._getProduct)
+  getProducts = this.wrapWithRetry(this._getProducts)
+  getPrice = this.wrapWithRetry(this._getPrice)
+  getPrices = this.wrapWithRetry(this._getPrices)
+  getInvoice = this.wrapWithRetry(this._getInvoice)
+  getInvoices = this.wrapWithRetry(this._getInvoices)
 }

@@ -18,7 +18,7 @@ export const connectionStatusEnum = t.pgEnum(
 )
 
 export const QBConnectionLogs = table('qb_connection_logs', {
-  id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
+  id: t.uuid().defaultRandom().primaryKey(),
   portalId: t.varchar('portal_id', { length: 255 }).notNull(),
   connectionStatus: connectionStatusEnum('connection_status')
     .default(ConnectionStatus.PENDING)

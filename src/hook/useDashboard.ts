@@ -1,18 +1,30 @@
+'use client'
 import { AuthStatus } from '@/app/api/core/types/auth'
-import { useAuth } from '@/app/context/AuthContext'
-import { CalloutStatus } from '@/components/type/callout'
+import { useApp } from '@/app/context/AppContext'
+import { CalloutVariant } from '@/components/type/callout'
 import { useQuickbooks } from '@/hook/useQuickbooks'
 import { useEffect, useState } from 'react'
 
 export const useDashboardMain = () => {
-  const { token, tokenPayload, syncFlag, reconnect } = useAuth()
+  const {
+    token,
+    tokenPayload,
+    syncFlag,
+    reconnect,
+    lastSyncTimestamp,
+    isEnabled,
+    initialSettingMapFlag,
+    itemMapped,
+  } = useApp()
 
-  const { handleConnect, isReconnecting } = useQuickbooks(
+  const { handleConnect, isReconnecting, handleSyncEnable } = useQuickbooks(
     token,
     tokenPayload,
     reconnect,
   )
-  const [callOutStatus, setCallOutStatus] = useState(CalloutStatus.Success)
+  const [callOutStatus, setCallOutStatus] = useState<
+    CalloutVariant.SUCCESS | CalloutVariant.ERROR | CalloutVariant.WARNING
+  >(CalloutVariant.SUCCESS)
   const [isLoading, setIsLoading] = useState(true)
   const [buttonAction, setButtonAction] = useState<
     (() => Promise<void>) | undefined
@@ -20,13 +32,26 @@ export const useDashboardMain = () => {
 
   useEffect(() => {
     if (syncFlag) {
-      setCallOutStatus(CalloutStatus.Success)
+      if (!isEnabled) {
+        setCallOutStatus(CalloutVariant.WARNING)
+        setButtonAction(() => handleSyncEnable)
+      } else {
+        setCallOutStatus(CalloutVariant.SUCCESS)
+      }
     } else {
-      setCallOutStatus(CalloutStatus.Failed)
+      setCallOutStatus(CalloutVariant.ERROR)
+      setButtonAction(() => () => handleConnect(AuthStatus.RECONNECT))
     }
-    setButtonAction(() => () => handleConnect(AuthStatus.Reconnect))
     setIsLoading(false)
-  }, [syncFlag])
+  }, [syncFlag, isEnabled])
 
-  return { callOutStatus, isLoading, buttonAction, isReconnecting }
+  return {
+    callOutStatus,
+    isLoading,
+    buttonAction,
+    isReconnecting,
+    lastSyncTimestamp,
+    itemMapped,
+    initialSettingMapFlag,
+  }
 }

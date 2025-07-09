@@ -1,28 +1,44 @@
 import { db } from '@/db'
-import { QBTokenSelectSchemaType } from '@/db/schema/qbTokens'
+import { PortalConnectionWithSettingType } from '@/db/schema/qbPortalConnections'
+import { QBSettingsSelectSchemaType } from '@/db/schema/qbSettings'
 import { and, isNull } from 'drizzle-orm'
 
 export const getPortalConnection = async (
   portalId: string,
-): Promise<QBTokenSelectSchemaType | null> => {
-  const portalSync = await db.query.QBTokens.findFirst({
-    where: (QBTokens, { eq }) =>
-      and(isNull(QBTokens.deletedAt), eq(QBTokens.portalId, portalId)),
+): Promise<PortalConnectionWithSettingType | null> => {
+  const portalSync = await db.query.QBPortalConnection.findFirst({
+    where: (QBPortalConnection, { eq }) =>
+      and(
+        isNull(QBPortalConnection.deletedAt),
+        eq(QBPortalConnection.portalId, portalId),
+      ),
+    with: {
+      setting: true,
+    },
   })
 
   return portalSync || null
 }
 
-export const getSyncedPortalConnection = async (
+export const getAllPortalConnections = async (): Promise<
+  PortalConnectionWithSettingType[]
+> => {
+  const portals = await db.query.QBPortalConnection.findMany({
+    where: (QBPortalConnection) => isNull(QBPortalConnection.deletedAt),
+    with: {
+      setting: true,
+    },
+  })
+
+  return portals
+}
+
+export const getPortalSettings = async (
   portalId: string,
-): Promise<QBTokenSelectSchemaType | null> => {
-  const portalSync = await db.query.QBTokens.findFirst({
-    where: (QBTokens, { eq }) =>
-      and(
-        isNull(QBTokens.deletedAt),
-        eq(QBTokens.portalId, portalId),
-        eq(QBTokens.syncFlag, true),
-      ),
+): Promise<QBSettingsSelectSchemaType | null> => {
+  const portalSync = await db.query.QBSetting.findFirst({
+    where: (QBSetting, { eq }) =>
+      and(eq(QBSetting.portalId, portalId), eq(QBSetting.syncFlag, true)),
   })
 
   return portalSync || null

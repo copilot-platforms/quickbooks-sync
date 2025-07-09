@@ -37,7 +37,7 @@ api_url = "http://127.0.0.1"
 enabled = false
 
 [storage]
-enabled = true
+enabled = false
 file_size_limit = "50MiB"
 
 # Uncomment to configure local storage buckets

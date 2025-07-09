@@ -6,8 +6,8 @@ export const copilotDashboardUrl =
 export const copilotAPIKey = process.env.COPILOT_API_KEY || ''
 export const appId = process.env.NEXT_PUBLIC_COPILOT_APP_API_KEY || ''
 export const databaseUrl = process.env.DATABASE_URL
-export const webhookSigningSecret =
-  process.env.COPILOT_WEBHOOK_SIGNING_SECRET || ''
+export const copilotEnv = process.env.COPILOT_ENV || ''
+export const cronSecret = process.env.CRON_SECRET
 
 export const apiUrl =
   process.env.VERCEL_ENV === 'production'
@@ -22,7 +22,12 @@ export const intuitClientSecret = process.env.INTUIT_CLIENT_SECRET || ''
 export const intuitRedirectUri = apiUrl + process.env.INTUIT_REDIRECT_URI_PATH
 export const intuitEnvironment = (process.env.INTUIT_ENVIRONMENT ||
   'sandbox') as EnvironmentType
-export const intuitIntuitCompanyId = process.env.INTUIT_COMPANY_ID || ''
+export const intuitBaseUrl =
+  intuitEnvironment === 'production'
+    ? process.env.INTUIT_PRODUCTION_API_URL
+    : process.env.INTUIT_SANDBOX_API_URL
+export const intuitApiMinorVersion =
+  process.env.INTUIT_API_MINOR_VERSION || '75'
 
 // Supabase
 export const supabaseProjectUrl =

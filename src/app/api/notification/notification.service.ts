@@ -51,7 +51,7 @@ export class NotificationService extends BaseService {
         }
       }
     } catch (error) {
-      console.log(`Failed to send notification for action: ${action}`, {
+      console.error(`Failed to send notification for action: ${action}`, {
         error,
       })
     }
@@ -62,7 +62,7 @@ export class NotificationService extends BaseService {
     action: NotificationActions,
   ): Promise<InternalUsersResponse | null> {
     switch (action) {
-      case NotificationActions.AuthReconnect:
+      case NotificationActions.AUTH_RECONNECT:
         return await copilot.getInternalUsers()
       default:
         return null

@@ -1,3 +1,7 @@
+import { InvoiceStatus } from '@/app/api/core/types/invoice'
+import { ProductStatus } from '@/app/api/core/types/product'
+import { InvoiceLineItemSchema } from '@/type/dto/webhook.dto'
+import { SQL } from 'drizzle-orm'
 import { z } from 'zod'
 
 export const HexColorSchema = z
@@ -209,3 +213,124 @@ export const NotificationCreatedResponseSchema = z.object({
 export type NotificationCreatedResponse = z.infer<
   typeof NotificationCreatedResponseSchema
 >
+
+export const ProductResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  imageUrls: z.array(z.string()),
+  description: z.string(),
+  status: z.nativeEnum(ProductStatus),
+  object: z.string(),
+  createdAt: z.string().datetime(),
+})
+export type ProductResponse = z.infer<typeof ProductResponseSchema>
+
+export const ProductsResponseSchema = z.object({
+  nextToken: z.string().optional(),
+  data: z.array(ProductResponseSchema).nullable(),
+})
+export type ProductsResponse = z.infer<typeof ProductsResponseSchema>
+
+export const PriceResponseSchema = z.object({
+  id: z.string(),
+  amount: z.number(),
+  currency: z.string(),
+  interval: z.string().nullish(),
+  intervalCount: z.number().min(1).nullish(),
+  productId: z.string(),
+  type: z.string(),
+  object: z.string(),
+  createdAt: z.string().datetime(),
+})
+export type PriceResponse = z.infer<typeof PriceResponseSchema>
+
+export const PricesResponseSchema = z.object({
+  nextToken: z.string().optional(),
+  data: z.array(PriceResponseSchema).nullable(),
+})
+export type PricesResponse = z.infer<typeof PricesResponseSchema>
+
+export const changeEnableStatusRequestSchema = z.object({
+  enable: z.boolean(),
+})
+export type ChangeEnableStatusRequestType = z.infer<
+  typeof changeEnableStatusRequestSchema
+>
+
+export enum SettingType {
+  INVOICE = 'invoice',
+  PRODUCT = 'product',
+}
+
+export const SettingRequestSchema = z
+  .object({
+    id: z.string().optional(),
+    type: z.nativeEnum(SettingType),
+    absorbedFeeFlag: z.boolean().optional(),
+    useCompanyNameFlag: z.boolean().optional(),
+    createNewProductFlag: z.boolean().optional(),
+    createInvoiceItemFlag: z.boolean().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.type === SettingType.INVOICE) {
+      if (typeof val.absorbedFeeFlag !== 'boolean') {
+        ctx.addIssue({
+          path: ['absorbedFeeFlag'],
+          code: z.ZodIssueCode.custom,
+          message: 'absorbedFeeFlag is required when type is invoice',
+        })
+      }
+      if (typeof val.useCompanyNameFlag !== 'boolean') {
+        ctx.addIssue({
+          path: ['useCompanyNameFlag'],
+          code: z.ZodIssueCode.custom,
+          message: 'useCompanyNameFlag is required when type is invoice',
+        })
+      }
+    }
+    if (val.type === SettingType.PRODUCT) {
+      if (typeof val.createNewProductFlag !== 'boolean') {
+        ctx.addIssue({
+          path: ['createNewProductFlag'],
+          code: z.ZodIssueCode.custom,
+          message: 'createNewProductFlag is required when type is product',
+        })
+      }
+      if (typeof val.createInvoiceItemFlag !== 'boolean') {
+        ctx.addIssue({
+          path: ['createInvoiceItemFlag'],
+          code: z.ZodIssueCode.custom,
+          message: 'createInvoiceItemFlag is required when type is product',
+        })
+      }
+    }
+  })
+
+export type SettingRequestType = z.infer<typeof SettingRequestSchema>
+
+export type InvoiceSettingType = Required<
+  Pick<SettingRequestType, 'absorbedFeeFlag' | 'useCompanyNameFlag'>
+> & { id?: string }
+
+export type ProductSettingType = Required<
+  Pick<SettingRequestType, 'createInvoiceItemFlag' | 'createNewProductFlag'>
+> & { id?: string }
+
+export enum TransactionType {
+  INVOICE = 'Invoice',
+}
+
+export type WhereClause = SQL<unknown>
+
+export const InvoiceResponseSchema = z.object({
+  id: z.string(),
+  lineItems: z.array(InvoiceLineItemSchema),
+  number: z.string(),
+  recipientId: z.string(),
+  status: z.nativeEnum(InvoiceStatus),
+  total: z.number(),
+  taxAmount: z.number().optional(),
+  sentDate: z.string().datetime().nullish(),
+  dueDate: z.string().datetime().nullish(),
+})
+export type InvoiceResponse = z.infer<typeof InvoiceResponseSchema>

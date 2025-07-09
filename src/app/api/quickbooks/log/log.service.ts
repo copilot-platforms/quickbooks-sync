@@ -21,7 +21,7 @@ export class LogService extends BaseService {
   async upsertLatestPendingConnectionLog(
     log: QBConnectionLogCreateSchemaType,
   ): Promise<QBConnectionLogSelectSchemaType> {
-    const subQuery = sql`(SELECT ${QBConnectionLogs.id} From ${QBConnectionLogs} WHERE ${QBConnectionLogs.portalId} = ${log.portalId} 
+    const subQuery = sql`(SELECT ${QBConnectionLogs.id} From ${QBConnectionLogs} WHERE ${QBConnectionLogs.portalId} = ${log.portalId}
           AND ${QBConnectionLogs.connectionStatus} = ${ConnectionStatus.PENDING} ORDER BY ${QBConnectionLogs.createdAt} DESC LIMIT 1)`
 
     const [result] = await this.db

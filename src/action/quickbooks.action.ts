@@ -1,14 +1,15 @@
 import { AuthStatus } from '@/app/api/core/types/auth'
-import { QBTokenSelectSchemaType } from '@/db/schema/qbTokens'
+import { PortalConnectionWithSettingType } from '@/db/schema/qbPortalConnections'
+import { QBSettingsSelectSchemaType } from '@/db/schema/qbSettings'
 import {
   getPortalConnection,
-  getSyncedPortalConnection,
+  getPortalSettings,
 } from '@/db/service/token.service'
 import { z } from 'zod'
 
 export async function checkPortalConnection(
   portalId: string,
-): Promise<QBTokenSelectSchemaType | null> {
+): Promise<PortalConnectionWithSettingType | null> {
   try {
     return await getPortalConnection(portalId)
   } catch (err) {
@@ -19,11 +20,11 @@ export async function checkPortalConnection(
 
 export async function checkSyncStatus(portalId: string): Promise<boolean> {
   try {
-    const syncedPortal: QBTokenSelectSchemaType | null =
-      await getSyncedPortalConnection(portalId)
+    const syncedPortal: QBSettingsSelectSchemaType | null =
+      await getPortalSettings(portalId)
     return syncedPortal?.syncFlag || false
   } catch (err) {
-    console.error('checkSyncStatus#getSyncedPortalConnection | Error =', err)
+    console.error('checkSyncStatus#getPortalSettings | Error =', err)
     return false
   }
 }
@@ -33,7 +34,7 @@ export async function reconnectIfCta(type?: string) {
     return false
   }
   const parsedType = z.string().safeParse(type)
-  if (parsedType.success && parsedType?.data === AuthStatus.Reconnect)
+  if (parsedType.success && parsedType?.data === AuthStatus.RECONNECT)
     return true
   return false
 }

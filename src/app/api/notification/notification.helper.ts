@@ -9,10 +9,10 @@ export const getInProductNotificationDetail = (): {
   }
 } => {
   return {
-    [NotificationActions.AuthReconnect]: {
+    [NotificationActions.AUTH_RECONNECT]: {
       title: 'QuickBooks Integration Has Stopped Working',
       body: 'Your QuickBooks integration encountered an error and has stopped syncing. Please reconnect to avoid any disruptions.',
-      ctaParams: { type: AuthStatus.Reconnect },
+      ctaParams: { type: AuthStatus.RECONNECT },
     },
   }
 }
@@ -27,12 +27,12 @@ export const getIEmailNotificationDetail = (): {
   }
 } => {
   return {
-    [NotificationActions.AuthReconnect]: {
+    [NotificationActions.AUTH_RECONNECT]: {
       title: 'Reconnect QuickBooks',
       subject: 'Your QuickBooks Sync has stopped working',
       header: 'Regarding QuickBooks sync off',
       body: 'Your QuickBooks integration encountered an error and has stopped syncing. Please reconnect to avoid any disruptions.',
-      ctaParams: { type: AuthStatus.Reconnect }, // TODO: CTA params not working for email
+      ctaParams: { type: AuthStatus.RECONNECT }, // TODO: CTA params not working for email
     },
   }
 }

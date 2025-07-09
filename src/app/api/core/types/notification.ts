@@ -1,3 +1,3 @@
 export enum NotificationActions {
-  AuthReconnect = 'auth_reconnect',
+  AUTH_RECONNECT = 'auth_reconnect',
 }

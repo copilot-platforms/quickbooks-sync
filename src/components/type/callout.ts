@@ -1,6 +1,8 @@
-export enum CalloutStatus {
-  Success = 'success',
-  Warning = 'warning',
-  Info = 'info',
-  Failed = 'failed',
+export enum CalloutVariant {
+  SUCCESS = 'success',
+  WARNING = 'warning',
+  INFO = 'info',
+  ERROR = 'error',
+  NEUTRAL = 'neutral',
+  HIGHLIGHT = 'highlight',
 }
