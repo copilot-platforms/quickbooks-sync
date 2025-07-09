@@ -85,11 +85,9 @@ export default function ProductMappingTable({
                   <div className="flex flex-col items-center justify-center space-y-2.5">
                     <Spinner size={5} />
                     <p
-                      className={
-                        showLoadingText
-                          ? 'visible text-gray-600 leading-5.5'
-                          : 'invisible'
-                      }
+                      className={`text-gray-600 leading-5.5 text-sm ${
+                        showLoadingText ? 'visible' : 'invisible'
+                      }`}
                     >
                       Syncing with QuickBooks
                     </p>
