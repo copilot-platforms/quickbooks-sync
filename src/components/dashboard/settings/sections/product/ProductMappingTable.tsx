@@ -5,7 +5,6 @@ import {
   useMapItem,
   useProductTableSetting,
 } from '@/hook/useSettings'
-import DropDownIcon from '@/components/ui/DropDownIcon'
 import { Icon, Spinner } from 'copilot-design-system'
 
 const MapItemComponent = ({
@@ -137,7 +136,12 @@ export default function ProductMappingTable({
                         )}
                       </div>
                       <div className="col-span-1 ml-auto my-auto">
-                        <DropDownIcon className={`text-gray-500`} />
+                        <Icon
+                          icon="ChevronDown"
+                          width={16}
+                          height={16}
+                          className={`text-gray-500`}
+                        />
                       </div>
                     </button>
 
