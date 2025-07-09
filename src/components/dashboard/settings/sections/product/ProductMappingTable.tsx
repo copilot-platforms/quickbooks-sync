@@ -1,6 +1,10 @@
 import { ProductMappingComponentType } from '@/components/dashboard/settings/sections/product/ProductMapping'
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
-import { useMapItem, useProductTableSetting } from '@/hook/useSettings'
+import {
+  ProductDataType,
+  useMapItem,
+  useProductTableSetting,
+} from '@/hook/useSettings'
 import { Icon, Spinner } from 'copilot-design-system'
 
 const MapItemComponent = ({
@@ -24,7 +28,7 @@ const MapItemComponent = ({
           </div>
         </div>
       ) : (
-        <div className="py-1">
+        <div className="py-3">
           <Icon icon="Dash" width={16} height={16} className="text-gray-600" />
         </div>
       )}
@@ -61,7 +65,7 @@ export default function ProductMappingTable({
                 COPILOT PRODUCTS
               </th>
 
-              <th className="pt-5 pr-3 pl-4 pb-2 border-l border-gray-200 w-[7%] lg:w-[56px]">
+              <th className="pt-4 px-5 pb-2 border-l border-gray-200 w-[7%] lg:w-[56px]">
                 <Icon
                   icon="ArrowRight"
                   width={16}
@@ -84,17 +88,15 @@ export default function ProductMappingTable({
                 </td>
               </tr>
             ) : products ? (
-              products.map((product, index) => (
+              products.map((product: ProductDataType, index: number) => (
                 <tr key={index} className="transition-colors">
                   {/* Copilot Products Column */}
                   <td className="py-2 pl-4 pr-3">
-                    <div className="">
-                      <div className="text-sm leading-5 text-gray-600">
-                        {product.name}
-                      </div>
-                      <div className="text-body-xs leading-5 text-gray-500">
-                        {product.price}
-                      </div>
+                    <div className="text-sm leading-5 text-gray-600">
+                      {product.name}
+                    </div>
+                    <div className="text-body-xs leading-5 text-gray-500">
+                      {product.price}
                     </div>
                   </td>
 
@@ -112,31 +114,35 @@ export default function ProductMappingTable({
                   <td className="border-l border-gray-200 bg-gray-100 hover:bg-gray-150 relative">
                     <button
                       onClick={() => toggleDropdown(index)}
-                      className="w-full h-full flex items-center justify-between hover:bg-gray-50 transition-colors py-4 pl-4 pr-3"
+                      className="w-full h-full grid grid-cols-6 md:grid-cols-14 hover:bg-gray-50 transition-colors py-2 pl-4 pr-3"
                     >
-                      {selectedItems[index] &&
-                      Object.keys(selectedItems[index]).length > 0 ? (
-                        <div className="text-left">
-                          <div className="text-sm leading-5">
-                            {selectedItems[index].name}
+                      <div className="col-span-5 md:col-span-13 text-left">
+                        {selectedItems[index] &&
+                        Object.keys(selectedItems[index]).length > 0 ? (
+                          <div className="text-left">
+                            <div className="text-sm leading-5 text-gray-600">
+                              {selectedItems[index].name}
+                            </div>
+                            <div className="text-body-xs leading-5 text-gray-500">
+                              {selectedItems[index].price}
+                            </div>
                           </div>
-                          <div className="text-body-xs leading-5 text-gray-500">
-                            {selectedItems[index].price}
-                          </div>
-                        </div>
-                      ) : (
-                        <MapItemComponent
-                          mappingItems={mappingItems}
-                          productId={product.id}
-                          priceId={product.priceId}
+                        ) : (
+                          <MapItemComponent
+                            mappingItems={mappingItems}
+                            productId={product.id}
+                            priceId={product.priceId}
+                          />
+                        )}
+                      </div>
+                      <div className="col-span-1 ml-auto my-auto">
+                        <Icon
+                          icon="ChevronDown"
+                          width={16}
+                          height={16}
+                          className={`text-gray-500`}
                         />
-                      )}
-                      <Icon
-                        icon="ChevronDown"
-                        width={16}
-                        height={16}
-                        className={`text-gray-500`}
-                      />
+                      </div>
                     </button>
 
                     {openDropdowns[index] && (
