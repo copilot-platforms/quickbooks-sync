@@ -6,8 +6,14 @@ import { useAppBridge, useQuickbooks } from '@/hook/useQuickbooks'
 import { Button, Spinner } from 'copilot-design-system'
 
 export default function HomeClient() {
-  const { token, tokenPayload, reconnect, portalConnectionStatus, isEnabled } =
-    useApp()
+  const {
+    token,
+    tokenPayload,
+    reconnect,
+    portalConnectionStatus,
+    isEnabled,
+    syncFlag,
+  } = useApp()
 
   const { loading, handleConnect, hasConnection, isReconnecting } =
     useQuickbooks(token, tokenPayload, reconnect)
@@ -16,6 +22,7 @@ export default function HomeClient() {
   useAppBridge({
     token,
     isEnabled,
+    syncFlag,
     connectionStatus: hasConnection || portalConnectionStatus,
   })
 

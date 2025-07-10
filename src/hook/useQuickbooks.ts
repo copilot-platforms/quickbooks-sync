@@ -219,10 +219,12 @@ export const useQuickbooksCallback = () => {
 export const useAppBridge = ({
   token,
   isEnabled,
+  syncFlag,
   connectionStatus,
 }: {
   token: string
   isEnabled: boolean | null
+  syncFlag: boolean
   connectionStatus: boolean
 }) => {
   const disconnectAction = async () => {
@@ -251,7 +253,7 @@ export const useAppBridge = ({
       },
     ]
 
-    if (isEnabled) {
+    if (isEnabled && syncFlag) {
       actions.push({
         label: 'Disconnect app',
         onClick: disconnectAction,
