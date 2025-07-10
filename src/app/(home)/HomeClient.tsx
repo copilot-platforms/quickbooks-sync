@@ -13,7 +13,11 @@ export default function HomeClient() {
     useQuickbooks(token, tokenPayload, reconnect)
 
   // bridge related logics like disconnect app and download sync log csv
-  useAppBridge(token, isEnabled)
+  useAppBridge({
+    token,
+    isEnabled,
+    connectionStatus: hasConnection || portalConnectionStatus,
+  })
 
   if (hasConnection === null) {
     return (

@@ -216,15 +216,21 @@ export const useQuickbooksCallback = () => {
   return { loading, error }
 }
 
-export const useAppBridge = (token: string, isEnabled: boolean | null) => {
+export const useAppBridge = ({
+  token,
+  isEnabled,
+  connectionStatus,
+}: {
+  token: string
+  isEnabled: boolean | null
+  connectionStatus: boolean
+}) => {
   const disconnectAction = async () => {
-    if (isEnabled) {
-      const payload = {
-        enable: false,
-      }
-      const url = `/api/quickbooks/token/change-enable-status?token=${token}`
-      await postFetcher(url, {}, payload)
+    const payload = {
+      enable: false,
     }
+    const url = `/api/quickbooks/token/change-enable-status?token=${token}`
+    await postFetcher(url, {}, payload)
   }
 
   const downloadCsvAction = async () => {
@@ -236,16 +242,21 @@ export const useAppBridge = (token: string, isEnabled: boolean | null) => {
     link.click()
     link.remove()
   }
+  let actions: { label: string; onClick: () => Promise<void> }[] = []
+  if (connectionStatus) {
+    actions = [
+      {
+        label: 'Download sync history',
+        onClick: downloadCsvAction,
+      },
+    ]
 
-  const actions = [
-    {
-      label: 'Download sync history',
-      onClick: downloadCsvAction,
-    },
-    {
-      label: 'Disconnect app',
-      onClick: disconnectAction,
-    },
-  ]
+    if (isEnabled) {
+      actions.push({
+        label: 'Disconnect app',
+        onClick: disconnectAction,
+      })
+    }
+  }
   useActionsMenu(actions)
 }
