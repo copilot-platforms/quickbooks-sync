@@ -280,6 +280,7 @@ export class CopilotAPI {
     requestBody: NotificationRequestBody,
   ): Promise<NotificationCreatedResponse> {
     console.info('CopilotAPI#createNotification | token =', this.token)
+    console.info('CopilotAPI#createNotification | requestBody =', requestBody)
     return NotificationCreatedResponseSchema.parse(
       await this.copilot.createNotification({
         requestBody,

@@ -318,7 +318,7 @@ export class AuthService extends BaseService {
         if (isAxiosError(error)) {
           // Special handling for refresh token expired
           console.error(
-            'Refresh token is invalid or expired, reauthorization needed.',
+            `Refresh token is invalid or expired, reauthorization needed for portalId: ${portalId}.`,
             { message: error.response.data?.error },
           )
 
