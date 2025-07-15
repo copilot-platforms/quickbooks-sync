@@ -23,8 +23,7 @@ const MapItemComponent = ({
         <div className="text-left">
           <div className="text-sm leading-5">{currentlyMapped?.name}</div>
           <div className="text-body-xs leading-5 text-gray-500">
-            {currentlyMapped.unitPrice &&
-              `$${parseInt(currentlyMapped.unitPrice) / 100}`}
+            {currentlyMapped.unitPrice && currentlyMapped.unitPrice}
           </div>
         </div>
       ) : (
@@ -178,6 +177,7 @@ export default function ProductMappingTable({
                                       {
                                         id: item.id,
                                         name: item.name,
+                                        description: item.description,
                                         price: item.price,
                                         syncToken: item.syncToken,
                                         numericPrice: item.numericPrice,

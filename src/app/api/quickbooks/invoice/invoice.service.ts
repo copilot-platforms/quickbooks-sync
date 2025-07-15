@@ -17,7 +17,6 @@ import {
   QBInvoiceUpdateSchema,
   QBInvoiceUpdateSchemaType,
 } from '@/db/schema/qbInvoiceSync'
-import { QBProductSync } from '@/db/schema/qbProductSync'
 import { TransactionType, WhereClause } from '@/type/common'
 import {
   QBCustomerSparseUpdatePayloadType,
@@ -47,6 +46,7 @@ const oneOffItem = {
 
 type InvoiceItemRefAndDescriptionType = {
   ref: QBNameValueSchemaType
+  amount?: number
   productDescription?: string
 }
 
@@ -140,6 +140,9 @@ export class InvoiceService extends BaseService {
         console.info('InvoiceService#getInvoiceItemRef | Product map found')
         return {
           ref: { value: mapping.qbItemId },
+          amount: mapping.unitPrice
+            ? parseFloat(mapping.unitPrice) / 100
+            : undefined,
           productDescription: mapping.description || '',
         }
       }
@@ -236,11 +239,11 @@ export class InvoiceService extends BaseService {
     }
     return {
       DetailType: 'SalesItemLineDetail',
-      Amount: actualAmount * lineItem.quantity,
+      Amount: (itemRef.amount ?? actualAmount) * lineItem.quantity,
       SalesItemLineDetail: {
         ItemRef: itemRef.ref,
         Qty: lineItem.quantity,
-        UnitPrice: actualAmount,
+        UnitPrice: itemRef.amount ?? actualAmount,
         TaxCodeRef: {
           // required to enable tax for the product.
           // Doc reference: https://developer.intuit.com/app/developer/qbo/docs/workflows/manage-sales-tax-for-us-locales#specifying-sales-tax
@@ -402,6 +405,10 @@ export class InvoiceService extends BaseService {
     }
 
     const lineItems = await Promise.all(lineItemPromises)
+    const actualTaxAmount = lineItems.reduce((acc, item) => {
+      // calculate the actual tax amount from the lineItems. Not using invoiceResource amount directly as the amount for mapped items can be different (mapped QB amount).
+      return acc + item.Amount
+    }, 0)
 
     // 5. create invoice in QB
     const customerRefValue: string =
@@ -413,11 +420,15 @@ export class InvoiceService extends BaseService {
       },
       DocNumber: invoiceResource.number, // copilot invoice number as DocNumber
       // include tax and dates
-      ...(invoiceResource?.taxAmount && {
-        TxnTaxDetail: {
-          TotalTax: Number((invoiceResource.taxAmount / 100).toFixed(2)),
-        },
-      }),
+      TxnTaxDetail: {
+        TotalTax: invoiceResource?.taxPercentage
+          ? Number(
+              ((actualTaxAmount * invoiceResource.taxPercentage) / 100).toFixed(
+                2,
+              ),
+            )
+          : 0,
+      },
       ...(invoiceResource?.sentDate && {
         TxnDate: dayjs(invoiceResource.sentDate).format('yyyy/MM/dd'), // Valid date format for TxnDate is yyyy/MM/dd. For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice#the-invoice-object
       }),
