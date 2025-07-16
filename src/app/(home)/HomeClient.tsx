@@ -18,7 +18,7 @@ export default function HomeClient() {
   if (hasConnection === null) {
     return (
       <SilentError
-        message="Error connecting to QuickBooks"
+        message="Something went wrong while connecting to QuickBooks"
         resetFn={handleConnect}
       />
     )
@@ -30,7 +30,8 @@ export default function HomeClient() {
         <>
           {isReconnecting && (
             <div>
-              Reconnecting to QuickBooks <Spinner size={5} />
+              <span className="me-2">Reconnecting to QuickBooks</span>{' '}
+              <Spinner size={5} />
             </div>
           )}
           <DashboardMain />
