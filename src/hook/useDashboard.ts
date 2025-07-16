@@ -27,7 +27,7 @@ export const useDashboardMain = () => {
   >(CalloutVariant.SUCCESS)
   const [isLoading, setIsLoading] = useState(true)
   const [buttonAction, setButtonAction] = useState<
-    (() => Promise<void>) | undefined
+    (() => Promise<NodeJS.Timeout>) | undefined
   >(undefined)
 
   useEffect(() => {
@@ -39,8 +39,14 @@ export const useDashboardMain = () => {
         setCallOutStatus(CalloutVariant.SUCCESS)
       }
     } else {
+      let timeout: NodeJS.Timeout
       setCallOutStatus(CalloutVariant.ERROR)
-      setButtonAction(() => () => handleConnect(AuthStatus.RECONNECT))
+      setButtonAction(() => async () => {
+        timeout = await handleConnect(AuthStatus.RECONNECT)
+        return timeout
+      })
+
+      return () => clearTimeout(timeout)
     }
     setIsLoading(false)
   }, [syncFlag, isEnabled])

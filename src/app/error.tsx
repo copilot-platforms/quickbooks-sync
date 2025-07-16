@@ -1,5 +1,6 @@
 'use client'
 
+import { Button } from 'copilot-design-system'
 import Linkify from 'react-linkify'
 
 export default function Error({
@@ -10,8 +11,8 @@ export default function Error({
   reset: () => void
 }) {
   return (
-    <main className="flex flex-col min-h-screen items-center justify-center p-24">
-      <div className="flex flex-col max-w-84 p-8 border-red-600 border">
+    <main>
+      <div className="flex flex-col justify-center items-center">
         <p className="mb-2 [&>a:hover]:underline [&>a]:block">
           <Linkify
             componentDecorator={(decoratedHref, decoratedText, key) => (
@@ -20,16 +21,10 @@ export default function Error({
               </a>
             )}
           >
-            {error.message}
+            {error.message}.
           </Linkify>
         </p>
-
-        <button
-          className="border border-stone-300 rounded py-[4.5px] px-[13px] self-start shadow"
-          onClick={() => reset()}
-        >
-          Try again
-        </button>
+        <Button label="Try again" onClick={() => reset()} />
       </div>
     </main>
   )

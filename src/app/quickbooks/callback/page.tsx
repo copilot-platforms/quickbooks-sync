@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuickbooksCallback } from '@/hook/useQuickbooks'
+import { Spinner } from 'copilot-design-system'
 
 export default function QuickBooksCallback() {
   const { loading, error } = useQuickbooksCallback()
@@ -10,9 +11,12 @@ export default function QuickBooksCallback() {
   return (
     <div className="w-full h-full flex items-center justify-center text-xl">
       {error ? (
-        `${error}!!!`
+        `${error}`
       ) : loading ? (
-        'Connecting to QuickBooks...'
+        <>
+          <span className="me-2">Connecting to QuickBooks</span>
+          <Spinner size={5} />
+        </>
       ) : (
         <>Connected!</>
       )}

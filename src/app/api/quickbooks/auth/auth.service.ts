@@ -210,6 +210,24 @@ export class AuthService extends BaseService {
     }
   }
 
+  async handleConnectionError(portalId: string) {
+    const logService = new LogService(this.user)
+
+    try {
+      // store error connection log
+      await logService.upsertLatestPendingConnectionLog({
+        portalId,
+        connectionStatus: ConnectionStatus.ERROR,
+      })
+    } catch (error: unknown) {
+      console.error('AuthService#handleConnectionError | Error =', error)
+      throw new APIError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        `Something went wrong while handling connection error for portal ${portalId}.`,
+      )
+    }
+  }
+
   async getQBPortalConnection(
     portalId: string,
     manualSyncEnable: boolean = false,

@@ -26,3 +26,10 @@ export const handleTokenExchange = async (req: NextRequest) => {
   const response = await authService.handleTokenExchange(body, user.workspaceId)
   return NextResponse.json({ response })
 }
+
+export const handleConnectionError = async (req: NextRequest) => {
+  const user = await authenticate(req)
+  const authService = new AuthService(user)
+  const response = await authService.handleConnectionError(user.workspaceId)
+  return NextResponse.json({ response })
+}
