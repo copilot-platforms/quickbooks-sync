@@ -421,13 +421,9 @@ export class InvoiceService extends BaseService {
       DocNumber: invoiceResource.number, // copilot invoice number as DocNumber
       // include tax and dates
       TxnTaxDetail: {
-        TotalTax: invoiceResource?.taxPercentage
-          ? Number(
-              ((actualTaxAmount * invoiceResource.taxPercentage) / 100).toFixed(
-                2,
-              ),
-            )
-          : 0,
+        TotalTax: Number(
+          ((actualTaxAmount * invoiceResource.taxPercentage) / 100).toFixed(2),
+        ),
       },
       ...(invoiceResource?.sentDate && {
         TxnDate: dayjs(invoiceResource.sentDate).format('YYYY/MM/DD'), // Valid date format for TxnDate is YYYY/MM/DD. For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice#the-invoice-object
