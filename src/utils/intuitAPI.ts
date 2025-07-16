@@ -99,7 +99,10 @@ export default class IntuitAPI {
   }
 
   async _createInvoice(payload: QBInvoiceCreatePayloadType) {
-    console.info('IntuitAPI#createInvoice | invoice creation start')
+    console.info(
+      `IntuitAPI#createInvoice | invoice creation start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+      payload,
+    )
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
@@ -119,14 +122,17 @@ export default class IntuitAPI {
     }
 
     console.info(
-      'IntuitAPI#createInvoice | invoice created with doc number=',
-      invoice.Invoice?.DocNumber,
+      `IntuitAPI#createInvoice | invoice created with doc number = ${invoice.Invoice?.DocNumber}. Response: `,
+      invoice.Invoice,
     )
     return invoice
   }
 
   async _createCustomer(payload: QBCustomerCreatePayloadType) {
-    console.info('IntuitAPI#createCustomer | customer creation start')
+    console.info(
+      `IntuitAPI#createCustomer | customer creation start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+      payload,
+    )
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/customer?minorversion=${intuitApiMinorVersion}`
     const customer = await this.postFetchWithHeaders(url, payload)
 
@@ -146,14 +152,17 @@ export default class IntuitAPI {
     }
 
     console.info(
-      'IntuitAPI#createCustomer | customer created with name=',
-      customer.Customer?.FullyQualifiedName,
+      `IntuitAPI#createCustomer | customer created with name = ${customer.Customer?.FullyQualifiedName}. Response: `,
+      customer.Customer,
     )
     return customer
   }
 
   async _createItem(payload: QBItemCreatePayloadType) {
-    console.info('IntuitAPI#createItem | Item creation start')
+    console.info(
+      `IntuitAPI#createItem | Item creation start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+      payload,
+    )
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/item?minorversion=${intuitApiMinorVersion}`
     const item = await this.postFetchWithHeaders(url, payload)
 
@@ -173,13 +182,16 @@ export default class IntuitAPI {
     }
 
     console.info(
-      'IntuitAPI#createItem | item created with Id =',
-      item?.Item?.Id,
+      `IntuitAPI#createItem | item created with Id = ${item?.Item?.Id}. Response: `,
+      item.Item,
     )
     return item.Item
   }
 
   async _getSingleIncomeAccount() {
+    console.info(
+      `IntuitAPI#getSingleIncomeAccount | Income account query start for realmId: ${this.tokens.intuitRealmId}`,
+    )
     const sqlQuery = `SELECT Id FROM Account WHERE AccountType = 'Income' AND AccountSubType = 'SalesOfProductIncome' AND Active = true maxresults 1`
     const qbIncomeAccountRefInfo = await this.customQuery(sqlQuery)
 
@@ -202,6 +214,9 @@ export default class IntuitAPI {
   }
 
   async _getACustomer(displayName: string) {
+    console.info(
+      `IntuitAPI#getACustomer | Customer query start for realmId: ${this.tokens.intuitRealmId}. Name: ${displayName}`,
+    )
     const customerQuery = `SELECT Id, SyncToken FROM Customer WHERE DisplayName = '${displayName}' AND Active = true`
     const qbCustomers = await this.customQuery(customerQuery)
 
@@ -224,6 +239,9 @@ export default class IntuitAPI {
   }
 
   async _getAnItem(name: string) {
+    console.info(
+      `IntuitAPI#getAnItem | Item query start for realmId: ${this.tokens.intuitRealmId}. Name: ${name}`,
+    )
     const customerQuery = `select Id, SyncToken from Item where Name = '${name}' maxresults 1`
     const qbItem = await this.customQuery(customerQuery)
 
@@ -246,6 +264,9 @@ export default class IntuitAPI {
   }
 
   async _getAllItems(limit: number, columns: string[] = ['Id']) {
+    console.info(
+      `IntuitAPI#getAllItems | Item query start for realmId: ${this.tokens.intuitRealmId}`,
+    )
     const stringColumns = columns.map((column) => `${column}`).join(',')
     const customerQuery = `select ${stringColumns} from Item maxresults ${limit}`
     console.info('IntuitAPI#getAllItems | ', { customerQuery })
@@ -270,7 +291,10 @@ export default class IntuitAPI {
   }
 
   async _invoiceSparseUpdate(payload: QBInvoiceSparseUpdatePayloadType) {
-    console.info('IntuitAPI#InvoiceSparseUpdate | invoice sparse update start')
+    console.info(
+      `IntuitAPI#InvoiceSparseUpdate | invoice sparse update start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+      payload,
+    )
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
@@ -290,15 +314,16 @@ export default class IntuitAPI {
     }
 
     console.info(
-      'IntuitAPI#InvoiceSparseUpdate | invoice sparse updated for doc number=',
-      invoice.Invoice?.DocNumber,
+      `IntuitAPI#InvoiceSparseUpdate | invoice sparse updated for doc number = ${invoice.Invoice?.DocNumber}. Response: `,
+      invoice.Invoice,
     )
     return invoice
   }
 
   async _customerSparseUpdate(payload: QBCustomerSparseUpdatePayloadType) {
     console.info(
-      'IntuitAPI#customerSparseUpdate | customer sparse update start',
+      `IntuitAPI#customerSparseUpdate | customer sparse update start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+      payload,
     )
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/customer?minorversion=${intuitApiMinorVersion}`
     const customer = await this.postFetchWithHeaders(url, payload)
@@ -319,14 +344,17 @@ export default class IntuitAPI {
     }
 
     console.info(
-      'IntuitAPI#customerSparseUpdate | customer sparse updated with name=',
-      customer.Customer?.FullyQualifiedName,
+      `IntuitAPI#customerSparseUpdate | customer sparse updated with name = ${customer.Customer?.FullyQualifiedName}. Response: `,
+      customer.Customer,
     )
     return customer
   }
 
   async _itemFullUpdate(payload: QBItemFullUpdatePayloadType) {
-    console.info('IntuitAPI#itemFullUpdate | item full update start')
+    console.info(
+      `IntuitAPI#itemFullUpdate | item full update start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+      payload,
+    )
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/item?minorversion=${intuitApiMinorVersion}`
     const item = await this.postFetchWithHeaders(url, payload)
 
@@ -346,14 +374,17 @@ export default class IntuitAPI {
     }
 
     console.info(
-      'IntuitAPI#itemFullUpdate | item full updated with Id =',
-      item.Item?.Id,
+      `IntuitAPI#itemFullUpdate | item full updated with Id = ${item.Item?.Id}. Response: `,
+      item.Item,
     )
     return item
   }
 
   async _createPayment(payload: QBPaymentCreatePayloadType) {
-    console.info('IntuitAPI#createPayment | payment creation start')
+    console.info(
+      `IntuitAPI#createPayment | payment creation start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+      payload,
+    )
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/payment?minorversion=${intuitApiMinorVersion}`
     const payment = await this.postFetchWithHeaders(url, payload)
 
@@ -373,14 +404,17 @@ export default class IntuitAPI {
     }
 
     console.info(
-      'IntuitAPI#createPayment | payment created with Id =',
-      payment.Payment?.Id,
+      `IntuitAPI#createPayment | payment created with Id = ${payment.Payment?.Id}. Response: `,
+      payment.Payment,
     )
     return payment
   }
 
   async _voidInvoice(payload: QBDestructiveInvoicePayloadSchema) {
-    console.info('IntuitAPI#voidInvoice | invoice void creation start')
+    console.info(
+      `IntuitAPI#voidInvoice | invoice void creation start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+      payload,
+    )
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=void&minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
@@ -400,14 +434,17 @@ export default class IntuitAPI {
     }
 
     console.info(
-      'IntuitAPI#voidInvoice | Voided invoice with Id =',
-      invoice.Invoice?.Id,
+      `IntuitAPI#voidInvoice | Voided invoice with Id = ${invoice.Invoice?.Id}. Response: `,
+      invoice.Invoice,
     )
     return invoice
   }
 
   async _deleteInvoice(payload: QBDestructiveInvoicePayloadSchema) {
-    console.info('IntuitAPI#deleteInvoice | invoice deletion start')
+    console.info(
+      `IntuitAPI#deleteInvoice | invoice deletion start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+      payload,
+    )
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=delete&minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
@@ -428,14 +465,17 @@ export default class IntuitAPI {
     }
 
     console.info(
-      'IntuitAPI#deleteInvoice | Deleted invoice with id ',
-      invoice.Invoice?.Id,
+      `IntuitAPI#deleteInvoice | Deleted invoice with id = ${invoice.Invoice?.Id}. Response: `,
+      invoice.Invoice,
     )
     return invoice
   }
 
   async _deletePayment(payload: QBDeletePayloadType) {
-    console.info('IntuitAPI#deletePayment | payment delete start')
+    console.info(
+      `IntuitAPI#deletePayment | payment delete start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+      payload,
+    )
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/payment?operation=delete&minorversion=${intuitApiMinorVersion}`
     const payment = await this.postFetchWithHeaders(url, payload)
 
@@ -455,14 +495,17 @@ export default class IntuitAPI {
     }
 
     console.info(
-      'IntuitAPI#deletePayment | payment deleted with Id =',
-      payment.Payment?.Id,
+      `IntuitAPI#deletePayment | payment deleted with Id = ${payment.Payment?.Id}. Response: `,
+      payment.Payment,
     )
     return payment
   }
 
   async _getAnAccountByName(accountName: string) {
-    console.info('IntuitAPI#getAnAccountByName | Account query start')
+    console.info(
+      'IntuitAPI#getAnAccountByName | Account query start for realmId: ',
+      this.tokens.intuitRealmId,
+    )
     const query = `SELECT Id FROM Account where Name = '${accountName}' AND Active = true`
     const customQuery = await this.customQuery(query)
 
@@ -485,7 +528,10 @@ export default class IntuitAPI {
   }
 
   async _createAccount(payload: QBAccountCreatePayloadType) {
-    console.info('IntuitAPI#createAssetAccount | Account create start')
+    console.info(
+      `IntuitAPI#createAssetAccount | Account create start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+      payload,
+    )
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/account?minorversion=${intuitApiMinorVersion}`
     const account = await this.postFetchWithHeaders(url, payload)
 
@@ -505,14 +551,17 @@ export default class IntuitAPI {
     }
 
     console.info(
-      'IntuitAPI#createAssetAccount | Account created with Id =',
-      account.Account?.Id,
+      `IntuitAPI#createAssetAccount | Account created with Id = ${account.Account?.Id}. Response: `,
+      account.Account,
     )
     return account.Account
   }
 
   async _createPurchase(payload: QBPurchaseCreatePayloadType) {
-    console.info('IntuitAPI#createPurchase | Purchase create start')
+    console.info(
+      `IntuitAPI#createPurchase | Purchase create start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+      payload,
+    )
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/purchase?minorversion=${intuitApiMinorVersion}`
     const purchase = await this.postFetchWithHeaders(url, payload)
 
@@ -532,14 +581,17 @@ export default class IntuitAPI {
     }
 
     console.info(
-      'IntuitAPI#createPurchase | Purchase created with Id =',
-      purchase.Purchase?.Id,
+      `IntuitAPI#createPurchase | Purchase created with Id = ${purchase.Purchase?.Id}. Response: `,
+      purchase.Purchase,
     )
     return purchase
   }
 
   async _deletePurchase(payload: QBDeletePayloadType) {
-    console.info('IntuitAPI#deletePurchase | purchase delete start')
+    console.info(
+      `IntuitAPI#deletePurchase | purchase delete start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+      payload,
+    )
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/purchase?operation=delete&minorversion=${intuitApiMinorVersion}`
     const purchase = await this.postFetchWithHeaders(url, payload)
 
@@ -559,8 +611,8 @@ export default class IntuitAPI {
     }
 
     console.info(
-      'IntuitAPI#deletePurchase | purchase deleted with Id =',
-      purchase.Purchase?.Id,
+      `IntuitAPI#deletePurchase | purchase deleted with Id = ${purchase.Purchase?.Id}. Response: `,
+      purchase.Purchase,
     )
     return purchase
   }

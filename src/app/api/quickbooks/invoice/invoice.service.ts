@@ -413,17 +413,20 @@ export class InvoiceService extends BaseService {
       },
       DocNumber: invoiceResource.number, // copilot invoice number as DocNumber
       // include tax and dates
-      ...(invoiceResource?.taxAmount && {
-        TxnTaxDetail: {
-          TotalTax: Number((invoiceResource.taxAmount / 100).toFixed(2)),
-        },
-      }),
+      TxnTaxDetail: {
+        TotalTax: invoiceResource?.taxAmount
+          ? Number((invoiceResource.taxAmount / 100).toFixed(2))
+          : 0,
+      },
       ...(invoiceResource?.sentDate && {
-        TxnDate: dayjs(invoiceResource.sentDate).format('yyyy/MM/dd'), // Valid date format for TxnDate is yyyy/MM/dd. For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice#the-invoice-object
+        TxnDate: dayjs(invoiceResource.sentDate).format('YYYY/MM/DD'), // Valid date format for TxnDate is YYYY/MM/DD. For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice#the-invoice-object
       }),
       ...(invoiceResource?.dueDate && {
         DueDate: dayjs(invoiceResource.dueDate).format('YYYY-MM-DD'), // the date format for due date follows XML Schema standard (YYYY-MM-DD). For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice#the-invoice-object
       }),
+      BillEmail: {
+        Address: customer?.PrimaryEmailAddr?.Address || existingCustomer?.email, // To add customer bill email in Invoice. Docs: https://help.developer.intuit.com/s/question/0D50f00005E4I5nCAF/customer-email-not-showing-on-invoice
+      },
     }
 
     // 6. create invoice in QB
