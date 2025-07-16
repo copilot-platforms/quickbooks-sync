@@ -46,7 +46,7 @@ export default function ProductMappingTable({
   mappingItems,
   setMappingItems,
 }: Omit<ProductMappingComponentType, 'setting'>) {
-  const { products, quickbooksItems, isLoading, error } =
+  const { products, quickbooksItems, isLoading, error, showLoadingText } =
     useProductTableSetting(setMappingItems)
 
   if (error) {
@@ -81,8 +81,15 @@ export default function ProductMappingTable({
             {isLoading ? (
               <tr>
                 <td colSpan={3} className="py-11">
-                  <div className="flex justify-center">
+                  <div className="flex flex-col items-center justify-center space-y-2.5">
                     <Spinner size={5} />
+                    <p
+                      className={`text-gray-600 leading-5.5 text-sm ${
+                        showLoadingText ? 'visible' : 'invisible'
+                      }`}
+                    >
+                      Syncing with QuickBooks
+                    </p>
                   </div>
                 </td>
               </tr>
