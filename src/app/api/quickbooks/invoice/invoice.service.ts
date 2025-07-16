@@ -424,6 +424,9 @@ export class InvoiceService extends BaseService {
       ...(invoiceResource?.dueDate && {
         DueDate: dayjs(invoiceResource.dueDate).format('YYYY-MM-DD'), // the date format for due date follows XML Schema standard (YYYY-MM-DD). For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice#the-invoice-object
       }),
+      BillEmail: {
+        Address: customer?.PrimaryEmailAddr?.Address || existingCustomer?.email, // To add customer bill email in Invoice. Docs: https://help.developer.intuit.com/s/question/0D50f00005E4I5nCAF/customer-email-not-showing-on-invoice
+      },
     }
 
     // 6. create invoice in QB
