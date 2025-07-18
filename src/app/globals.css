@@ -24,3 +24,12 @@ html {
   --text-body-xs: 12px;
   --leading-body-micro: 18px;
 }
+
+/* Undo preflight for specific elements.*/
+@layer base {
+  /* Revert and restore styles for svg element */
+  svg {
+    all: revert;
+    fill: none;
+  }
+}
