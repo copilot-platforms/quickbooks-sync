@@ -350,14 +350,8 @@ export const useProductTableSetting = (
               description: mappedItem.description,
               priceId: product.priceId,
               productId: product.id,
-              unitPrice: new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-              }).format(
-                mappedItem.unitPrice
-                  ? parseFloat(mappedItem.unitPrice) / 100
-                  : 0,
-              ),
+              unitPrice:
+                mappedItem.unitPrice && mappedItem.unitPrice.toString(),
               qbItemId: mappedItem.qbItemId,
               qbSyncToken: mappedItem.qbSyncToken,
               isExcluded: false,

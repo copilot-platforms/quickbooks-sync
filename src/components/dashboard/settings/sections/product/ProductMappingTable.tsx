@@ -23,7 +23,15 @@ const MapItemComponent = ({
         <div className="text-left">
           <div className="text-sm leading-5">{currentlyMapped?.name}</div>
           <div className="text-body-xs leading-5 text-gray-500">
-            {currentlyMapped.unitPrice && currentlyMapped.unitPrice}
+            {currentlyMapped.unitPrice &&
+              new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+              }).format(
+                currentlyMapped.unitPrice
+                  ? parseFloat(currentlyMapped.unitPrice)
+                  : 0,
+              )}
           </div>
         </div>
       ) : (
