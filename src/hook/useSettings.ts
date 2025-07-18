@@ -257,6 +257,7 @@ export const useProductMappingSettings = () => {
 
   return {
     openDropdowns,
+    setOpenDropdowns,
     searchTerms,
     selectedItems,
     submitMappingItems,
