@@ -1,5 +1,6 @@
 import { ProductMappingComponentType } from '@/components/dashboard/settings/sections/product/ProductMapping'
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
+import useClickOutside from '@/hook/useClickOutside'
 import {
   ProductDataType,
   useMapItem,
@@ -38,6 +39,7 @@ const MapItemComponent = ({
 
 export default function ProductMappingTable({
   openDropdowns,
+  setOpenDropdowns,
   searchTerms,
   selectedItems,
   toggleDropdown,
@@ -54,6 +56,10 @@ export default function ProductMappingTable({
     // TODO: if error show in proper UI
     console.error({ error })
   }
+
+  const dropdownRef = useClickOutside<HTMLDivElement>(() => {
+    setOpenDropdowns({})
+  })
 
   return (
     <>
@@ -153,7 +159,10 @@ export default function ProductMappingTable({
                     </button>
 
                     {openDropdowns[index] && (
-                      <div className="absolute right-[-1px] left-[-145px] top-full mt-[-4px] md:left-[-1px] bg-white border border-gray-150 !shadow-popover-050 rounded-sm z-100 md:min-w-[320px]">
+                      <div
+                        ref={dropdownRef}
+                        className="absolute right-[-1px] left-[-145px] top-full mt-[-4px] md:left-[-1px] bg-white border border-gray-150 !shadow-popover-050 rounded-sm z-100 md:min-w-[320px]"
+                      >
                         <div className="px-3 py-2">
                           <input
                             type="text"

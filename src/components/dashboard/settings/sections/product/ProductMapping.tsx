@@ -8,6 +8,7 @@ export type ProductMappingComponentType = {
   openDropdowns: {
     [key: number]: boolean
   }
+  setOpenDropdowns: ({}: Record<number, boolean>) => void
   searchTerms: {
     [key: number]: string
   }
@@ -37,6 +38,7 @@ export type ProductMappingComponentType = {
 
 export default function ProductMapping({
   openDropdowns,
+  setOpenDropdowns,
   searchTerms,
   selectedItems,
   toggleDropdown,
@@ -86,6 +88,7 @@ export default function ProductMapping({
         {/* Product Mapping table */}
         <ProductMappingTable
           openDropdowns={openDropdowns}
+          setOpenDropdowns={setOpenDropdowns}
           searchTerms={searchTerms}
           selectedItems={selectedItems}
           toggleDropdown={toggleDropdown}

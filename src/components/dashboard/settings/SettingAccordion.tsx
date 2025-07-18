@@ -12,6 +12,7 @@ import { Button } from 'copilot-design-system'
 export default function SettingAccordion() {
   const {
     openDropdowns,
+    setOpenDropdowns,
     searchTerms,
     selectedItems,
     toggleDropdown,
@@ -44,6 +45,7 @@ export default function SettingAccordion() {
       content: (
         <ProductMapping
           openDropdowns={openDropdowns}
+          setOpenDropdowns={setOpenDropdowns}
           searchTerms={searchTerms}
           selectedItems={selectedItems}
           toggleDropdown={toggleDropdown}
