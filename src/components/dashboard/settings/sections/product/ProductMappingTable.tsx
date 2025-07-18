@@ -24,7 +24,14 @@ const MapItemComponent = ({
           <div className="text-sm leading-5">{currentlyMapped?.name}</div>
           <div className="text-body-xs leading-5 text-gray-500">
             {currentlyMapped.unitPrice &&
-              `$${parseInt(currentlyMapped.unitPrice) / 100}`}
+              new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+              }).format(
+                currentlyMapped.unitPrice
+                  ? parseFloat(currentlyMapped.unitPrice)
+                  : 0,
+              )}
           </div>
         </div>
       ) : (
@@ -185,6 +192,7 @@ export default function ProductMappingTable({
                                       {
                                         id: item.id,
                                         name: item.name,
+                                        description: item.description,
                                         price: item.price,
                                         syncToken: item.syncToken,
                                         numericPrice: item.numericPrice,
