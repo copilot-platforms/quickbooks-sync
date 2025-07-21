@@ -19,6 +19,7 @@ import {
 
 export type QuickbooksItemType = {
   Name: string
+  Description?: string
   UnitPrice: number
   Id: string
   SyncToken: string
@@ -34,6 +35,7 @@ export type ProductDataType = {
 
 export type QBItemDataType = {
   name: string
+  description: string
   price: string
   syncToken: string
   id: string
@@ -223,7 +225,7 @@ export const useProductMappingSettings = () => {
         return {
           ...mapItem,
           name: item.name || null,
-          description: products[index].description || '',
+          description: item.description || '',
           priceId: products[index].priceId,
           productId: products[index].id,
           unitPrice: item.numericPrice?.toString() || null,
@@ -328,7 +330,6 @@ export const useProductTableSetting = (
         newMap = products?.products?.map((product: ProductDataType) => {
           return {
             ...emptyMappedItem,
-            description: product.description,
             priceId: product.priceId,
             productId: product.id,
           }
@@ -350,7 +351,8 @@ export const useProductTableSetting = (
               description: mappedItem.description,
               priceId: product.priceId,
               productId: product.id,
-              unitPrice: mappedItem.unitPrice,
+              unitPrice:
+                mappedItem.unitPrice && mappedItem.unitPrice.toString(),
               qbItemId: mappedItem.qbItemId,
               qbSyncToken: mappedItem.qbSyncToken,
               isExcluded: false,
@@ -358,7 +360,6 @@ export const useProductTableSetting = (
           }
           return {
             ...emptyMappedItem,
-            description: product.description,
             priceId: product.priceId,
             productId: product.id,
           }
@@ -423,6 +424,7 @@ export const useProductTableSetting = (
           return {
             id: product.Id,
             name: product.Name,
+            description: product?.Description || '',
             price: price,
             numericPrice: product.UnitPrice * 100,
             syncToken: product.SyncToken,
