@@ -15,7 +15,6 @@ export const useQuickbooks = (
   reconnect: boolean,
 ) => {
   const [loading, setLoading] = useState(false)
-  const [hasConnection, setHasConnection] = useState<boolean | null>(false) // null indicates error
   const [isReconnecting, setIsReconnecting] = useState(reconnect)
   const { setAppParams } = useApp()
 
@@ -58,7 +57,6 @@ export const useQuickbooks = (
                 ? false
                 : null
 
-          setHasConnection(connectionStatus)
           setIsReconnecting(!connectionStatus)
           setAppParams((prev) => ({
             ...prev,
@@ -66,6 +64,7 @@ export const useQuickbooks = (
             lastSyncTimestamp: connectionStatus
               ? newPayload.updated_at
               : prev.lastSyncTimestamp,
+            portalConnectionStatus: connectionStatus,
           }))
         },
       )
@@ -115,7 +114,10 @@ export const useQuickbooks = (
   }
 
   const handleConnect = async (type?: string) => {
-    setHasConnection(false)
+    setAppParams((prev) => ({
+      ...prev,
+      portalConnectionStatus: false,
+    }))
     setLoading(true)
     const authUrl = await getAuthUrl(type)
     if (authUrl) window.open(authUrl, '_blank')
@@ -145,13 +147,15 @@ export const useQuickbooks = (
       `/api/quickbooks/token/check-connection?token=${token}`,
     )
     const data = await response.json()
-    setHasConnection(data && Object.keys(data).length > 0)
+    setAppParams((prev) => ({
+      ...prev,
+      portalConnectionStatus: data && Object.keys(data).length > 0,
+    }))
   }
 
   return {
     loading,
     handleConnect,
-    hasConnection,
     checkPortalConnection,
     isReconnecting,
     handleSyncEnable,
