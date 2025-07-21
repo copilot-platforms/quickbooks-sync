@@ -283,6 +283,7 @@ export const useProductMappingSettings = () => {
 export const useProductTableSetting = (
   setMappingItems: (mapProducts: ProductMappingItemType[]) => void,
 ) => {
+  const [showLoadingText, setShowLoadingText] = useState<boolean>(false)
   const emptyMappedItem = {
     name: null,
     description: '',
@@ -376,6 +377,16 @@ export const useProductTableSetting = (
     }
   }, [products, mappedItems])
 
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setShowLoadingText(true)
+    }, 3000) // As general rule, if loading takes more than 3 seconds, show loading text
+
+    return () => {
+      clearTimeout(timeout)
+    }
+  }, [])
+
   const formatProductDataForListing = (
     data: ProductFlattenArrayResponseType,
   ): ProductDataType[] | undefined => {
@@ -424,6 +435,7 @@ export const useProductTableSetting = (
     quickbooksItems: formatQBItemForListing(quickbooksItems),
     isLoading,
     error,
+    showLoadingText,
   }
 }
 
