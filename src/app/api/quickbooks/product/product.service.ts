@@ -256,16 +256,18 @@ export class ProductService extends BaseService {
 
   async getFlatMapforAProduct(product: ProductResponse, copilot: CopilotAPI) {
     const prices = await copilot.getPrices(product.id)
-    return (prices?.data ?? []).map((price) => ({
-      ...product,
-      description: convert(product.description),
-      priceId: price.id,
-      amount: price.amount,
-      type: price.type,
-      interval: price.interval,
-      intervalCount: price.intervalCount,
-      currency: price.currency,
-    }))
+    return (prices?.data ?? [])
+      .map((price) => ({
+        ...product,
+        description: convert(product.description),
+        priceId: price.id,
+        amount: price.amount,
+        type: price.type,
+        interval: price.interval,
+        intervalCount: price.intervalCount,
+        currency: price.currency,
+      }))
+      .sort((a, b) => a.amount - b.amount) // sort by amount in asc order
   }
 
   async getFlattenProductList(
