@@ -20,6 +20,10 @@ export class NotificationService extends BaseService {
       senderId: string
     },
   ): Promise<void> {
+    console.info(
+      'NotificationService#createBulkNotification | Token: ',
+      this.user.token,
+    )
     try {
       const copilot = new CopilotAPI(this.user.token)
       // 1. get all parties that gets notification
@@ -35,6 +39,7 @@ export class NotificationService extends BaseService {
           : getIEmailNotificationDetail()[action]
 
         for (const party of parties.data) {
+          console.info({ party })
           const triggerNotification = await copilot.createNotification({
             recipientId: party.id,
             senderId,
