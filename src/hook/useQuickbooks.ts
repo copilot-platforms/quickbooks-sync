@@ -16,7 +16,7 @@ export const useQuickbooks = (
 ) => {
   const [loading, setLoading] = useState(false)
   const [isReconnecting, setIsReconnecting] = useState(reconnect)
-  const { setAppParams } = useApp()
+  const { setAppParams, portalConnectionStatus } = useApp()
 
   useEffect(() => {
     const supabase = SupabaseClient.getInstance()
@@ -128,7 +128,7 @@ export const useQuickbooks = (
 
     // set time-out in case if user closes the popped up window. This will prevent the app from the infinite "connecting" state
     const timeout = setTimeout(() => {
-      if (!hasConnection) {
+      if (!portalConnectionStatus) {
         setLoading(false)
       }
     }, 120000) // timeout after 2 minutes
