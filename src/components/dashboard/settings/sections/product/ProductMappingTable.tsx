@@ -134,7 +134,7 @@ export default function ProductMappingTable({
                   <td className="border-l border-gray-200 bg-gray-100 hover:bg-gray-150 relative">
                     <button
                       onClick={() => toggleDropdown(index)}
-                      className="w-full h-full grid grid-cols-6 md:grid-cols-14 hover:bg-gray-50 transition-colors py-2 pl-4 pr-3"
+                      className="w-full h-full grid grid-cols-6 md:grid-cols-14 transition-colors py-2 pl-4 pr-3"
                     >
                       <div className="col-span-5 md:col-span-13 text-left">
                         {selectedItems[index] &&

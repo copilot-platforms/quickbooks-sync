@@ -6,16 +6,30 @@ import { useAppBridge, useQuickbooks } from '@/hook/useQuickbooks'
 import { Button, Spinner } from 'copilot-design-system'
 
 export default function HomeClient() {
-  const { token, tokenPayload, reconnect, portalConnectionStatus, isEnabled } =
-    useApp()
+  const {
+    token,
+    tokenPayload,
+    reconnect,
+    portalConnectionStatus,
+    isEnabled,
+    syncFlag,
+  } = useApp()
 
-  const { loading, handleConnect, hasConnection, isReconnecting } =
-    useQuickbooks(token, tokenPayload, reconnect)
+  const { loading, handleConnect, isReconnecting } = useQuickbooks(
+    token,
+    tokenPayload,
+    reconnect,
+  )
 
   // bridge related logics like disconnect app and download sync log csv
-  useAppBridge(token, isEnabled)
+  useAppBridge({
+    token,
+    isEnabled,
+    syncFlag,
+    connectionStatus: portalConnectionStatus || false,
+  })
 
-  if (hasConnection === null) {
+  if (portalConnectionStatus === null) {
     return (
       <SilentError
         message="Error connecting to QuickBooks"
@@ -26,7 +40,7 @@ export default function HomeClient() {
 
   return (
     <div className="home-client-wrapper w-full h-full">
-      {hasConnection || portalConnectionStatus ? (
+      {portalConnectionStatus ? (
         <>
           {isReconnecting && (
             <div>
