@@ -36,7 +36,7 @@ const MapItemComponent = ({
           </div>
         </div>
       ) : (
-        <div className="py-3">
+        <div className="py-2">
           <Icon icon="Dash" width={16} height={16} className="text-gray-600" />
         </div>
       )}
@@ -78,12 +78,12 @@ export default function ProductMappingTable({
                 COPILOT PRODUCTS
               </th>
 
-              <th className="pt-4 px-5 pb-2 border-l border-gray-200 w-[7%] lg:w-[56px]">
+              <th className="pt-4 px-5 pb-2 border-l border-gray-200 w-[7%] lg:w-[56px] text-center">
                 <Icon
                   icon="ArrowRight"
                   width={16}
                   height={16}
-                  className="text-gray-500 mx-auto aspect-square"
+                  className="text-gray-500"
                 />
               </th>
               <th className="pt-5 pr-3 pl-4 pb-2 text-left text-[11px] uppercase font-normal tracking-[1px] leading-3 border-l border-gray-200 w-[46.5%] lg:w-[372px]">
