@@ -451,6 +451,7 @@ export class InvoiceService extends BaseService {
     await this.createQBInvoice(invoicePayload)
 
     // update/ create the record in sync log table
+    const totalWithTax = actualTotalAmount + totalTax
     await this.logSync(
       invoiceResource.id,
       {
@@ -459,7 +460,7 @@ export class InvoiceService extends BaseService {
       },
       EventType.CREATED,
       {
-        amount: (actualTotalAmount * 100).toFixed(2), // convert to cents for logs
+        amount: (totalWithTax * 100).toFixed(2),
         taxAmount: (totalTax * 100).toFixed(2), // convert to cents for logs
         customerName: recipientInfo.displayName,
         customerEmail: recipientInfo.email,
@@ -473,13 +474,13 @@ export class InvoiceService extends BaseService {
     if (invoiceResource.status === InvoiceStatus.PAID) {
       const paymentService = new PaymentService(this.user)
       const qbPaymentPayload = {
-        TotalAmt: actualTotalAmount,
+        TotalAmt: totalWithTax,
         CustomerRef: {
           value: customerRefValue,
         },
         Line: [
           {
-            Amount: actualTotalAmount,
+            Amount: totalWithTax,
             LinkedTxn: [
               {
                 TxnId: invoiceRes.Invoice.Id,
@@ -638,15 +639,11 @@ export class InvoiceService extends BaseService {
       )
     }
 
-    const syncLog = await this.syncLogService.getOneByCopilotIdAndEventType(
-      payload.data.id,
-      EventType.VOIDED,
-    )
-
-    if (syncLog?.status === LogStatus.SUCCESS) {
-      console.info(
-        'WebhookService#webhookInvoiceVoided | Invoice already voided',
+    if (invoiceSync.status !== InvoiceStatus.OPEN) {
+      console.error(
+        'WebhookService#handleInvoiceVoided | Invoices void was requested for non-open record',
       )
+      return // return early if invoice is not open
     }
 
     // get invoice sync log
@@ -726,6 +723,7 @@ export class InvoiceService extends BaseService {
       console.error(
         'WebhookService#handleInvoiceDeleted | Invoices delete was requested for non-voided record',
       )
+      return // return early if invoice is not voided
     }
 
     // get invoice sync log

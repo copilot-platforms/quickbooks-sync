@@ -30,7 +30,7 @@ const MapItemComponent = ({
                 currency: 'USD',
               }).format(
                 currentlyMapped.unitPrice
-                  ? parseFloat(currentlyMapped.unitPrice)
+                  ? parseFloat(currentlyMapped.unitPrice) / 100
                   : 0,
               )}
           </div>

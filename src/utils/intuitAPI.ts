@@ -412,7 +412,7 @@ export default class IntuitAPI {
 
   async _voidInvoice(payload: QBDestructiveInvoicePayloadSchema) {
     console.info(
-      `IntuitAPI#voidInvoice | invoice void creation start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+      `IntuitAPI#voidInvoice | invoice void start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
       payload,
     )
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=void&minorversion=${intuitApiMinorVersion}`
