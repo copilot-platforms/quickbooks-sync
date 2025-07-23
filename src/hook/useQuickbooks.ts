@@ -38,6 +38,7 @@ export const useQuickbooks = (
             syncFlag: payload.new.sync_flag,
             isEnabled: payload.new.is_enabled,
           }))
+          setLoading(false)
         },
       )
       .on(
@@ -66,6 +67,7 @@ export const useQuickbooks = (
               : prev.lastSyncTimestamp,
             portalConnectionStatus: connectionStatus,
           }))
+          setLoading(false)
         },
       )
       .on(
@@ -108,24 +110,17 @@ export const useQuickbooks = (
   }, [reconnect])
 
   const getAuthUrl = async (type?: string) => {
+    setLoading(true)
     const redirectUrl = copilotDashboardUrl
     const url = `/api/quickbooks/auth?token=${token}${type ? `&type=${type}` : ''}`
-    setLoading(true)
     const response = await fetch(url, {
       method: 'POST',
       body: JSON.stringify({ redirectUrl }),
     })
-
     return await response.json()
   }
 
   const handleConnect = async (type?: string) => {
-    setAppParams((prev) => ({
-      ...prev,
-      portalConnectionStatus: false,
-    }))
-    setLoading(true)
-
     // set time-out in case if user closes the popped up window. This will prevent the app from the infinite "connecting" state
     const timeout = setTimeout(() => {
       if (!portalConnectionStatus) {
