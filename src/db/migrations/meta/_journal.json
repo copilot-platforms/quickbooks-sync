@@ -8,6 +8,13 @@
       "when": 1751372795368,
       "tag": "20250701122635_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1753282887134,
+      "tag": "20250723150127_remove_create_invoice_item_flag",
+      "breakpoints": true
     }
   ]
 }

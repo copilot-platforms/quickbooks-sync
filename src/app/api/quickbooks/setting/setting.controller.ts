@@ -20,7 +20,7 @@ export async function getSettings(req: NextRequest) {
     if (parsedType.data === SettingType.INVOICE)
       returnigFields.push('absorbedFeeFlag', 'useCompanyNameFlag')
     if (parsedType.data === SettingType.PRODUCT)
-      returnigFields.push('createNewProductFlag', 'createInvoiceItemFlag')
+      returnigFields.push('createNewProductFlag')
   }
   const setting = await settingService.getOneByPortalId(returnigFields)
   return NextResponse.json({ setting })

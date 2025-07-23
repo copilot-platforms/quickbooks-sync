@@ -44,7 +44,6 @@ export type QBItemDataType = {
 
 export const useProductMappingSettings = () => {
   const intialProductSetting = {
-    createInvoiceItemFlag: false,
     createNewProductFlag: false,
   }
   const [openDropdowns, setOpenDropdowns] = useState<{

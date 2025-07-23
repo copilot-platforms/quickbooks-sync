@@ -58,28 +58,13 @@ export default function ProductMapping({
       <div className="mt-2 mb-6">
         <div className="mb-5">
           <Checkbox
-            label="Add newly created products to Quickbooks"
-            description="Automatically create matching items in QuickBooks with product name,
-            description, and price when new products are created in Copilot."
+            label="Sync Copilot products to QuickBooks"
+            description="Automatically create and update QuickBooks items when products are created or used in Copilot."
             checked={setting.settingState.createNewProductFlag}
             onChange={() =>
               setting.changeSettings(
                 'createNewProductFlag',
                 !setting.settingState.createNewProductFlag,
-              )
-            }
-          />
-        </div>
-        <div className="mb-5">
-          <Checkbox
-            label="Create an item in QuickBooks if Copilot product is not found"
-            description="Create missing QuickBooks items when syncing invoices containing
-            Copilot products that don't yet exist in QuickBooks."
-            checked={setting.settingState.createInvoiceItemFlag}
-            onChange={() =>
-              setting.changeSettings(
-                'createInvoiceItemFlag',
-                !setting.settingState.createInvoiceItemFlag,
               )
             }
           />
