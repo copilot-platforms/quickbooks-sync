@@ -1,0 +1,1 @@
+ALTER TABLE "qb_settings" DROP COLUMN "create_invoice_item_flag";
