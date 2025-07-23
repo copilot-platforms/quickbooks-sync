@@ -17,7 +17,6 @@ import {
   QBInvoiceUpdateSchema,
   QBInvoiceUpdateSchemaType,
 } from '@/db/schema/qbInvoiceSync'
-import { QBProductSync } from '@/db/schema/qbProductSync'
 import { TransactionType, WhereClause } from '@/type/common'
 import {
   QBCustomerSparseUpdatePayloadType,
@@ -47,6 +46,7 @@ const oneOffItem = {
 
 type InvoiceItemRefAndDescriptionType = {
   ref: QBNameValueSchemaType
+  amount?: number
   productDescription?: string
 }
 
@@ -140,6 +140,9 @@ export class InvoiceService extends BaseService {
         console.info('InvoiceService#getInvoiceItemRef | Product map found')
         return {
           ref: { value: mapping.qbItemId },
+          amount: mapping.unitPrice
+            ? parseFloat(mapping.unitPrice) / 100
+            : undefined,
           productDescription: mapping.description || '',
         }
       }
@@ -236,11 +239,11 @@ export class InvoiceService extends BaseService {
     }
     return {
       DetailType: 'SalesItemLineDetail',
-      Amount: actualAmount * lineItem.quantity,
+      Amount: (itemRef.amount ?? actualAmount) * lineItem.quantity,
       SalesItemLineDetail: {
         ItemRef: itemRef.ref,
         Qty: lineItem.quantity,
-        UnitPrice: actualAmount,
+        UnitPrice: itemRef.amount ?? actualAmount,
         TaxCodeRef: {
           // required to enable tax for the product.
           // Doc reference: https://developer.intuit.com/app/developer/qbo/docs/workflows/manage-sales-tax-for-us-locales#specifying-sales-tax
@@ -402,6 +405,13 @@ export class InvoiceService extends BaseService {
     }
 
     const lineItems = await Promise.all(lineItemPromises)
+    const actualTotalAmount = lineItems.reduce((acc, item) => {
+      // calculate the actual tax amount from the lineItems. Not using invoiceResource amount directly as the amount for mapped items can be different (mapped QB amount).
+      return acc + item.Amount
+    }, 0)
+    const totalTax = parseFloat(
+      ((actualTotalAmount * invoiceResource.taxPercentage) / 100).toFixed(2),
+    )
 
     // 5. create invoice in QB
     const customerRefValue: string =
@@ -414,9 +424,7 @@ export class InvoiceService extends BaseService {
       DocNumber: invoiceResource.number, // copilot invoice number as DocNumber
       // include tax and dates
       TxnTaxDetail: {
-        TotalTax: invoiceResource?.taxAmount
-          ? Number((invoiceResource.taxAmount / 100).toFixed(2))
-          : 0,
+        TotalTax: totalTax,
       },
       ...(invoiceResource?.sentDate && {
         TxnDate: dayjs(invoiceResource.sentDate).format('YYYY/MM/DD'), // Valid date format for TxnDate is YYYY/MM/DD. For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice#the-invoice-object
@@ -443,6 +451,7 @@ export class InvoiceService extends BaseService {
     await this.createQBInvoice(invoicePayload)
 
     // update/ create the record in sync log table
+    const totalWithTax = actualTotalAmount + totalTax
     await this.logSync(
       invoiceResource.id,
       {
@@ -451,8 +460,8 @@ export class InvoiceService extends BaseService {
       },
       EventType.CREATED,
       {
-        amount: invoiceResource.total.toFixed(2),
-        taxAmount: invoiceResource.taxAmount?.toFixed(2),
+        amount: (totalWithTax * 100).toFixed(2),
+        taxAmount: (totalTax * 100).toFixed(2), // convert to cents for logs
         customerName: recipientInfo.displayName,
         customerEmail: recipientInfo.email,
       },
@@ -464,15 +473,14 @@ export class InvoiceService extends BaseService {
      */
     if (invoiceResource.status === InvoiceStatus.PAID) {
       const paymentService = new PaymentService(this.user)
-      const totalActualAmount = invoiceResource.total / 100
       const qbPaymentPayload = {
-        TotalAmt: totalActualAmount,
+        TotalAmt: totalWithTax,
         CustomerRef: {
           value: customerRefValue,
         },
         Line: [
           {
-            Amount: totalActualAmount,
+            Amount: totalWithTax,
             LinkedTxn: [
               {
                 TxnId: invoiceRes.Invoice.Id,
@@ -488,7 +496,7 @@ export class InvoiceService extends BaseService {
         {
           invoiceNumber: invoiceResource.number,
           invoiceId: invoiceResource.id,
-          taxAmount: invoiceResource.taxAmount?.toFixed(2),
+          taxAmount: (totalTax * 100).toFixed(2),
         },
         {
           displayName: recipientInfo.displayName,
@@ -547,15 +555,28 @@ export class InvoiceService extends BaseService {
       )
     }
 
-    const actualAmount = payload.data.total / 100 // Convert to dollar. amount received in cents.
+    // get invoice sync log
+    const invoiceLog = await this.syncLogService.getOneByCopilotIdAndEventType(
+      payload.data.id,
+      EventType.CREATED,
+    )
+
+    if (!invoiceLog) {
+      throw new APIError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'WebhookService#webhookInvoicePaid | Invoice sync log not found',
+      )
+    }
+
+    const invoiceAmount = Number(z.string().parse(invoiceLog.amount)) / 100
     const qbPaymentPayload = {
-      TotalAmt: actualAmount,
+      TotalAmt: invoiceAmount,
       CustomerRef: {
         value: existingCustomer.qbCustomerId,
       },
       Line: [
         {
-          Amount: actualAmount,
+          Amount: invoiceAmount,
           LinkedTxn: [
             {
               TxnId: z.string().parse(invoiceSync.qbInvoiceId), // this links payment to invoice docs reference: https://help.developer.intuit.com/s/question/0D54R00007Ot7ZXSAZ/linking-payment-to-invoice-through-api
@@ -579,7 +600,7 @@ export class InvoiceService extends BaseService {
       {
         invoiceNumber: payload.data.number,
         invoiceId: payload.data.id,
-        taxAmount: payload.data.taxAmount?.toFixed(2),
+        taxAmount: z.string().parse(invoiceLog.taxAmount),
       },
       {
         displayName: customerDisplayName,
@@ -618,14 +639,23 @@ export class InvoiceService extends BaseService {
       )
     }
 
-    const syncLog = await this.syncLogService.getOneByCopilotIdAndEventType(
+    if (invoiceSync.status !== InvoiceStatus.OPEN) {
+      console.error(
+        'WebhookService#handleInvoiceVoided | Invoices void was requested for non-open record',
+      )
+      return // return early if invoice is not open
+    }
+
+    // get invoice sync log
+    const invoiceLog = await this.syncLogService.getOneByCopilotIdAndEventType(
       payload.data.id,
-      EventType.VOIDED,
+      EventType.CREATED,
     )
 
-    if (syncLog?.status === LogStatus.SUCCESS) {
-      console.info(
-        'WebhookService#webhookInvoiceVoided | Invoice already voided',
+    if (!invoiceLog) {
+      throw new APIError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'WebhookService#webhookInvoicePaid | Invoice sync log not found',
       )
     }
 
@@ -660,8 +690,8 @@ export class InvoiceService extends BaseService {
         ['id'],
       ),
       this.logSync(payload.data.id, invoiceSync, EventType.VOIDED, {
-        amount: payload.data.total.toFixed(2),
-        taxAmount: payload.data.taxAmount?.toFixed(2),
+        amount: z.string().parse(invoiceLog.amount),
+        taxAmount: z.string().parse(invoiceLog.taxAmount),
         customerName: recipientInfo.displayName,
         customerEmail: recipientInfo.email,
       }),
@@ -677,6 +707,7 @@ export class InvoiceService extends BaseService {
       'qbInvoiceId',
       'status',
       'qbSyncToken',
+      'invoiceNumber',
     ])
 
     if (!syncedInvoice) {
@@ -691,6 +722,20 @@ export class InvoiceService extends BaseService {
     if (syncedInvoice.status !== InvoiceStatus.VOID) {
       console.error(
         'WebhookService#handleInvoiceDeleted | Invoices delete was requested for non-voided record',
+      )
+      return // return early if invoice is not voided
+    }
+
+    // get invoice sync log
+    const invoiceLog = await this.syncLogService.getOneByCopilotIdAndEventType(
+      payload.id,
+      EventType.CREATED,
+    )
+
+    if (!invoiceLog) {
+      throw new APIError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'WebhookService#webhookInvoicePaid | Invoice sync log not found',
       )
     }
 
@@ -722,8 +767,8 @@ export class InvoiceService extends BaseService {
         ['id'],
       ),
       this.logSync(payload.id, syncedInvoice, EventType.DELETED, {
-        amount: payload.total.toFixed(2),
-        taxAmount: payload.taxAmount?.toFixed(2),
+        amount: z.string().parse(invoiceLog.amount),
+        taxAmount: z.string().parse(invoiceLog.taxAmount),
         customerName: recipientInfo.displayName,
         customerEmail: recipientInfo.email,
       }),

@@ -1,5 +1,6 @@
 import { ProductMappingComponentType } from '@/components/dashboard/settings/sections/product/ProductMapping'
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
+import useClickOutside from '@/hook/useClickOutside'
 import {
   ProductDataType,
   useMapItem,
@@ -24,11 +25,18 @@ const MapItemComponent = ({
           <div className="text-sm leading-5">{currentlyMapped?.name}</div>
           <div className="text-body-xs leading-5 text-gray-500">
             {currentlyMapped.unitPrice &&
-              `$${parseInt(currentlyMapped.unitPrice) / 100}`}
+              new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+              }).format(
+                currentlyMapped.unitPrice
+                  ? parseFloat(currentlyMapped.unitPrice) / 100
+                  : 0,
+              )}
           </div>
         </div>
       ) : (
-        <div className="py-3">
+        <div className="py-2">
           <Icon icon="Dash" width={16} height={16} className="text-gray-600" />
         </div>
       )}
@@ -38,6 +46,7 @@ const MapItemComponent = ({
 
 export default function ProductMappingTable({
   openDropdowns,
+  setOpenDropdowns,
   searchTerms,
   selectedItems,
   toggleDropdown,
@@ -55,6 +64,10 @@ export default function ProductMappingTable({
     console.error({ error })
   }
 
+  const dropdownRef = useClickOutside<HTMLDivElement>(() => {
+    setOpenDropdowns({})
+  })
+
   return (
     <>
       <div className="product-mapping-table bg-white border border-gray-200 text-left">
@@ -65,12 +78,12 @@ export default function ProductMappingTable({
                 COPILOT PRODUCTS
               </th>
 
-              <th className="pt-4 px-5 pb-2 border-l border-gray-200 w-[7%] lg:w-[56px]">
+              <th className="pt-4 px-5 pb-2 border-l border-gray-200 w-[7%] lg:w-[56px] text-center">
                 <Icon
                   icon="ArrowRight"
                   width={16}
                   height={16}
-                  className="text-gray-500 mx-auto aspect-square"
+                  className="text-gray-500"
                 />
               </th>
               <th className="pt-5 pr-3 pl-4 pb-2 text-left text-[11px] uppercase font-normal tracking-[1px] leading-3 border-l border-gray-200 w-[46.5%] lg:w-[372px]">
@@ -121,7 +134,7 @@ export default function ProductMappingTable({
                   <td className="border-l border-gray-200 bg-gray-100 hover:bg-gray-150 relative">
                     <button
                       onClick={() => toggleDropdown(index)}
-                      className="w-full h-full grid grid-cols-6 md:grid-cols-14 hover:bg-gray-50 transition-colors py-2 pl-4 pr-3"
+                      className="w-full h-full grid grid-cols-6 md:grid-cols-14 transition-colors py-2 pl-4 pr-3"
                     >
                       <div className="col-span-5 md:col-span-13 text-left">
                         {selectedItems[index] &&
@@ -153,7 +166,10 @@ export default function ProductMappingTable({
                     </button>
 
                     {openDropdowns[index] && (
-                      <div className="absolute right-[-1px] left-[-145px] top-full mt-[-4px] md:left-[-1px] bg-white border border-gray-150 !shadow-popover-050 rounded-sm z-100 md:min-w-[320px]">
+                      <div
+                        ref={dropdownRef}
+                        className="absolute right-[-1px] left-[-145px] top-full mt-[-4px] md:left-[-1px] bg-white border border-gray-150 !shadow-popover-050 rounded-sm z-100 md:min-w-[320px]"
+                      >
                         <div className="px-3 py-2">
                           <input
                             type="text"
@@ -185,6 +201,7 @@ export default function ProductMappingTable({
                                       {
                                         id: item.id,
                                         name: item.name,
+                                        description: item.description,
                                         price: item.price,
                                         syncToken: item.syncToken,
                                         numericPrice: item.numericPrice,

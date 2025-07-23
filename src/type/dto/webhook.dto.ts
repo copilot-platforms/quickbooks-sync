@@ -32,7 +32,7 @@ export const InvoiceCreatedResponseSchema = z.object({
     recipientId: z.string(),
     status: z.nativeEnum(InvoiceStatus),
     total: z.number(),
-    taxAmount: z.number().optional(),
+    taxPercentage: z.number().default(0),
     sentDate: z.string().datetime().nullish(),
     dueDate: z.string().datetime().nullish(),
   }),
@@ -46,7 +46,6 @@ export const InvoiceDeletedResponseSchema = z.object({
   id: z.string(),
   number: z.string(),
   total: z.number(),
-  taxAmount: z.number().optional(),
   recipientId: z.string(),
 })
 export type InvoiceDeletedResponse = z.infer<
@@ -96,7 +95,7 @@ export const InvoiceResponseSchema = z.object({
     number: z.string(),
     status: z.nativeEnum(InvoiceStatus),
     total: z.number(),
-    taxAmount: z.number().optional(),
+    taxPercentage: z.number().default(0),
     recipientId: z.string(),
   }),
 })

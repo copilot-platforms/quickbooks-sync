@@ -8,7 +8,7 @@ type AppContextType = {
   tokenPayload: Token
   syncFlag: boolean
   reconnect: boolean
-  portalConnectionStatus: boolean
+  portalConnectionStatus: boolean | null
   isEnabled: boolean
   lastSyncTimestamp: string | null
   showProductConfirm?: boolean
