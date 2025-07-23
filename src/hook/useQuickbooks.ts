@@ -97,10 +97,16 @@ export const useQuickbooks = (
 
   // handle reconnect logic
   useEffect(() => {
+    const handleAppConnect = async () => {
+      const timeout = await handleConnect(AuthStatus.RECONNECT)
+      return () => clearTimeout(timeout)
+    }
+
     if (reconnect) {
-      handleConnect(AuthStatus.RECONNECT)
+      handleAppConnect()
     }
   }, [reconnect])
+
   const getAuthUrl = async (type?: string) => {
     const redirectUrl = copilotDashboardUrl
     const url = `/api/quickbooks/auth?token=${token}${type ? `&type=${type}` : ''}`
@@ -119,8 +125,18 @@ export const useQuickbooks = (
       portalConnectionStatus: false,
     }))
     setLoading(true)
+
+    // set time-out in case if user closes the popped up window. This will prevent the app from the infinite "connecting" state
+    const timeout = setTimeout(() => {
+      if (!hasConnection) {
+        setLoading(false)
+      }
+    }, 120000) // timeout after 2 minutes
+
     const authUrl = await getAuthUrl(type)
     if (authUrl) window.open(authUrl, '_blank')
+
+    return timeout
   }
 
   const handleSyncEnable = async () => {
@@ -171,21 +187,56 @@ export const useQuickbooksCallback = () => {
     const code = params.get('code')
     const realmId = params.get('realmId')
     const state = params.get('state')
+    const redirectError = params.get('error')
+
+    if (redirectError && state) {
+      const errorhandler = async () => {
+        await handleError(redirectError, state)
+
+        // auto close the current window after 5 seconds
+        const timeout = setTimeout(() => {
+          window.close()
+        }, 5000)
+
+        return () => clearTimeout(timeout)
+      }
+
+      errorhandler()
+    }
 
     if (code && realmId && state) {
       const tokenExchange = async () => {
-        await handleTokenExchange(
+        const timeout = await handleTokenExchange(
           {
             code,
             realmId,
           },
           state,
         )
+        return () => clearTimeout(timeout)
       }
 
       tokenExchange()
     }
   }, [])
+
+  const handleError = async (errorMessage: string, state: string) => {
+    setLoading(true)
+    const parsedState = JSON.parse(state)
+    const token = parsedState.token
+    setError(`Cannot connect to QuickBooks. Reason: "${errorMessage}"`)
+    const res = await fetch(
+      `/api/quickbooks/auth/connection-error?token=${token}`,
+      {
+        method: 'POST',
+      },
+    )
+    setLoading(false)
+    if (!res.ok) {
+      setError('Error connecting to QuickBooks')
+      return
+    }
+  }
 
   const handleTokenExchange = async (
     body: {
@@ -212,7 +263,7 @@ export const useQuickbooksCallback = () => {
     }
 
     // auto close the current window after 2 seconds
-    setTimeout(() => {
+    return setTimeout(() => {
       window.close()
     }, 2000)
   }
