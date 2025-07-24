@@ -9,7 +9,11 @@ import {
 } from '@/hook/useSettings'
 import { Button } from 'copilot-design-system'
 
-export default function SettingAccordion() {
+export default function SettingAccordion({
+  syncFlag,
+}: {
+  syncFlag: boolean | null
+}) {
   const {
     openDropdowns,
     setOpenDropdowns,
@@ -89,6 +93,7 @@ export default function SettingAccordion() {
               className={`absolute top-[14px] right-0 z-10 flex items-center justify-end`}
             >
               {index === 0 &&
+                syncFlag &&
                 (showProductConfirm || setting.settingShowConfirm) && (
                   <>
                     {!initialSettingMapFlag && (
@@ -107,7 +112,7 @@ export default function SettingAccordion() {
                     />
                   </>
                 )}
-              {index === 1 && showInvoiceButton && (
+              {index === 1 && syncFlag && showInvoiceButton && (
                 <>
                   {!initialSettingMapFlag && (
                     <Button

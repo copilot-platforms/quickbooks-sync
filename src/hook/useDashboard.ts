@@ -15,15 +15,21 @@ export const useDashboardMain = () => {
     isEnabled,
     initialSettingMapFlag,
     itemMapped,
+    portalConnectionStatus,
   } = useApp()
 
-  const { handleConnect, isReconnecting, handleSyncEnable } = useQuickbooks(
-    token,
-    tokenPayload,
-    reconnect,
-  )
+  const {
+    handleConnect,
+    isReconnecting,
+    handleSyncEnable,
+    loading: isConnecting,
+  } = useQuickbooks(token, tokenPayload, reconnect)
+
   const [callOutStatus, setCallOutStatus] = useState<
-    CalloutVariant.SUCCESS | CalloutVariant.ERROR | CalloutVariant.WARNING
+    | CalloutVariant.SUCCESS
+    | CalloutVariant.ERROR
+    | CalloutVariant.WARNING
+    | CalloutVariant.INFO
   >(CalloutVariant.SUCCESS)
   const [isLoading, setIsLoading] = useState(true)
   const [buttonAction, setButtonAction] = useState<
@@ -31,24 +37,32 @@ export const useDashboardMain = () => {
   >(undefined)
 
   useEffect(() => {
-    if (syncFlag) {
-      if (!isEnabled) {
-        setCallOutStatus(CalloutVariant.WARNING)
-        setButtonAction(() => handleSyncEnable)
-      } else {
-        setCallOutStatus(CalloutVariant.SUCCESS)
-      }
-    } else {
-      let timeout: NodeJS.Timeout
-      setCallOutStatus(CalloutVariant.ERROR)
+    let timeout: NodeJS.Timeout
+    if (!portalConnectionStatus) {
+      // No early return to run timeout cleanup function
+      setCallOutStatus(CalloutVariant.INFO)
       setButtonAction(() => async () => {
-        timeout = await handleConnect(AuthStatus.RECONNECT)
+        timeout = await handleConnect()
         return timeout
       })
-
-      return () => clearTimeout(timeout)
+    } else {
+      if (syncFlag) {
+        if (!isEnabled) {
+          setCallOutStatus(CalloutVariant.WARNING)
+          setButtonAction(() => handleSyncEnable)
+        } else {
+          setCallOutStatus(CalloutVariant.SUCCESS)
+        }
+      } else {
+        setCallOutStatus(CalloutVariant.ERROR)
+        setButtonAction(() => async () => {
+          timeout = await handleConnect(AuthStatus.RECONNECT)
+          return timeout
+        })
+      }
     }
     setIsLoading(false)
+    return () => clearTimeout(timeout)
   }, [syncFlag, isEnabled])
 
   return {
@@ -59,5 +73,9 @@ export const useDashboardMain = () => {
     lastSyncTimestamp,
     itemMapped,
     initialSettingMapFlag,
+    portalConnectionStatus,
+    syncFlag,
+    isConnecting,
+    handleConnect,
   }
 }
