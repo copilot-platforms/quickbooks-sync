@@ -102,11 +102,13 @@ export const useProductMappingSettings = () => {
     if (setting && setting?.setting) {
       setProductSetting(setting.setting)
       setIntialSettingState(structuredClone(setting.setting))
-      setAppParams((prev) => ({
-        ...prev,
-        initialSettingMapFlag: setting.setting.initialSettingMap,
-      }))
     }
+    setAppParams((prev) => ({
+      ...prev,
+      initialSettingMapFlag: setting?.setting
+        ? setting.setting.initialSettingMap
+        : true,
+    }))
   }, [setting])
   // End of checkbox settings
 
@@ -239,7 +241,9 @@ export const useProductMappingSettings = () => {
 
     setAppParams((prev) => ({
       ...prev,
-      showProductConfirm: !equal(initialProductMap, mappedArray),
+      showProductConfirm:
+        initialProductMap?.length === 0 || // show confirm button if initial product map is empty
+        !equal(initialProductMap, mappedArray),
     }))
     setMappingItems(mappedArray)
   }
@@ -297,7 +301,7 @@ export const useProductTableSetting = (
     qbSyncToken: null,
     isExcluded: true,
   }
-  const { token, setAppParams } = useApp()
+  const { token, setAppParams, syncFlag } = useApp()
   const {
     data: products,
     error: productError,
@@ -308,7 +312,9 @@ export const useProductTableSetting = (
     data: quickbooksItems,
     error: quickbooksError,
     isLoading: isQBLoading,
-  } = useSwrHelper(`/api/quickbooks/product/qb/item?token=${token}`)
+  } = useSwrHelper(
+    syncFlag ? `/api/quickbooks/product/qb/item?token=${token}` : null,
+  )
 
   const {
     data: mappedItems,
@@ -377,7 +383,7 @@ export const useProductTableSetting = (
       }
       setMappingItems(newMap)
     }
-  }, [products, mappedItems])
+  }, [products, mappedItems, isLoading])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -510,11 +516,13 @@ export const useInvoiceDetailSettings = () => {
     if (setting && setting?.setting) {
       setSettingState(setting.setting)
       setIntialSettingState(structuredClone(setting.setting))
-      setAppParams((prev) => ({
-        ...prev,
-        initialSettingMapFlag: setting.setting.initialSettingMap,
-      }))
     }
+    setAppParams((prev) => ({
+      ...prev,
+      initialSettingMapFlag: setting?.setting
+        ? setting.setting.initialSettingMap
+        : true,
+    }))
   }, [setting])
 
   const submitInvoiceSettings = async () => {

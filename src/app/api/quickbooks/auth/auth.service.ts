@@ -15,6 +15,7 @@ import {
   QBPortalConnectionCreateSchemaType,
   QBPortalConnectionUpdateSchemaType,
 } from '@/db/schema/qbPortalConnections'
+import { QBSetting } from '@/db/schema/qbSettings'
 import {
   getPortalConnection,
   getPortalSettings,
@@ -111,6 +112,13 @@ export class AuthService extends BaseService {
         portalId,
         syncFlag,
       })
+    } else {
+      await settingsService.updateQBSettings(
+        {
+          syncFlag,
+        },
+        eq(QBSetting.portalId, portalId),
+      )
     }
   }
 
