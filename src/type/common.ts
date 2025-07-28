@@ -269,7 +269,6 @@ export const SettingRequestSchema = z
     absorbedFeeFlag: z.boolean().optional(),
     useCompanyNameFlag: z.boolean().optional(),
     createNewProductFlag: z.boolean().optional(),
-    createInvoiceItemFlag: z.boolean().optional(),
   })
   .superRefine((val, ctx) => {
     if (val.type === SettingType.INVOICE) {
@@ -296,13 +295,6 @@ export const SettingRequestSchema = z
           message: 'createNewProductFlag is required when type is product',
         })
       }
-      if (typeof val.createInvoiceItemFlag !== 'boolean') {
-        ctx.addIssue({
-          path: ['createInvoiceItemFlag'],
-          code: z.ZodIssueCode.custom,
-          message: 'createInvoiceItemFlag is required when type is product',
-        })
-      }
     }
   })
 
@@ -313,7 +305,7 @@ export type InvoiceSettingType = Required<
 > & { id?: string }
 
 export type ProductSettingType = Required<
-  Pick<SettingRequestType, 'createInvoiceItemFlag' | 'createNewProductFlag'>
+  Pick<SettingRequestType, 'createNewProductFlag'>
 > & { id?: string }
 
 export enum TransactionType {

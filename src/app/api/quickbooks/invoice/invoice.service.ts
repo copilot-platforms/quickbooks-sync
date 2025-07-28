@@ -151,12 +151,12 @@ export class InvoiceService extends BaseService {
     // check if the flag is on for create new item
     const settingService = new SettingService(this.user)
     const setting = await settingService.getOneByPortalId([
-      'createInvoiceItemFlag',
+      'createNewProductFlag',
     ])
 
-    if (!setting?.createInvoiceItemFlag) {
+    if (!setting?.createNewProductFlag) {
       console.info(
-        'WebhookService#getInvoiceItemRef | Create new invoice item flag is false',
+        'WebhookService#getInvoiceItemRef | Create new product flag is false',
       )
       return { ref: oneOffItem }
     }

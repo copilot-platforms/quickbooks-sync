@@ -20,10 +20,6 @@ export const QBSetting = table('qb_settings', {
     .boolean('create_new_product_flag')
     .default(false)
     .notNull(),
-  createInvoiceItemFlag: t
-    .boolean('create_invoice_item_flag')
-    .default(false)
-    .notNull(),
   initialSettingMap: t.boolean('initial_setting_map').default(true).notNull(),
   syncFlag: t.boolean('sync_flag').default(false).notNull(),
   isEnabled: t.boolean('is_enabled').default(false).notNull(),
