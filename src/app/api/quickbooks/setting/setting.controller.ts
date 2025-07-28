@@ -12,17 +12,17 @@ export async function getSettings(req: NextRequest) {
   const settingService = new SettingService(user)
   const type = req.nextUrl.searchParams.get('type')
   const parsedType = z.nativeEnum(SettingType).safeParse(type)
-  const returnigFields: (keyof typeof QBSetting)[] = []
+  const returningFields: (keyof typeof QBSetting)[] = []
 
   if (parsedType.success) {
     // return attributes as per the type. If type not provided, return all attributes
-    returnigFields.push('id', 'initialSettingMap')
+    returningFields.push('id', 'initialSettingMap')
     if (parsedType.data === SettingType.INVOICE)
-      returnigFields.push('absorbedFeeFlag', 'useCompanyNameFlag')
+      returningFields.push('absorbedFeeFlag', 'useCompanyNameFlag')
     if (parsedType.data === SettingType.PRODUCT)
-      returnigFields.push('createNewProductFlag', 'createInvoiceItemFlag')
+      returningFields.push('createNewProductFlag')
   }
-  const setting = await settingService.getOneByPortalId(returnigFields)
+  const setting = await settingService.getOneByPortalId(returningFields)
   return NextResponse.json({ setting })
 }
 
