@@ -305,7 +305,7 @@ export const useAppBridge = ({
 
     if (isEnabled && syncFlag) {
       actions.push({
-        label: 'Disconnect account',
+        label: 'Disable sync',
         onClick: disconnectAction,
       })
     }
