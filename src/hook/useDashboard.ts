@@ -13,8 +13,6 @@ export const useDashboardMain = () => {
     reconnect,
     lastSyncTimestamp,
     isEnabled,
-    initialSettingMapFlag,
-    itemMapped,
     portalConnectionStatus,
   } = useApp()
 
@@ -71,8 +69,6 @@ export const useDashboardMain = () => {
     buttonAction,
     isReconnecting,
     lastSyncTimestamp,
-    itemMapped,
-    initialSettingMapFlag,
     portalConnectionStatus,
     syncFlag,
     isConnecting,
