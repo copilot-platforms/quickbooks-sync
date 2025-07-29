@@ -59,14 +59,8 @@ export const useProductMappingSettings = () => {
 
   const [mappingItems, setMappingItems] = useState<ProductMappingItemType[]>([])
   const [settingShowConfirm, setSettingShowConfirm] = useState<boolean>(false)
-  const {
-    token,
-    initialProductMap,
-    showProductConfirm,
-    setAppParams,
-    itemMapped,
-    initialSettingMapFlag,
-  } = useApp()
+  const { token, initialProductMap, showProductConfirm, setAppParams } =
+    useApp()
 
   // For checkbox settings
   const [productSetting, setProductSetting] =
@@ -79,7 +73,9 @@ export const useProductMappingSettings = () => {
     data: setting,
     error: settingError,
     isLoading: settingLoading,
-  } = useSwrHelper(`/api/quickbooks/setting?type=product&token=${token}`)
+  } = useSwrHelper(
+    `/api/quickbooks/setting?type=${SettingType.PRODUCT}&token=${token}`,
+  )
 
   const changeSettings = async (
     flag: keyof ProductSettingType,
@@ -101,13 +97,18 @@ export const useProductMappingSettings = () => {
     if (setting && setting?.setting) {
       setProductSetting(setting.setting)
       setIntialSettingState(structuredClone(setting.setting))
+      setAppParams((prev) => ({
+        ...prev,
+        initialInvoiceSettingMapFlag:
+          setting.setting?.initialInvoiceSettingMap || false,
+        initialProductSettingMapFlag:
+          setting.setting?.initialProductSettingMap || false,
+        enableAppIndicator:
+          (setting.setting.initialInvoiceSettingMap &&
+            setting.setting.initialProductSettingMap) ||
+          false,
+      }))
     }
-    setAppParams((prev) => ({
-      ...prev,
-      initialSettingMapFlag: setting?.setting
-        ? setting.setting.initialSettingMap
-        : true,
-    }))
   }, [setting])
   // End of checkbox settings
 
@@ -121,7 +122,7 @@ export const useProductMappingSettings = () => {
 
   const settingSubmit = async () => {
     return await postFetcher(
-      `/api/quickbooks/setting?token=${token}`,
+      `/api/quickbooks/setting?type=${SettingType.PRODUCT}&token=${token}`,
       {},
       { ...productSetting, type: SettingType.PRODUCT },
     )
@@ -135,11 +136,12 @@ export const useProductMappingSettings = () => {
 
     if (tableRes && settingRes) {
       mutate(`/api/quickbooks/product/map?token=${token}`)
-      mutate(`/api/quickbooks/setting?type=product&token=${token}`)
+      mutate(
+        `/api/quickbooks/setting?type=${SettingType.PRODUCT}&token=${token}`,
+      )
       setAppParams((prev) => ({
         ...prev,
         showProductConfirm: false,
-        itemMapped: true,
       }))
       setSettingShowConfirm(false)
       setChangedItemReference([])
@@ -274,8 +276,6 @@ export const useProductMappingSettings = () => {
     mappingItems,
     setMappingItems,
     showProductConfirm,
-    itemMapped,
-    initialSettingMapFlag,
     setting: {
       settingState: productSetting,
       changeSettings,
@@ -325,8 +325,7 @@ export const useProductTableSetting = (
   const error = productError || quickbooksError || mappedItemsError
 
   useEffect(() => {
-    let newMap: ProductMappingItemType[],
-      itemMapped = false
+    let newMap: ProductMappingItemType[]
     const mappedItemEmpty =
       !mappedItems || Object.keys(mappedItems).length === 0
     if (products && !isLoading) {
@@ -340,7 +339,6 @@ export const useProductTableSetting = (
           }
         })
       } else {
-        itemMapped = true
         newMap = products?.products?.map((product: ProductDataType) => {
           const mappedItem = mappedItems.find(
             // search for the already mapped product from the mapped list
@@ -377,7 +375,6 @@ export const useProductTableSetting = (
           ...prev,
           initialProductMap: mappedItemEmpty ? [] : structuredClone(newMap), // clone the initial mapped items
           showProductConfirm: mappedItemEmpty, // allow confirm button in intial mapping
-          itemMapped,
         }))
       }
       setMappingItems(newMap)
@@ -515,18 +512,20 @@ export const useInvoiceDetailSettings = () => {
     if (setting && setting?.setting) {
       setSettingState(setting.setting)
       setIntialSettingState(structuredClone(setting.setting))
+      setAppParams((prev) => ({
+        ...prev,
+        initialInvoiceSettingMapFlag: setting.setting.initialInvoiceSettingMap,
+        initialProductSettingMapFlag: setting.setting.initialProductSettingMap,
+        enableAppIndicator:
+          setting.setting.initialInvoiceSettingMap &&
+          setting.setting.initialProductSettingMap,
+      }))
     }
-    setAppParams((prev) => ({
-      ...prev,
-      initialSettingMapFlag: setting?.setting
-        ? setting.setting.initialSettingMap
-        : true,
-    }))
   }, [setting])
 
   const submitInvoiceSettings = async () => {
     const res = await postFetcher(
-      `/api/quickbooks/setting?token=${token}`,
+      `/api/quickbooks/setting?type=${SettingType.INVOICE}&token=${token}`,
       {},
       { ...settingState, type: SettingType.INVOICE },
     )

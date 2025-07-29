@@ -15,6 +15,13 @@
       "when": 1753282887134,
       "tag": "20250723150127_remove_create_invoice_item_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1753781002709,
+      "tag": "20250729092322_invoice_product_setting_map_flag",
+      "breakpoints": true
     }
   ]
 }
