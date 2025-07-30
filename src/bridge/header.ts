@@ -9,7 +9,7 @@ export type Icons =
   | 'Templates'
   | 'Trash'
   | 'Download'
-  | 'Disconnect'
+  | 'Disconnected'
 
 interface BreadcrumbsPayload {
   items: {
