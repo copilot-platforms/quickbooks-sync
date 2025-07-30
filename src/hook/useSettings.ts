@@ -129,6 +129,11 @@ export const useProductMappingSettings = () => {
   }
 
   const submitMappingItems = async () => {
+    setAppParams((prev) => ({
+      ...prev,
+      showProductConfirm: false,
+    }))
+    setSettingShowConfirm(false)
     const [tableRes, settingRes] = await Promise.all([
       tableMappingSubmit(),
       settingSubmit(),
@@ -139,11 +144,6 @@ export const useProductMappingSettings = () => {
       mutate(
         `/api/quickbooks/setting?type=${SettingType.PRODUCT}&token=${token}`,
       )
-      setAppParams((prev) => ({
-        ...prev,
-        showProductConfirm: false,
-      }))
-      setSettingShowConfirm(false)
       setChangedItemReference([])
     } else {
       console.error({ tableRes, settingRes })
@@ -524,6 +524,7 @@ export const useInvoiceDetailSettings = () => {
   }, [setting])
 
   const submitInvoiceSettings = async () => {
+    setShowButton(false)
     const res = await postFetcher(
       `/api/quickbooks/setting?type=${SettingType.INVOICE}&token=${token}`,
       {},
@@ -534,7 +535,6 @@ export const useInvoiceDetailSettings = () => {
       alert('Error submitting invoice settings')
     } else {
       mutate(`/api/quickbooks/setting?type=invoice&token=${token}`)
-      setShowButton(false)
     }
   }
 
