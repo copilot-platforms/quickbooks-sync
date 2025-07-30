@@ -31,8 +31,6 @@ export type ProductMappingComponentType = {
   setting: {
     settingState: ProductSettingType
     changeSettings: (flag: keyof ProductSettingType, state: boolean) => void
-    error: unknown
-    isLoading: boolean
   }
 }
 
@@ -49,10 +47,6 @@ export default function ProductMapping({
   setMappingItems,
   setting,
 }: ProductMappingComponentType) {
-  if (setting.isLoading) {
-    return <Spinner size={5} />
-  }
-
   return (
     <>
       <div className="mt-2 mb-6">

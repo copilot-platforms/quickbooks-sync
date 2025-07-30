@@ -56,13 +56,7 @@ export default function ProductMappingTable({
   mappingItems,
   setMappingItems,
 }: Omit<ProductMappingComponentType, 'setting'>) {
-  const { products, quickbooksItems, isLoading, error, showLoadingText } =
-    useProductTableSetting(setMappingItems)
-
-  if (error) {
-    // TODO: if error show in proper UI
-    console.error({ error })
-  }
+  const { products, quickbooksItems } = useProductTableSetting(setMappingItems)
 
   const dropdownRef = useClickOutside<HTMLDivElement>(() => {
     setOpenDropdowns({})
@@ -92,22 +86,7 @@ export default function ProductMappingTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {isLoading ? (
-              <tr>
-                <td colSpan={3} className="py-11">
-                  <div className="flex flex-col items-center justify-center space-y-2.5">
-                    <Spinner size={5} />
-                    <p
-                      className={`text-gray-600 leading-5.5 text-sm ${
-                        showLoadingText ? 'visible' : 'invisible'
-                      }`}
-                    >
-                      Syncing with QuickBooks
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            ) : products ? (
+            {products ? (
               products.map((product: ProductDataType, index: number) => (
                 <tr key={index} className="transition-colors">
                   {/* Copilot Products Column */}

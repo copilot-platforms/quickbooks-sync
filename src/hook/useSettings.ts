@@ -2,14 +2,17 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '@/app/context/AppContext'
 import { useSwrHelper } from '@/helper/swr.helper'
-import { ProductFlattenArrayResponseType } from '@/type/dto/api.dto'
+import {
+  ProductFlattenArrayResponseType,
+  ProductFlattenResponseType,
+} from '@/type/dto/api.dto'
 import { getTimeInterval } from '@/utils/common'
 import {
   ProductMappingItemArraySchema,
   ProductMappingItemType,
 } from '@/db/schema/qbProductSync'
-import { postFetcher } from '@/helper/fetch.helper'
-import { mutate } from 'swr'
+import { getFetcher, postFetcher } from '@/helper/fetch.helper'
+import useSWR, { mutate } from 'swr'
 import equal from 'deep-equal'
 import {
   InvoiceSettingType,
@@ -69,12 +72,12 @@ export const useProductMappingSettings = () => {
     ProductSettingType | undefined
   >()
 
-  const {
-    data: setting,
-    error: settingError,
-    isLoading: settingLoading,
-  } = useSwrHelper(
+  const { data: setting } = useSwrHelper(
     `/api/quickbooks/setting?type=${SettingType.PRODUCT}&token=${token}`,
+    {
+      suspense: true,
+      revalidateOnMount: false,
+    },
   )
 
   const changeSettings = async (
@@ -88,7 +91,7 @@ export const useProductMappingSettings = () => {
   }
 
   useEffect(() => {
-    if (!productSetting) return
+    if (!productSetting || !intialSettingState) return
     const showButton = !equal(intialSettingState, productSetting)
     setSettingShowConfirm(showButton)
   }, [productSetting])
@@ -279,8 +282,6 @@ export const useProductMappingSettings = () => {
     setting: {
       settingState: productSetting,
       changeSettings,
-      error: settingError,
-      isLoading: settingLoading,
       settingShowConfirm,
     },
   }
@@ -289,7 +290,6 @@ export const useProductMappingSettings = () => {
 export const useProductTableSetting = (
   setMappingItems: (mapProducts: ProductMappingItemType[]) => void,
 ) => {
-  const [showLoadingText, setShowLoadingText] = useState<boolean>(false)
   const emptyMappedItem = {
     name: null,
     description: '',
@@ -301,72 +301,77 @@ export const useProductTableSetting = (
     isExcluded: true,
   }
   const { token, setAppParams, syncFlag } = useApp()
-  const {
-    data: products,
-    error: productError,
-    isLoading: isProductLoading,
-  } = useSwrHelper(`/api/quickbooks/product/flatten?token=${token}`)
-
-  const {
-    data: quickbooksItems,
-    error: quickbooksError,
-    isLoading: isQBLoading,
-  } = useSwrHelper(
-    syncFlag ? `/api/quickbooks/product/qb/item?token=${token}` : null,
+  const { data: products } = useSwrHelper(
+    `/api/quickbooks/product/flatten?token=${token}`,
+    {
+      suspense: true,
+      revalidateOnMount: false,
+    },
   )
 
-  const {
-    data: mappedItems,
-    error: mappedItemsError,
-    isLoading: isMappedItemsLoading,
-  } = useSwrHelper(`/api/quickbooks/product/map?token=${token}`)
+  const { data: quickbooksItems } = useSwrHelper(
+    syncFlag ? `/api/quickbooks/product/qb/item?token=${token}` : null,
+    {
+      suspense: true,
+      revalidateOnMount: false,
+    },
+  )
 
-  const isLoading = isProductLoading || isQBLoading || isMappedItemsLoading
-  const error = productError || quickbooksError || mappedItemsError
+  const { data: mappedItems } = useSwrHelper(
+    `/api/quickbooks/product/map?token=${token}`,
+    {
+      suspense: true,
+      revalidateOnMount: false,
+    },
+  )
 
   useEffect(() => {
     let newMap: ProductMappingItemType[]
     const mappedItemEmpty =
       !mappedItems || Object.keys(mappedItems).length === 0
-    if (products && !isLoading) {
+    if (products) {
       if (mappedItemEmpty) {
         // if mapped list is empty, exclude all items by default
-        newMap = products?.products?.map((product: ProductDataType) => {
-          return {
-            ...emptyMappedItem,
-            priceId: product.priceId,
-            productId: product.id,
-          }
-        })
-      } else {
-        newMap = products?.products?.map((product: ProductDataType) => {
-          const mappedItem = mappedItems.find(
-            // search for the already mapped product from the mapped list
-            (item: ProductMappingItemType) =>
-              item.productId === product.id &&
-              item.priceId === product.priceId &&
-              item.qbItemId,
-          )
-          if (mappedItem) {
-            // if found, return with the mapped product in mapping item
+        newMap = products?.products?.map(
+          (product: ProductFlattenResponseType) => {
             return {
-              name: mappedItem.name,
-              description: mappedItem.description,
+              ...emptyMappedItem,
               priceId: product.priceId,
               productId: product.id,
-              unitPrice:
-                mappedItem.unitPrice && mappedItem.unitPrice.toString(),
-              qbItemId: mappedItem.qbItemId,
-              qbSyncToken: mappedItem.qbSyncToken,
-              isExcluded: false,
             }
-          }
-          return {
-            ...emptyMappedItem,
-            priceId: product.priceId,
-            productId: product.id,
-          }
-        })
+          },
+        )
+      } else {
+        newMap = products?.products?.map(
+          (product: ProductFlattenResponseType) => {
+            const mappedItem = mappedItems.find(
+              // search for the already mapped product from the mapped list
+              (item: ProductMappingItemType) =>
+                item.productId === product.id &&
+                item.priceId === product.priceId &&
+                item.qbItemId,
+            )
+            if (mappedItem) {
+              // if found, return with the mapped product in mapping item
+              return {
+                name: mappedItem.name,
+                description: mappedItem.description,
+                priceId: product.priceId,
+                productId: product.id,
+                unitPrice:
+                  mappedItem.unitPrice && mappedItem.unitPrice.toString(),
+                qbItemId: mappedItem.qbItemId,
+                qbSyncToken: mappedItem.qbSyncToken,
+                isExcluded: false,
+              }
+            }
+            return {
+              ...emptyMappedItem,
+              priceId: product.priceId,
+              productId: product.id,
+            }
+          },
+        )
       }
       ProductMappingItemArraySchema.parse(newMap)
       // create deep copy of the newMap.
@@ -379,17 +384,7 @@ export const useProductTableSetting = (
       }
       setMappingItems(newMap)
     }
-  }, [products, mappedItems, isLoading])
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setShowLoadingText(true)
-    }, 3000) // As general rule, if loading takes more than 3 seconds, show loading text
-
-    return () => {
-      clearTimeout(timeout)
-    }
-  }, [])
+  }, [products, mappedItems, quickbooksItems])
 
   const formatProductDataForListing = (
     data: ProductFlattenArrayResponseType,
@@ -438,9 +433,6 @@ export const useProductTableSetting = (
   return {
     products: formatProductDataForListing(products),
     quickbooksItems: formatQBItemForListing(quickbooksItems),
-    isLoading,
-    error,
-    showLoadingText,
   }
 }
 
@@ -490,7 +482,10 @@ export const useInvoiceDetailSettings = () => {
     data: setting,
     error,
     isLoading,
-  } = useSwrHelper(`/api/quickbooks/setting?type=invoice&token=${token}`)
+  } = useSwrHelper(`/api/quickbooks/setting?type=invoice&token=${token}`, {
+    suspense: true,
+    revalidateOnMount: false,
+  })
 
   const changeSettings = async (
     flag: keyof InvoiceSettingType,

@@ -14,6 +14,9 @@ import {
 import LastSyncAt from '@/components/dashboard/LastSyncAt'
 import { SilentError } from '@/components/template/SilentError'
 import { useApp } from '@/app/context/AppContext'
+import { Suspense } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
+import Loader from '@/components/ui/Loader'
 
 type CalloutType = {
   title: string
@@ -86,47 +89,53 @@ export const Main = () => {
       {isLoading ? (
         <Spinner size={5} />
       ) : (
-        <>
-          <Callout
-            title={dashboardCallout.title}
-            description={dashboardCallout.description}
-            variant={status}
-            {...(dashboardCallout.actionLabel && {
-              actionProps: {
-                label:
-                  isReconnecting || isConnecting
-                    ? 'Connecting...'
-                    : dashboardCallout.actionLabel,
-                onClick: buttonAction,
-                disabled:
-                  isReconnecting ||
-                  isConnecting ||
-                  (status === CalloutVariant.WARNING && !enableAppIndicator),
-                prefixIcon: dashboardCallout.actionIcon,
-                ...(dashboardCallout.buttonVariant && {
-                  variant: dashboardCallout.buttonVariant,
-                }),
-                className: !portalConnectionStatus ? 'lg:!px-8' : '',
-              },
-            })}
-          />
-          <div className={!portalConnectionStatus ? 'opacity-25 relative' : ''}>
-            {!portalConnectionStatus && (
-              <div className="absolute top-0 left-0 w-full h-full z-10"></div>
-            )}
-            <div className="mt-6 mb-2">
-              <Heading
-                size="xl"
-                tag="h2"
-                className="pb-4 border-b-1 border-b-card-divider !leading-7" // forcing styles with "!"
-              >
-                Settings
-              </Heading>
-              <Divider />
+        <ErrorBoundary
+          fallback={<SilentError message="Something went wrong" />}
+        >
+          <Suspense fallback={<Loader />}>
+            <Callout
+              title={dashboardCallout.title}
+              description={dashboardCallout.description}
+              variant={status}
+              {...(dashboardCallout.actionLabel && {
+                actionProps: {
+                  label:
+                    isReconnecting || isConnecting
+                      ? 'Connecting...'
+                      : dashboardCallout.actionLabel,
+                  onClick: buttonAction,
+                  disabled:
+                    isReconnecting ||
+                    isConnecting ||
+                    (status === CalloutVariant.WARNING && !enableAppIndicator),
+                  prefixIcon: dashboardCallout.actionIcon,
+                  ...(dashboardCallout.buttonVariant && {
+                    variant: dashboardCallout.buttonVariant,
+                  }),
+                  className: !portalConnectionStatus ? 'lg:!px-8' : '',
+                },
+              })}
+            />
+            <div
+              className={!portalConnectionStatus ? 'opacity-25 relative' : ''}
+            >
+              {!portalConnectionStatus && (
+                <div className="absolute top-0 left-0 w-full h-full z-10"></div>
+              )}
+              <div className="mt-6 mb-2">
+                <Heading
+                  size="xl"
+                  tag="h2"
+                  className="pb-4 border-b-1 border-b-card-divider !leading-7" // forcing styles with "!"
+                >
+                  Settings
+                </Heading>
+                <Divider />
+              </div>
+              <SettingAccordion syncFlag={syncFlag} />
             </div>
-            <SettingAccordion syncFlag={syncFlag} />
-          </div>
-        </>
+          </Suspense>
+        </ErrorBoundary>
       )}
     </>
   )

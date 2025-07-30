@@ -55,7 +55,12 @@ export const AppProvider = ({
     initialProductSettingMapFlag,
   })
   return (
-    <AppContext.Provider value={{ ...authParams, setAppParams }}>
+    <AppContext.Provider
+      value={{
+        ...authParams,
+        setAppParams,
+      }}
+    >
       {children}
     </AppContext.Provider>
   )
