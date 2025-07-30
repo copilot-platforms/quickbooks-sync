@@ -20,7 +20,14 @@ export const QBSetting = table('qb_settings', {
     .boolean('create_new_product_flag')
     .default(false)
     .notNull(),
-  initialSettingMap: t.boolean('initial_setting_map').default(true).notNull(),
+  initialInvoiceSettingMap: t
+    .boolean('initial_invoice_setting_map')
+    .default(false)
+    .notNull(),
+  initialProductSettingMap: t
+    .boolean('initial_product_setting_map')
+    .default(false)
+    .notNull(),
   syncFlag: t.boolean('sync_flag').default(false).notNull(),
   isEnabled: t.boolean('is_enabled').default(false).notNull(),
   ...newTimestamps,

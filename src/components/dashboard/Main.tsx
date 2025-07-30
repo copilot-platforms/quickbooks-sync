@@ -13,6 +13,7 @@ import {
 } from 'copilot-design-system'
 import LastSyncAt from '@/components/dashboard/LastSyncAt'
 import { SilentError } from '@/components/template/SilentError'
+import { useApp } from '@/app/context/AppContext'
 
 type CalloutType = {
   title: string
@@ -60,12 +61,13 @@ export const Main = () => {
     buttonAction,
     isReconnecting,
     lastSyncTimestamp,
-    itemMapped,
     portalConnectionStatus,
     syncFlag,
     handleConnect,
     isConnecting,
   } = useDashboardMain()
+
+  const { enableAppIndicator } = useApp()
 
   if (portalConnectionStatus === null) {
     return (
@@ -99,7 +101,7 @@ export const Main = () => {
                 disabled:
                   isReconnecting ||
                   isConnecting ||
-                  (status === CalloutVariant.WARNING && !itemMapped),
+                  (status === CalloutVariant.WARNING && !enableAppIndicator),
                 prefixIcon: dashboardCallout.actionIcon,
                 ...(dashboardCallout.buttonVariant && {
                   variant: dashboardCallout.buttonVariant,
