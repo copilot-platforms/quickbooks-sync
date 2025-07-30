@@ -1,7 +1,7 @@
 import { AuthStatus } from '@/app/api/core/types/auth'
 import { LogStatus } from '@/app/api/core/types/log'
 import { useApp } from '@/app/context/AppContext'
-import { useActionsMenu } from '@/bridge/header'
+import { Icons, useActionsMenu } from '@/bridge/header'
 import { copilotDashboardUrl } from '@/config'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
 import { postFetcher } from '@/helper/fetch.helper'
@@ -294,11 +294,13 @@ export const useAppBridge = ({
     link.click()
     link.remove()
   }
-  let actions: { label: string; onClick: () => Promise<void> }[] = []
+  let actions: { label: string; icon?: Icons; onClick: () => Promise<void> }[] =
+    []
   if (connectionStatus) {
     actions = [
       {
         label: 'Download sync history',
+        icon: 'Download',
         onClick: downloadCsvAction,
       },
     ]
@@ -306,6 +308,7 @@ export const useAppBridge = ({
     if (isEnabled && syncFlag) {
       actions.push({
         label: 'Disconnect app',
+        icon: 'Disconnect',
         onClick: disconnectAction,
       })
     }
