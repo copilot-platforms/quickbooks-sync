@@ -1,0 +1,1 @@
+ALTER TABLE "qb_product_sync" ADD COLUMN "copilot_name" varchar(100);
