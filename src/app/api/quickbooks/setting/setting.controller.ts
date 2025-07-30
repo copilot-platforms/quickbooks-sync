@@ -34,19 +34,16 @@ export async function updateSettings(req: NextRequest) {
   const user = await authenticate(req)
   const body = await req.json()
 
-  const parsedBody = SettingRequestSchema.parse(body)
   const settingService = new SettingService(user)
   const type = req.nextUrl.searchParams.get('type')
 
   const parsedType = z.nativeEnum(SettingType).parse(type)
 
-  const payload: QBSettingsUpdateSchemaType = {
-    ...parsedBody,
-  }
-  if (parsedType === SettingType.INVOICE) {
-    payload.initialInvoiceSettingMap = true
-  } else {
-    payload.initialProductSettingMap = true
+  const payload = {
+    ...SettingRequestSchema.parse(body),
+    ...(parsedType === SettingType.INVOICE
+      ? { initialInvoiceSettingMap: true }
+      : { initialProductSettingMap: true }),
   }
   const setting = await settingService.updateQBSettings(
     payload,
