@@ -3,7 +3,13 @@
 import { DASHBOARD_DOMAIN } from '@/constant/domains'
 import { useEffect, useMemo } from 'react'
 
-type Icons = 'Archive' | 'Plus' | 'Templates' | 'Trash'
+export type Icons =
+  | 'Archive'
+  | 'Plus'
+  | 'Templates'
+  | 'Trash'
+  | 'Download'
+  | 'Disconnected'
 
 interface BreadcrumbsPayload {
   items: {
