@@ -7,6 +7,7 @@ import {
   useProductTableSetting,
 } from '@/hook/useSettings'
 import { Icon, Spinner } from 'copilot-design-system'
+import { useRef } from 'react'
 
 const MapItemComponent = ({
   mappingItems,
@@ -64,9 +65,18 @@ export default function ProductMappingTable({
     console.error({ error })
   }
 
-  const dropdownRef = useClickOutside<HTMLDivElement>(() => {
-    setOpenDropdowns({})
-  })
+  const dropdownRef = useRef<HTMLDivElement>(null) // single ref for all dropdowns. Only opening one dropdown at a time.
+  const buttonRefs = useRef<Record<number, HTMLButtonElement | null>>({})
+  const setButtonRef = (index: number) => (el: HTMLButtonElement | null) => {
+    // separate button ref as per index.
+    buttonRefs.current[index] = el
+  }
+
+  useClickOutside(
+    dropdownRef,
+    () => setOpenDropdowns({}),
+    Object.values(buttonRefs.current).map((el) => ({ current: el })), // Exclude the button from outside click detection
+  )
 
   return (
     <>
@@ -133,6 +143,7 @@ export default function ProductMappingTable({
                   {/* QuickBooks Items Column */}
                   <td className="border-l border-gray-200 bg-gray-100 hover:bg-gray-150 relative">
                     <button
+                      ref={setButtonRef(index)}
                       onClick={() => toggleDropdown(index)}
                       className="w-full h-full grid grid-cols-6 md:grid-cols-14 transition-colors py-2 pl-4 pr-3"
                     >
