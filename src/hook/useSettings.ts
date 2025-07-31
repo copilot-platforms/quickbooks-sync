@@ -11,8 +11,8 @@ import {
   ProductMappingItemArraySchema,
   ProductMappingItemType,
 } from '@/db/schema/qbProductSync'
-import { getFetcher, postFetcher } from '@/helper/fetch.helper'
-import useSWR, { mutate } from 'swr'
+import { postFetcher } from '@/helper/fetch.helper'
+import { mutate } from 'swr'
 import equal from 'deep-equal'
 import {
   InvoiceSettingType,
@@ -498,7 +498,7 @@ export const useInvoiceDetailSettings = () => {
   }
 
   useEffect(() => {
-    if (!settingState) return
+    if (!settingState || !intialSettingState) return
     const showButton = !equal(intialSettingState, settingState)
     setShowButton(showButton)
   }, [settingState])

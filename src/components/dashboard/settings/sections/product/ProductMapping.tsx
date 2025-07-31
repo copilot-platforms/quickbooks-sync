@@ -1,8 +1,12 @@
 import ProductMappingTable from '@/components/dashboard/settings/sections/product/ProductMappingTable'
+import { SilentError } from '@/components/template/SilentError'
+import Loader from '@/components/ui/Loader'
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
 import { ProductDataType, QBItemDataType } from '@/hook/useSettings'
 import { ProductSettingType } from '@/type/common'
-import { Checkbox, Spinner } from 'copilot-design-system'
+import { Checkbox } from 'copilot-design-system'
+import { Suspense } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 
 export type ProductMappingComponentType = {
   openDropdowns: {
@@ -48,36 +52,38 @@ export default function ProductMapping({
   setting,
 }: ProductMappingComponentType) {
   return (
-    <>
-      <div className="mt-2 mb-6">
-        <div className="mb-5">
-          <Checkbox
-            label="Sync Copilot products to QuickBooks"
-            description="Automatically create and update QuickBooks items when products are created or used in Copilot."
-            checked={setting.settingState.createNewProductFlag}
-            onChange={() =>
-              setting.changeSettings(
-                'createNewProductFlag',
-                !setting.settingState.createNewProductFlag,
-              )
-            }
+    <ErrorBoundary fallback={<SilentError message="Something went wrong" />}>
+      <Suspense fallback={<Loader />}>
+        <div className="mt-2 mb-6">
+          <div className="mb-5">
+            <Checkbox
+              label="Sync Copilot products to QuickBooks"
+              description="Automatically create and update QuickBooks items when products are created or used in Copilot."
+              checked={setting.settingState.createNewProductFlag}
+              onChange={() =>
+                setting.changeSettings(
+                  'createNewProductFlag',
+                  !setting.settingState.createNewProductFlag,
+                )
+              }
+            />
+          </div>
+
+          {/* Product Mapping table */}
+          <ProductMappingTable
+            openDropdowns={openDropdowns}
+            setOpenDropdowns={setOpenDropdowns}
+            searchTerms={searchTerms}
+            selectedItems={selectedItems}
+            toggleDropdown={toggleDropdown}
+            handleSearch={handleSearch}
+            selectItem={selectItem}
+            getFilteredItems={getFilteredItems}
+            mappingItems={mappingItems}
+            setMappingItems={setMappingItems}
           />
         </div>
-
-        {/* Product Mapping table */}
-        <ProductMappingTable
-          openDropdowns={openDropdowns}
-          setOpenDropdowns={setOpenDropdowns}
-          searchTerms={searchTerms}
-          selectedItems={selectedItems}
-          toggleDropdown={toggleDropdown}
-          handleSearch={handleSearch}
-          selectItem={selectItem}
-          getFilteredItems={getFilteredItems}
-          mappingItems={mappingItems}
-          setMappingItems={setMappingItems}
-        />
-      </div>
-    </>
+      </Suspense>
+    </ErrorBoundary>
   )
 }
