@@ -50,7 +50,7 @@ export default function ProductMapping({
   setting,
 }: ProductMappingComponentType) {
   if (setting.isLoading) {
-    return <Spinner size={5} />
+    return <></>
   }
 
   return (
