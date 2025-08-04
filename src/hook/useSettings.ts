@@ -223,7 +223,7 @@ export const useProductMappingSettings = () => {
           description: item.description || '',
           priceId: products[index].priceId,
           productId: products[index].id,
-          unitPrice: item.numericPrice?.toString() || null,
+          unitPrice: item.numericPrice?.toFixed(2) || null,
           qbItemId: item.id || null,
           qbSyncToken: item.syncToken || null,
           isExcluded: item.id && item.syncToken ? false : true,

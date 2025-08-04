@@ -42,12 +42,8 @@ export class WebhookService extends BaseService {
     const payload = parsedBody.data
     console.info('Webhook payload:\n', payload)
 
-    // for webhook event product.create and price.create, terminate process if createNewProductFlag is false
-    if (
-      [WebhookEvents.PRODUCT_CREATED, WebhookEvents.PRICE_CREATED].includes(
-        payload.eventType as WebhookEvents,
-      )
-    ) {
+    // for webhook event price.create, terminate process if createNewProductFlag is false
+    if (WebhookEvents.PRICE_CREATED === payload.eventType) {
       const settingService = new SettingService(this.user)
       const setting = await settingService.getOneByPortalId([
         'createNewProductFlag',
@@ -55,7 +51,7 @@ export class WebhookService extends BaseService {
 
       if (!setting?.createNewProductFlag) {
         console.info(
-          'WebhookService#handleWebhookEvent#payment-succeeded | Create new product flag is false',
+          'WebhookService#handleWebhookEvent | Create new product flag is false',
         )
         return
       }
@@ -143,39 +139,6 @@ export class WebhookService extends BaseService {
             status: LogStatus.FAILED,
             copilotId: parsedProductResource.data.id,
             productName: parsedProductResource.data.name,
-          })
-          throw error
-        }
-
-      case WebhookEvents.PRODUCT_CREATED:
-        console.info('###### PRODUCT CREATED ######')
-        const parsedCreatedProduct =
-          ProductCreatedResponseSchema.safeParse(payload)
-        if (!parsedCreatedProduct.success || !parsedCreatedProduct.data) {
-          console.error(
-            'WebhookService#handleWebhookEvent | Could not parse product created resource',
-          )
-          break
-        }
-        const parsedCreatedProductResource = parsedCreatedProduct.data
-
-        try {
-          validateAccessToken(qbTokenInfo)
-          productService = new ProductService(this.user)
-          await productService.webhookProductCreated(
-            parsedCreatedProductResource,
-            qbTokenInfo,
-          )
-          break
-        } catch (error: unknown) {
-          const syncLogService = new SyncLogService(this.user)
-          await syncLogService.updateOrCreateQBSyncLog({
-            portalId: this.user.workspaceId,
-            entityType: EntityType.PRODUCT,
-            eventType: EventType.CREATED,
-            status: LogStatus.FAILED,
-            copilotId: parsedCreatedProductResource.data.id,
-            productName: parsedCreatedProductResource.data.name,
           })
           throw error
         }
@@ -311,12 +274,11 @@ export class WebhookService extends BaseService {
             return
           }
 
-          const copilotApp = new CopilotAPI(this.user.token)
-          const invoice = await copilotApp.getInvoice(
-            parsedPaymentSucceedResource.data.invoiceId,
-          )
-
           try {
+            const copilotApp = new CopilotAPI(this.user.token)
+            const invoice = await copilotApp.getInvoice(
+              parsedPaymentSucceedResource.data.invoiceId,
+            )
             if (!invoice)
               throw new APIError(httpStatus.NOT_FOUND, 'Invoice not found')
             validateAccessToken(qbTokenInfo)
@@ -334,7 +296,6 @@ export class WebhookService extends BaseService {
               eventType: EventType.SUCCEEDED,
               status: LogStatus.FAILED,
               copilotId: parsedPaymentSucceedResource.data.id,
-              invoiceNumber: invoice?.number,
               feeAmount:
                 parsedPaymentSucceedResource.data.feeAmount.paidByPlatform.toFixed(
                   2,
