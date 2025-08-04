@@ -80,6 +80,7 @@ const QBItemSchema = z.object({
   name: z.string(),
   syncToken: z.string(),
   numericPrice: z.number(),
+  description: z.string(),
 })
 
 const ProductChangedItemReferenceSchema = z.object({
@@ -100,3 +101,4 @@ export const ProductMappingSchema = z.object({
   mappingItems: QBProductCreateArraySchema,
   changedItemReference: z.array(ProductChangedItemReferenceSchema),
 })
+export type ProductMappingSchemaType = z.infer<typeof ProductMappingSchema>
