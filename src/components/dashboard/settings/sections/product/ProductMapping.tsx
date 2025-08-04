@@ -59,7 +59,7 @@ export default function ProductMapping({
         <div className="mb-5">
           <Checkbox
             label="Sync Copilot products to QuickBooks"
-            description="Automatically create and update QuickBooks items when products are created or used in Copilot."
+            description="Automatically create and update QuickBooks items when products are created or updated in Copilot."
             checked={setting.settingState.createNewProductFlag}
             onChange={() =>
               setting.changeSettings(
