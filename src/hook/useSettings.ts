@@ -167,26 +167,12 @@ export const useProductMappingSettings = () => {
 
   const toggleDropdown = (index: number) => {
     setOpenDropdowns((prev) => {
-      // If this dropdown is already open, just close it
-      if (prev[index]) {
-        return {
-          ...prev,
-          [index]: false,
-        }
-      }
-
-      // Otherwise, close all dropdowns and open only this one
-      const newState = prev
-      Object.keys(prev).forEach((key: string) => {
-        newState[parseInt(key)] = false
-      })
-
       return {
-        ...newState,
-        [index]: true,
+        [index]: !prev[index],
       }
     })
   }
+
   const handleSearch = (index: number, value: string) => {
     setSearchTerms((prev) => ({
       ...prev,
