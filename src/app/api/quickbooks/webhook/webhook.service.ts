@@ -274,12 +274,11 @@ export class WebhookService extends BaseService {
             return
           }
 
-          const copilotApp = new CopilotAPI(this.user.token)
-          const invoice = await copilotApp.getInvoice(
-            parsedPaymentSucceedResource.data.invoiceId,
-          )
-
           try {
+            const copilotApp = new CopilotAPI(this.user.token)
+            const invoice = await copilotApp.getInvoice(
+              parsedPaymentSucceedResource.data.invoiceId,
+            )
             if (!invoice)
               throw new APIError(httpStatus.NOT_FOUND, 'Invoice not found')
             validateAccessToken(qbTokenInfo)
@@ -297,7 +296,6 @@ export class WebhookService extends BaseService {
               eventType: EventType.SUCCEEDED,
               status: LogStatus.FAILED,
               copilotId: parsedPaymentSucceedResource.data.id,
-              invoiceNumber: invoice?.number,
               feeAmount:
                 parsedPaymentSucceedResource.data.feeAmount.paidByPlatform.toFixed(
                   2,
