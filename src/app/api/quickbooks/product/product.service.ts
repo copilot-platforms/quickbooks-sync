@@ -22,7 +22,7 @@ import {
 } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
-import { and, desc, eq, inArray, isNull, not, sql } from 'drizzle-orm'
+import { and, count, desc, eq, inArray, isNull, not, sql } from 'drizzle-orm'
 import { convert } from 'html-to-text'
 import { z } from 'zod'
 import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
@@ -116,6 +116,17 @@ export class ProductService extends BaseService {
       ...columns,
       orderBy: [desc(QBProductSync.createdAt)],
     })
+  }
+
+  async getProductCount(condition?: WhereClause) {
+    const [result] = await this.db
+      .select({
+        count: count(QBProductSync.id),
+      })
+      .from(QBProductSync)
+      .where(and(eq(QBProductSync.portalId, this.user.workspaceId), condition))
+
+    return result.count
   }
 
   /**
@@ -414,81 +425,7 @@ export class ProductService extends BaseService {
     )
   }
 
-  async webhookProductCreated(
-    resource: ProductCreatedResponseType,
-    qbTokenInfo: IntuitAPITokensType,
-  ): Promise<void> {
-    const productResource = resource.data
-    const intuitApi = new IntuitAPI(qbTokenInfo)
-    const productDescription = convert(productResource.description)
-
-    await this.db.transaction(async (tx) => {
-      this.setTransaction(tx)
-
-      // create a locking mechanism to prevent two simultaneous webhook requests from inserting duplicate. Lock the transaction based on hash text.
-      // DOC: postgresql.org/docs/current/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS-TABLE
-      await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtext(${productResource.id}))`, // hash key of productId as it is present in both price and product webhook
-      )
-
-      // 01. get all unmapped by product id
-      const mappedConditions =
-        (isNull(QBProductSync.qbItemId), isNull(QBProductSync.qbSyncToken))
-
-      const mappedProducts = await this.getAllByProductId(
-        productResource.id,
-        mappedConditions,
-        ['id', 'unitPrice'],
-      )
-      const latestMappedProduct = mappedProducts?.[0]
-      if (latestMappedProduct) {
-        const item = await this.createItemInQB(
-          {
-            productName: productResource.name,
-            unitPrice: latestMappedProduct?.unitPrice
-              ? Number(latestMappedProduct.unitPrice)
-              : 0,
-            incomeAccRefVal: qbTokenInfo.incomeAccountRef,
-            productDescription,
-          },
-          intuitApi,
-        )
-        await this.updateQBProduct(
-          {
-            portalId: this.user.workspaceId,
-            productId: productResource.id,
-            priceId: latestMappedProduct?.priceId,
-            name: productResource.name,
-            copilotName: productResource.name,
-            description: productDescription,
-            qbItemId: item.Id,
-            qbSyncToken: item.SyncToken,
-          },
-          eq(QBProductSync.id, latestMappedProduct?.id),
-        )
-
-        await this.logSync(productResource.id, item.Id, EventType.CREATED, {
-          productName: productResource.name,
-          productPrice: latestMappedProduct.unitPrice,
-          qbItemName: item.Name,
-        })
-      } else {
-        await this.createQBProduct({
-          portalId: this.user.workspaceId,
-          productId: productResource.id,
-          name: productResource.name,
-          copilotName: productResource.name,
-          description: productDescription,
-        })
-
-        console.info(
-          'WebhookService#webhookProductCreated | Product mapping done',
-        )
-      }
-      this.unsetTransaction()
-    })
-  }
-
+  // handles product created
   async webhookPriceCreated(
     resource: PriceCreatedResponseType,
     qbTokenInfo: IntuitAPITokensType,
@@ -499,87 +436,71 @@ export class ProductService extends BaseService {
     await this.db.transaction(async (tx) => {
       this.setTransaction(tx)
 
-      // create a locking mechanism to prevent two simultaneous webhook requests from inserting duplicate. Lock the transaction based on hash text.
-      // DOC: postgresql.org/docs/current/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS-TABLE
-      await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtext(${priceResource.productId}))`, // hash key of productId as it is present in both price and product webhook
-      )
-
       // 01. get all unmapped by product id
       const mappedProducts: QBProductSelectSchemaType[] | undefined =
         await this.getAllByProductId(priceResource.productId, undefined, [
           'id',
-          'name',
-          'description',
-          'copilotName',
+          'productId',
+          'priceId',
         ])
+
+      // total products with the same product id
       const itemsCount = mappedProducts?.length
 
-      const latestMappedProduct = mappedProducts?.[0]
-      if (latestMappedProduct && latestMappedProduct.name) {
-        const newName =
-          itemsCount && itemsCount > 0 && latestMappedProduct.qbItemId
-            ? `${latestMappedProduct.copilotName} (${itemsCount})`
-            : latestMappedProduct.name
-        const item = await this.createItemInQB(
-          {
-            productName: z.string().parse(newName),
-            unitPrice: priceResource.amount,
-            incomeAccRefVal: qbTokenInfo.incomeAccountRef,
-            productDescription: latestMappedProduct.description || '',
-          },
-          intuitApi,
-        )
-        if (!latestMappedProduct.qbItemId) {
-          await this.updateQBProduct(
-            {
-              portalId: this.user.workspaceId,
-              productId: priceResource.productId,
-              priceId: priceResource.id,
-              unitPrice: priceResource.amount.toFixed(2),
-              qbItemId: item.Id,
-              qbSyncToken: item.SyncToken,
-            },
-            eq(QBProductSync.id, latestMappedProduct?.id),
-          )
-        } else {
-          await this.createQBProduct({
-            portalId: this.user.workspaceId,
-            productId: priceResource.productId,
-            priceId: priceResource.id,
-            unitPrice: priceResource.amount.toFixed(2),
-            qbItemId: item.Id,
-            qbSyncToken: item.SyncToken,
-            name: newName,
-            copilotName: latestMappedProduct.copilotName,
-            description: latestMappedProduct.description,
-          })
-        }
-        console.info(
-          'WebhookService#webhookPriceCreated | Product created in QB',
-        )
-        await this.logSync(
-          priceResource.productId,
-          item.Id,
-          EventType.CREATED,
-          {
-            productName: latestMappedProduct.name,
-            productPrice: priceResource.amount.toFixed(2),
-            qbItemName: item.Name,
-          },
-        )
-      } else {
-        await this.createQBProduct({
-          portalId: this.user.workspaceId,
-          productId: priceResource.productId,
-          priceId: priceResource.id,
-          unitPrice: priceResource.amount.toFixed(2),
-        })
+      // filter out with priceId
+      const productWithPriceCount = mappedProducts?.filter(
+        (product) => product.priceId === priceResource.id,
+      ).length
 
-        console.info(
-          'WebhookService#webhookPriceCreated | Product mapping done',
-        )
+      if (productWithPriceCount && productWithPriceCount > 0) {
+        console.info('Product already mapped with price')
+        return
       }
+
+      // get product from copilot
+      const copilot = new CopilotAPI(this.user.token)
+      const copilotProduct = await copilot.getProduct(priceResource.productId)
+
+      if (!copilotProduct) {
+        throw new APIError(httpStatus.NOT_FOUND, 'Product not found')
+      }
+
+      const newName =
+        itemsCount && itemsCount > 0
+          ? `${copilotProduct.name} (${itemsCount})`
+          : copilotProduct.name
+      const productDescription = convert(copilotProduct.description)
+
+      // create item in QB
+      const item = await this.createItemInQB(
+        {
+          productName: z.string().parse(newName),
+          unitPrice: priceResource.amount,
+          incomeAccRefVal: qbTokenInfo.incomeAccountRef,
+          productDescription,
+        },
+        intuitApi,
+      )
+
+      // map product and price
+      await this.createQBProduct({
+        portalId: this.user.workspaceId,
+        productId: priceResource.productId,
+        priceId: priceResource.id,
+        unitPrice: priceResource.amount.toFixed(2),
+        qbItemId: item.Id,
+        qbSyncToken: item.SyncToken,
+        name: newName,
+        copilotName: copilotProduct.name,
+        description: productDescription,
+      })
+
+      console.info('WebhookService#webhookPriceCreated | Product created in QB')
+      await this.logSync(priceResource.productId, item.Id, EventType.CREATED, {
+        productName: copilotProduct.name,
+        productPrice: priceResource.amount.toFixed(2),
+        qbItemName: item.Name,
+      })
 
       this.unsetTransaction()
     })
