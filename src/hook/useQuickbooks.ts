@@ -228,6 +228,7 @@ export const useQuickbooksCallback = () => {
     )
     setLoading(false)
     if (!res.ok) {
+      console.error({ res })
       setError('Error connecting to QuickBooks')
       return
     }
@@ -253,6 +254,7 @@ export const useQuickbooksCallback = () => {
 
     setLoading(false)
     if (!res.ok) {
+      console.error({ res })
       setError('Error connecting to QuickBooks')
       return
     }
