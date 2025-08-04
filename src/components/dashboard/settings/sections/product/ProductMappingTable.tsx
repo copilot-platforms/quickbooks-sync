@@ -237,9 +237,9 @@ export default function ProductMappingTable({
               <tr className="text-center">
                 <td colSpan={3} className="py-11">
                   Start by creating a product in Copilot.
-                  <a href="#" className="ms-2 text-blue-300">
+                  {/* <a href="#" className="ms-2 text-blue-300">
                     Create Product
-                  </a>
+                  </a> */}
                 </td>
               </tr>
             )}
