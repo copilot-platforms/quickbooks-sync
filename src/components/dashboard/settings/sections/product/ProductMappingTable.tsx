@@ -1,6 +1,7 @@
 import { ProductMappingComponentType } from '@/components/dashboard/settings/sections/product/ProductMapping'
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
 import useClickOutside from '@/hook/useClickOutside'
+import { useDropdownPosition } from '@/hook/useDropdown'
 import {
   ProductDataType,
   useMapItem,
@@ -71,6 +72,8 @@ export default function ProductMappingTable({
     () => setOpenDropdowns({}),
     Object.values(buttonRefs.current).map((el) => ({ current: el })), // Exclude the button from outside click detection
   )
+
+  useDropdownPosition(openDropdowns, dropdownRef)
 
   return (
     <>
