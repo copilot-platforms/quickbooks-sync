@@ -146,8 +146,11 @@ export const useProductMappingSettings = () => {
       )
       setChangedItemReference([])
     } else {
-      console.error({ tableRes, settingRes })
-      alert('Error submitting mapping items')
+      setSettingShowConfirm(true) // show the update settings button if error
+      console.error('Error submitting product settings', {
+        tableRes,
+        settingRes,
+      })
     }
   }
 
@@ -531,8 +534,8 @@ export const useInvoiceDetailSettings = () => {
       { ...settingState, type: SettingType.INVOICE },
     )
     if (!res || res?.error) {
-      console.error({ res })
-      alert('Error submitting invoice settings')
+      setShowButton(true) // show the update settings button if error
+      console.error('Error submitting Invoice settings', { res })
     } else {
       mutate(`/api/quickbooks/setting?type=invoice&token=${token}`)
     }
