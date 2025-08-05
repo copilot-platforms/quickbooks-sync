@@ -104,7 +104,7 @@ export default function ProductMappingTable({
                 <tr key={index} className="transition-colors">
                   {/* Copilot Products Column */}
                   <td className="py-2 pl-4 pr-3">
-                    <div className="text-sm leading-5 text-gray-600">
+                    <div className="text-sm leading-5 text-gray-600 break-all lg:break-normal">
                       {product.name}
                     </div>
                     <div className="text-body-xs leading-5 text-gray-500">
