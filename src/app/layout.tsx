@@ -18,11 +18,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={[inter.className].join(' ')}>
-        <div className="layout-container px-8 sm:px-[100px] lg:px-[220px] pb-[54px] pt-6">
-          {children}
-        </div>
-      </body>
+      <body className={[inter.className].join(' ')}>{children}</body>
     </html>
   )
 }

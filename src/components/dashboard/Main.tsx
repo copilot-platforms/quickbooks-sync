@@ -84,9 +84,11 @@ export const Main = () => {
   return (
     <>
       {isLoading ? (
-        <Spinner size={5} />
+        <div className="loading-spinner h-screen flex items-center justify-center">
+          <Spinner size={10} />
+        </div>
       ) : (
-        <>
+        <main className="main-section px-8 sm:px-[100px] lg:px-[220px] pb-[54px] pt-6">
           <Callout
             title={dashboardCallout.title}
             description={dashboardCallout.description}
@@ -126,7 +128,7 @@ export const Main = () => {
             </div>
             <SettingAccordion syncFlag={syncFlag} />
           </div>
-        </>
+        </main>
       )}
     </>
   )
