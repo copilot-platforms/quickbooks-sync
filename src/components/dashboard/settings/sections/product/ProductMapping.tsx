@@ -6,7 +6,6 @@ import { ProductDataType, QBItemDataType } from '@/hook/useSettings'
 import { ProductSettingType } from '@/type/common'
 import { Checkbox } from 'copilot-design-system'
 import { Suspense } from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
 
 export type ProductMappingComponentType = {
   openDropdowns: {
@@ -52,7 +51,7 @@ export default function ProductMapping({
   setting,
 }: ProductMappingComponentType) {
   return (
-    <ErrorBoundary fallback={<SilentError message="Something went wrong" />}>
+    <>
       <Suspense fallback={<Loader />}>
         <div className="mt-2 mb-6">
           <div className="mb-5">
@@ -84,6 +83,6 @@ export default function ProductMapping({
           />
         </div>
       </Suspense>
-    </ErrorBoundary>
+    </>
   )
 }

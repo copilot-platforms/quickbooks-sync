@@ -39,7 +39,6 @@
     "react": "^18",
     "react-code-blocks": "^0.1.6",
     "react-dom": "^18",
-    "react-error-boundary": "^6.0.0",
     "react-linkify": "^1.0.0-alpha",
     "react-time-ago": "^7.3.3",
     "supabase": "2.22.4",

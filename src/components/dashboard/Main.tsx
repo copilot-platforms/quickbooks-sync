@@ -14,9 +14,6 @@ import {
 import LastSyncAt from '@/components/dashboard/LastSyncAt'
 import { SilentError } from '@/components/template/SilentError'
 import { useApp } from '@/app/context/AppContext'
-import { Suspense } from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
-import Loader from '@/components/ui/Loader'
 
 type CalloutType = {
   title: string
