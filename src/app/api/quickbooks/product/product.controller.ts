@@ -22,9 +22,8 @@ export async function storeProductMap(req: NextRequest) {
   const productService = new ProductService(user)
   const body = await req.json()
   const parsedBody = ProductMappingSchema.parse(body)
-  const products = await productService.bulkDeleteCreateQBProduct(
-    parsedBody.mappingItems,
-  )
+  const products = await productService.handleProductMap(parsedBody)
+
   if (parsedBody.changedItemReference.length > 0)
     await productService.formatAndSyncProductLogs(
       parsedBody.changedItemReference,
