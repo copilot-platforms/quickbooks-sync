@@ -302,7 +302,7 @@ export const useAppBridge = ({
     actions = [
       {
         label: 'Download sync history',
-        icon: 'Download',
+        // icon: 'Download',
         onClick: downloadCsvAction,
       },
     ]
@@ -310,7 +310,7 @@ export const useAppBridge = ({
     if (isEnabled && syncFlag) {
       actions.push({
         label: 'Disconnect account',
-        icon: 'Disconnected',
+        // icon: 'Disconnected',
         onClick: disconnectAction,
       })
     }
