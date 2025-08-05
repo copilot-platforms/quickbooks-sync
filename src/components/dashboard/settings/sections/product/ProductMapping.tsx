@@ -1,8 +1,10 @@
 import ProductMappingTable from '@/components/dashboard/settings/sections/product/ProductMappingTable'
+import Loader from '@/components/ui/Loader'
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
 import { ProductDataType, QBItemDataType } from '@/hook/useSettings'
 import { ProductSettingType } from '@/type/common'
-import { Checkbox, Spinner } from 'copilot-design-system'
+import { Checkbox } from 'copilot-design-system'
+import { Suspense } from 'react'
 
 export type ProductMappingComponentType = {
   openDropdowns: {
@@ -31,8 +33,6 @@ export type ProductMappingComponentType = {
   setting: {
     settingState: ProductSettingType
     changeSettings: (flag: keyof ProductSettingType, state: boolean) => void
-    error: unknown
-    isLoading: boolean
   }
 }
 
@@ -49,41 +49,39 @@ export default function ProductMapping({
   setMappingItems,
   setting,
 }: ProductMappingComponentType) {
-  if (setting.isLoading) {
-    return <Spinner size={5} />
-  }
-
   return (
     <>
-      <div className="mt-2 mb-6">
-        <div className="mb-5">
-          <Checkbox
-            label="Sync Copilot products to QuickBooks"
-            description="Automatically create and update QuickBooks items when products are created or updated in Copilot."
-            checked={setting.settingState.createNewProductFlag}
-            onChange={() =>
-              setting.changeSettings(
-                'createNewProductFlag',
-                !setting.settingState.createNewProductFlag,
-              )
-            }
+      <Suspense fallback={<Loader />}>
+        <div className="mt-2 mb-6">
+          <div className="mb-5">
+            <Checkbox
+              label="Sync Copilot products to QuickBooks"
+              description="Automatically create and update QuickBooks items when products are created or updated in Copilot."
+              checked={setting.settingState.createNewProductFlag}
+              onChange={() =>
+                setting.changeSettings(
+                  'createNewProductFlag',
+                  !setting.settingState.createNewProductFlag,
+                )
+              }
+            />
+          </div>
+
+          {/* Product Mapping table */}
+          <ProductMappingTable
+            openDropdowns={openDropdowns}
+            setOpenDropdowns={setOpenDropdowns}
+            searchTerms={searchTerms}
+            selectedItems={selectedItems}
+            toggleDropdown={toggleDropdown}
+            handleSearch={handleSearch}
+            selectItem={selectItem}
+            getFilteredItems={getFilteredItems}
+            mappingItems={mappingItems}
+            setMappingItems={setMappingItems}
           />
         </div>
-
-        {/* Product Mapping table */}
-        <ProductMappingTable
-          openDropdowns={openDropdowns}
-          setOpenDropdowns={setOpenDropdowns}
-          searchTerms={searchTerms}
-          selectedItems={selectedItems}
-          toggleDropdown={toggleDropdown}
-          handleSearch={handleSearch}
-          selectItem={selectItem}
-          getFilteredItems={getFilteredItems}
-          mappingItems={mappingItems}
-          setMappingItems={setMappingItems}
-        />
-      </div>
+      </Suspense>
     </>
   )
 }
