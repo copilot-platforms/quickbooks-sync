@@ -17,7 +17,6 @@ import { bottleneck } from '@/utils/bottleneck'
 import { QBItemFullUpdatePayloadType } from '@/type/dto/intuitAPI.dto'
 import {
   PriceCreatedResponseType,
-  ProductCreatedResponseType,
   ProductUpdatedResponseType,
 } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
@@ -77,20 +76,6 @@ export class ProductService extends BaseService {
       orderBy: [desc(QBProductSync.createdAt)],
       ...columns,
     })
-  }
-
-  async getOneByProductId(
-    productId: string,
-    conditions?: WhereClause,
-    returningFields?: (keyof typeof QBProductSync)[],
-  ): Promise<QBProductSelectSchemaType | undefined> {
-    const newConditions = and(
-      eq(QBProductSync.productId, productId),
-      eq(QBProductSync.portalId, this.user.workspaceId),
-      conditions,
-    ) as WhereClause
-
-    return await this.getOne(newConditions, returningFields)
   }
 
   /**
