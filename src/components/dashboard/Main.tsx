@@ -13,6 +13,7 @@ import {
 } from 'copilot-design-system'
 import LastSyncAt from '@/components/dashboard/LastSyncAt'
 import { SilentError } from '@/components/template/SilentError'
+import { useApp } from '@/app/context/AppContext'
 
 type CalloutType = {
   title: string
@@ -25,9 +26,9 @@ type CalloutType = {
 
 const DashboardCallout = (lastSyncTime: string | null) => ({
   [CalloutVariant.WARNING]: {
-    title: 'Confirm your mapping before getting started',
+    title: 'Finalize your integration',
     description:
-      "Set your product mappings and review configuration settings to best set up your QuickBooks integration. Once you're ready, click the button below to enable the app.",
+      "Review your settings and product mappings to finalize the integration. Once you're ready, click the button to enable the sync.",
     actionLabel: 'Enable app',
     actionIcon: 'Check' as IconType,
     buttonVariant: 'primary' as const,
@@ -60,12 +61,13 @@ export const Main = () => {
     buttonAction,
     isReconnecting,
     lastSyncTimestamp,
-    itemMapped,
     portalConnectionStatus,
     syncFlag,
     handleConnect,
     isConnecting,
   } = useDashboardMain()
+
+  const { enableAppIndicator } = useApp()
 
   if (portalConnectionStatus === null) {
     return (
@@ -99,7 +101,7 @@ export const Main = () => {
                 disabled:
                   isReconnecting ||
                   isConnecting ||
-                  (status === CalloutVariant.WARNING && !itemMapped),
+                  (status === CalloutVariant.WARNING && !enableAppIndicator),
                 prefixIcon: dashboardCallout.actionIcon,
                 ...(dashboardCallout.buttonVariant && {
                   variant: dashboardCallout.buttonVariant,

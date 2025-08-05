@@ -1,3 +1,4 @@
+import { useApp } from '@/app/context/AppContext'
 import InvoiceDetail from '@/components/dashboard/settings/sections/invoice/InvoiceDetail'
 import ProductMapping from '@/components/dashboard/settings/sections/product/ProductMapping'
 import Accordion from '@/components/ui/Accordion'
@@ -29,9 +30,10 @@ export default function SettingAccordion({
     setMappingItems,
     showProductConfirm,
     setting,
-    initialSettingMapFlag,
-    itemMapped,
   } = useProductMappingSettings()
+
+  const { initialInvoiceSettingMapFlag, initialProductSettingMapFlag } =
+    useApp()
 
   const {
     settingState,
@@ -96,7 +98,7 @@ export default function SettingAccordion({
                 syncFlag &&
                 (showProductConfirm || setting.settingShowConfirm) && (
                   <>
-                    {!initialSettingMapFlag && (
+                    {initialProductSettingMapFlag && (
                       <Button
                         label="Cancel"
                         variant="text"
@@ -105,33 +107,41 @@ export default function SettingAccordion({
                       />
                     )}
                     <Button
-                      label={itemMapped ? 'Update Setting' : 'Confirm'}
+                      label={
+                        initialProductSettingMapFlag
+                          ? 'Update Setting'
+                          : 'Confirm'
+                      }
                       variant="primary"
                       prefixIcon="Check"
                       onClick={submitMappingItems}
                     />
                   </>
                 )}
-              {index === 1 && syncFlag && showInvoiceButton && (
-                <>
-                  {!initialSettingMapFlag && (
+              {index === 1 &&
+                syncFlag &&
+                (showInvoiceButton || !initialInvoiceSettingMapFlag) && (
+                  <>
+                    {initialInvoiceSettingMapFlag && (
+                      <Button
+                        label="Cancel"
+                        variant="text"
+                        className="me-2"
+                        onClick={cancelInvoiceSettings}
+                      />
+                    )}
                     <Button
-                      label="Cancel"
-                      variant="text"
-                      className="me-2"
-                      onClick={cancelInvoiceSettings}
+                      label={
+                        initialInvoiceSettingMapFlag
+                          ? 'Update Setting'
+                          : 'Confirm'
+                      }
+                      variant="primary"
+                      prefixIcon="Check"
+                      onClick={submitInvoiceSettings}
                     />
-                  )}
-                  <Button
-                    label={
-                      !initialSettingMapFlag ? 'Update Setting' : 'Confirm'
-                    }
-                    variant="primary"
-                    prefixIcon="Check"
-                    onClick={submitInvoiceSettings}
-                  />
-                </>
-              )}
+                  </>
+                )}
             </div>
             <Accordion
               item={item}

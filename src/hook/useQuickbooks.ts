@@ -1,7 +1,7 @@
 import { AuthStatus } from '@/app/api/core/types/auth'
 import { LogStatus } from '@/app/api/core/types/log'
 import { useApp } from '@/app/context/AppContext'
-import { useActionsMenu } from '@/bridge/header'
+import { Icons, useActionsMenu } from '@/bridge/header'
 import { copilotDashboardUrl } from '@/config'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
 import { postFetcher } from '@/helper/fetch.helper'
@@ -228,6 +228,7 @@ export const useQuickbooksCallback = () => {
     )
     setLoading(false)
     if (!res.ok) {
+      console.error({ res })
       setError('Error connecting to QuickBooks')
       return
     }
@@ -253,6 +254,7 @@ export const useQuickbooksCallback = () => {
 
     setLoading(false)
     if (!res.ok) {
+      console.error({ res })
       setError('Error connecting to QuickBooks')
       return
     }
@@ -294,18 +296,21 @@ export const useAppBridge = ({
     link.click()
     link.remove()
   }
-  let actions: { label: string; onClick: () => Promise<void> }[] = []
+  let actions: { label: string; icon?: Icons; onClick: () => Promise<void> }[] =
+    []
   if (connectionStatus) {
     actions = [
       {
         label: 'Download sync history',
+        icon: 'Download',
         onClick: downloadCsvAction,
       },
     ]
 
     if (isEnabled && syncFlag) {
       actions.push({
-        label: 'Disable sync',
+        label: 'Disconnect account',
+        icon: 'Disconnected',
         onClick: disconnectAction,
       })
     }

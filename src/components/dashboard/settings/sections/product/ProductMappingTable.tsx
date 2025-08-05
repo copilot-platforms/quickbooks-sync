@@ -1,12 +1,14 @@
 import { ProductMappingComponentType } from '@/components/dashboard/settings/sections/product/ProductMapping'
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
 import useClickOutside from '@/hook/useClickOutside'
+import { useDropdownPosition } from '@/hook/useDropdown'
 import {
   ProductDataType,
   useMapItem,
   useProductTableSetting,
 } from '@/hook/useSettings'
 import { Icon, Spinner } from 'copilot-design-system'
+import { useRef } from 'react'
 
 const MapItemComponent = ({
   mappingItems,
@@ -56,17 +58,22 @@ export default function ProductMappingTable({
   mappingItems,
   setMappingItems,
 }: Omit<ProductMappingComponentType, 'setting'>) {
-  const { products, quickbooksItems, isLoading, error, showLoadingText } =
-    useProductTableSetting(setMappingItems)
+  const { products, quickbooksItems } = useProductTableSetting(setMappingItems)
 
-  if (error) {
-    // TODO: if error show in proper UI
-    console.error({ error })
+  const dropdownRef = useRef<HTMLDivElement>(null) // single ref for all dropdowns. Only opening one dropdown at a time.
+  const buttonRefs = useRef<Record<number, HTMLButtonElement | null>>({})
+  const setButtonRef = (index: number) => (el: HTMLButtonElement | null) => {
+    // separate button ref as per index.
+    buttonRefs.current[index] = el
   }
 
-  const dropdownRef = useClickOutside<HTMLDivElement>(() => {
-    setOpenDropdowns({})
-  })
+  useClickOutside(
+    dropdownRef,
+    () => setOpenDropdowns({}),
+    Object.values(buttonRefs.current).map((el) => ({ current: el })), // Exclude the button from outside click detection
+  )
+
+  useDropdownPosition(openDropdowns, dropdownRef)
 
   return (
     <>
@@ -92,27 +99,12 @@ export default function ProductMappingTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {isLoading ? (
-              <tr>
-                <td colSpan={3} className="py-11">
-                  <div className="flex flex-col items-center justify-center space-y-2.5">
-                    <Spinner size={5} />
-                    <p
-                      className={`text-gray-600 leading-5.5 text-sm ${
-                        showLoadingText ? 'visible' : 'invisible'
-                      }`}
-                    >
-                      Syncing with QuickBooks
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            ) : products ? (
+            {products ? (
               products.map((product: ProductDataType, index: number) => (
                 <tr key={index} className="transition-colors">
                   {/* Copilot Products Column */}
                   <td className="py-2 pl-4 pr-3">
-                    <div className="text-sm leading-5 text-gray-600">
+                    <div className="text-sm leading-5 text-gray-600 break-all lg:break-normal">
                       {product.name}
                     </div>
                     <div className="text-body-xs leading-5 text-gray-500">
@@ -133,6 +125,7 @@ export default function ProductMappingTable({
                   {/* QuickBooks Items Column */}
                   <td className="border-l border-gray-200 bg-gray-100 hover:bg-gray-150 relative">
                     <button
+                      ref={setButtonRef(index)}
                       onClick={() => toggleDropdown(index)}
                       className="w-full h-full grid grid-cols-6 md:grid-cols-14 transition-colors py-2 pl-4 pr-3"
                     >
@@ -237,9 +230,9 @@ export default function ProductMappingTable({
               <tr className="text-center">
                 <td colSpan={3} className="py-11">
                   Start by creating a product in Copilot.
-                  <a href="#" className="ms-2 text-blue-300">
+                  {/* <a href="#" className="ms-2 text-blue-300">
                     Create Product
-                  </a>
+                  </a> */}
                 </td>
               </tr>
             )}

@@ -13,8 +13,9 @@ type AppContextType = {
   lastSyncTimestamp: string | null
   showProductConfirm?: boolean
   initialProductMap?: ProductMappingItemType[] // initial product mapped value
-  itemMapped?: boolean // flag to indicate if product mapping has been done or not
-  initialSettingMapFlag?: boolean // flag to determine the initial setting flag
+  enableAppIndicator?: boolean // flag to indicate whether to enable the "Enable App" button
+  initialInvoiceSettingMapFlag?: boolean // flag to determine the initial invoice setting flag
+  initialProductSettingMapFlag?: boolean // flag to determine the initial product setting flag
 }
 
 const AppContext = createContext<
@@ -34,8 +35,9 @@ export const AppProvider = ({
   lastSyncTimestamp,
   showProductConfirm = false,
   initialProductMap = [],
-  itemMapped = false,
-  initialSettingMapFlag = false,
+  enableAppIndicator = false,
+  initialInvoiceSettingMapFlag = false,
+  initialProductSettingMapFlag = false,
   children,
 }: AppContextType & { children: ReactNode }) => {
   const [authParams, setAppParams] = useState<AppContextType>({
@@ -48,11 +50,17 @@ export const AppProvider = ({
     isEnabled,
     showProductConfirm,
     initialProductMap,
-    itemMapped,
-    initialSettingMapFlag,
+    enableAppIndicator,
+    initialInvoiceSettingMapFlag,
+    initialProductSettingMapFlag,
   })
   return (
-    <AppContext.Provider value={{ ...authParams, setAppParams }}>
+    <AppContext.Provider
+      value={{
+        ...authParams,
+        setAppParams,
+      }}
+    >
       {children}
     </AppContext.Provider>
   )

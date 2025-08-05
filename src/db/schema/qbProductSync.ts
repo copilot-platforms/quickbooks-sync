@@ -11,6 +11,7 @@ export const QBProductSync = table('qb_product_sync', {
   priceId: t.varchar('price_id'),
   name: t.varchar({ length: 100 }),
   description: t.varchar({ length: 255 }),
+  copilotName: t.varchar('copilot_name', { length: 100 }),
   unitPrice: t.decimal('unit_price'),
   qbItemId: t.varchar('qb_item_id'),
   qbSyncToken: t.varchar('qb_sync_token', { length: 100 }),
@@ -80,6 +81,7 @@ const QBItemSchema = z.object({
   name: z.string(),
   syncToken: z.string(),
   numericPrice: z.number(),
+  description: z.string(),
 })
 
 const ProductChangedItemReferenceSchema = z.object({
@@ -100,3 +102,4 @@ export const ProductMappingSchema = z.object({
   mappingItems: QBProductCreateArraySchema,
   changedItemReference: z.array(ProductChangedItemReferenceSchema),
 })
+export type ProductMappingSchemaType = z.infer<typeof ProductMappingSchema>
