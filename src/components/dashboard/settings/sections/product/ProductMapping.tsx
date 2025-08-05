@@ -1,5 +1,4 @@
 import ProductMappingTable from '@/components/dashboard/settings/sections/product/ProductMappingTable'
-import { SilentError } from '@/components/template/SilentError'
 import Loader from '@/components/ui/Loader'
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
 import { ProductDataType, QBItemDataType } from '@/hook/useSettings'
@@ -57,7 +56,7 @@ export default function ProductMapping({
           <div className="mb-5">
             <Checkbox
               label="Sync Copilot products to QuickBooks"
-              description="Automatically create and update QuickBooks items when products are created or used in Copilot."
+              description="Automatically create and update QuickBooks items when products are created or updated in Copilot."
               checked={setting.settingState.createNewProductFlag}
               onChange={() =>
                 setting.changeSettings(

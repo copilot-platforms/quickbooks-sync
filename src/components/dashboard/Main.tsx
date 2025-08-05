@@ -26,9 +26,9 @@ type CalloutType = {
 
 const DashboardCallout = (lastSyncTime: string | null) => ({
   [CalloutVariant.WARNING]: {
-    title: 'Confirm your mapping before getting started',
+    title: 'Finalize your integration',
     description:
-      "Set your product mappings and review configuration settings to best set up your QuickBooks integration. Once you're ready, click the button below to enable the app.",
+      "Review your settings and product mappings to finalize the integration. Once you're ready, click the button to enable the sync.",
     actionLabel: 'Enable app',
     actionIcon: 'Check' as IconType,
     buttonVariant: 'primary' as const,
