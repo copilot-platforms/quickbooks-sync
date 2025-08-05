@@ -24,7 +24,9 @@ const MapItemComponent = ({
     <>
       {currentlyMapped ? (
         <div className="text-left">
-          <div className="text-sm leading-5">{currentlyMapped?.name}</div>
+          <div className="text-sm leading-5 break-all lg:break-normal">
+            {currentlyMapped?.name}
+          </div>
           <div className="text-body-xs leading-5 text-gray-500">
             {currentlyMapped.unitPrice &&
               new Intl.NumberFormat('en-US', {
@@ -133,7 +135,7 @@ export default function ProductMappingTable({
                         {selectedItems[index] &&
                         Object.keys(selectedItems[index]).length > 0 ? (
                           <div className="text-left">
-                            <div className="text-sm leading-5 text-gray-600">
+                            <div className="text-sm leading-5 text-gray-600 break-all lg:break-normal">
                               {selectedItems[index].name}
                             </div>
                             <div className="text-body-xs leading-5 text-gray-500">
@@ -204,7 +206,7 @@ export default function ProductMappingTable({
                                   }
                                   className="w-full flex items-center justify-between px-3 py-1.5 text-sm hover:bg-gray-100 transition-colors cursor-pointer text-left"
                                 >
-                                  <span className="text-gray-600 line-clamp-1">
+                                  <span className="text-gray-600 line-clamp-1 break-all lg:break-normal">
                                     {item.name}
                                   </span>
                                   <span className="text-gray-500 text-body-micro leading-body-micro">
