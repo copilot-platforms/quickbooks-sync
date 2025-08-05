@@ -98,6 +98,7 @@ export class PaymentService extends BaseService {
           taxAmount: invoiceInfo.taxAmount,
           customerName: recipientInfo.displayName,
           customerEmail: recipientInfo.email,
+          errorMessage: '',
         },
       )
 
