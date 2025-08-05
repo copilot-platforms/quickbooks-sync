@@ -12,7 +12,7 @@ export default function Error({
 }) {
   return (
     <main>
-      <div className="flex flex-col justify-center items-center">
+      <div className="flex flex-col justify-center items-center pb-4">
         <p className="mb-2 [&>a:hover]:underline [&>a]:block">
           <Linkify
             componentDecorator={(decoratedHref, decoratedText, key) => (
