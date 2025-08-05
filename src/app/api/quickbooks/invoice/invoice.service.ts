@@ -17,6 +17,7 @@ import {
   QBInvoiceUpdateSchema,
   QBInvoiceUpdateSchemaType,
 } from '@/db/schema/qbInvoiceSync'
+import { QBProductSync } from '@/db/schema/qbProductSync'
 import { TransactionType, WhereClause } from '@/type/common'
 import {
   QBCustomerSparseUpdatePayloadType,
@@ -174,14 +175,22 @@ export class InvoiceService extends BaseService {
     const productDescription = convert(productInfo.description)
     const incomeAccRefVal = intuitApi.tokens.incomeAccountRef
 
+    // total products with the same product id
+    const itemsCount = await productService.getProductCount(
+      eq(QBProductSync.productId, productId),
+    )
+
+    const newName =
+      itemsCount > 0 ? `${productInfo.name} (${itemsCount})` : productInfo.name
+
     // check if item exist with name in QB. If yes, map in mapping table
-    let qbItem = await intuitApi.getAnItem(productInfo.name)
+    let qbItem = await intuitApi.getAnItem(newName)
 
     if (!qbItem) {
       // create item in QB
       qbItem = await productService.createItemInQB(
         {
-          productName: productInfo.name,
+          productName: newName,
           unitPrice: priceInfo.amount,
           incomeAccRefVal,
           productDescription,
@@ -197,7 +206,8 @@ export class InvoiceService extends BaseService {
       priceId,
       qbItemId: qbItem.Id,
       qbSyncToken: qbItem.SyncToken,
-      name: productInfo.name,
+      copilotName: productInfo.name,
+      name: qbItem.Name,
       description: productDescription,
       unitPrice: Number(priceInfo.amount).toFixed(2), // decimal datatype expects string
     }

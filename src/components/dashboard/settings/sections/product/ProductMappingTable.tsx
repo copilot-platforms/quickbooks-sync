@@ -1,6 +1,7 @@
 import { ProductMappingComponentType } from '@/components/dashboard/settings/sections/product/ProductMapping'
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
 import useClickOutside from '@/hook/useClickOutside'
+import { useDropdownPosition } from '@/hook/useDropdown'
 import {
   ProductDataType,
   useMapItem,
@@ -57,13 +58,7 @@ export default function ProductMappingTable({
   mappingItems,
   setMappingItems,
 }: Omit<ProductMappingComponentType, 'setting'>) {
-  const { products, quickbooksItems, isLoading, error, showLoadingText } =
-    useProductTableSetting(setMappingItems)
-
-  if (error) {
-    // TODO: if error show in proper UI
-    console.error({ error })
-  }
+  const { products, quickbooksItems } = useProductTableSetting(setMappingItems)
 
   const dropdownRef = useRef<HTMLDivElement>(null) // single ref for all dropdowns. Only opening one dropdown at a time.
   const buttonRefs = useRef<Record<number, HTMLButtonElement | null>>({})
@@ -77,6 +72,8 @@ export default function ProductMappingTable({
     () => setOpenDropdowns({}),
     Object.values(buttonRefs.current).map((el) => ({ current: el })), // Exclude the button from outside click detection
   )
+
+  useDropdownPosition(openDropdowns, dropdownRef)
 
   return (
     <>
@@ -102,22 +99,7 @@ export default function ProductMappingTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {isLoading ? (
-              <tr>
-                <td colSpan={3} className="py-11">
-                  <div className="flex flex-col items-center justify-center space-y-2.5">
-                    <Spinner size={5} />
-                    <p
-                      className={`text-gray-600 leading-5.5 text-sm ${
-                        showLoadingText ? 'visible' : 'invisible'
-                      }`}
-                    >
-                      Syncing with QuickBooks
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            ) : products ? (
+            {products ? (
               products.map((product: ProductDataType, index: number) => (
                 <tr key={index} className="transition-colors">
                   {/* Copilot Products Column */}
