@@ -118,28 +118,30 @@ export default function SettingAccordion({
                     />
                   </>
                 )}
-              {index === 1 && syncFlag && showInvoiceButton && (
-                <>
-                  {initialInvoiceSettingMapFlag && (
+              {index === 1 &&
+                syncFlag &&
+                (showInvoiceButton || !initialInvoiceSettingMapFlag) && (
+                  <>
+                    {initialInvoiceSettingMapFlag && (
+                      <Button
+                        label="Cancel"
+                        variant="text"
+                        className="me-2"
+                        onClick={cancelInvoiceSettings}
+                      />
+                    )}
                     <Button
-                      label="Cancel"
-                      variant="text"
-                      className="me-2"
-                      onClick={cancelInvoiceSettings}
+                      label={
+                        initialInvoiceSettingMapFlag
+                          ? 'Update Setting'
+                          : 'Confirm'
+                      }
+                      variant="primary"
+                      prefixIcon="Check"
+                      onClick={submitInvoiceSettings}
                     />
-                  )}
-                  <Button
-                    label={
-                      initialInvoiceSettingMapFlag
-                        ? 'Update Setting'
-                        : 'Confirm'
-                    }
-                    variant="primary"
-                    prefixIcon="Check"
-                    onClick={submitInvoiceSettings}
-                  />
-                </>
-              )}
+                  </>
+                )}
             </div>
             <Accordion
               item={item}
