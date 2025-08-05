@@ -14,13 +14,13 @@ import {
   InvoiceResponseSchema,
   PaymentSucceededResponseSchema,
   PriceCreatedResponseSchema,
-  ProductCreatedResponseSchema,
   ProductUpdatedResponseSchema,
   WebhookEventResponseSchema,
   WebhookEventResponseType,
 } from '@/type/dto/webhook.dto'
 import { validateAccessToken } from '@/utils/auth'
 import { CopilotAPI } from '@/utils/copilotAPI'
+import { getMessageFromError } from '@/utils/error'
 import { IntuitAPITokensType } from '@/utils/intuitAPI'
 import httpStatus from 'http-status'
 
@@ -105,6 +105,7 @@ export class WebhookService extends BaseService {
             parsedInvoiceResource.data.id,
             parsedInvoiceResource.data.number,
             parsedInvoiceResource.data.total,
+            getMessageFromError(error),
           )
           throw error
         }
@@ -139,6 +140,7 @@ export class WebhookService extends BaseService {
             status: LogStatus.FAILED,
             copilotId: parsedProductResource.data.id,
             productName: parsedProductResource.data.name,
+            errorMessage: getMessageFromError(error),
           })
           throw error
         }
@@ -170,6 +172,7 @@ export class WebhookService extends BaseService {
             status: LogStatus.FAILED,
             copilotId: parsedCreatedPriceResource.data.productId,
             productPrice: parsedCreatedPriceResource.data.amount?.toFixed(2),
+            errorMessage: getMessageFromError(error),
           })
           throw error
         }
@@ -194,7 +197,6 @@ export class WebhookService extends BaseService {
           break
         } catch (error: unknown) {
           const syncLogService = new SyncLogService(this.user)
-
           await syncLogService.updateOrCreateQBSyncLog({
             portalId: this.user.workspaceId,
             entityType: EntityType.INVOICE,
@@ -203,6 +205,7 @@ export class WebhookService extends BaseService {
             copilotId: parsedPaidInvoiceResource.data.id,
             invoiceNumber: parsedPaidInvoiceResource.data.number,
             amount: parsedPaidInvoiceResource.data.total.toFixed(2),
+            errorMessage: getMessageFromError(error),
           })
           throw error
         }
@@ -231,6 +234,7 @@ export class WebhookService extends BaseService {
             parsedVoidedInvoiceResource.data.id,
             parsedVoidedInvoiceResource.data.number,
             parsedVoidedInvoiceResource.data.total,
+            getMessageFromError(error),
           )
           throw error
         }
@@ -302,6 +306,7 @@ export class WebhookService extends BaseService {
                 ),
               remark: 'Absorbed fees',
               qbItemName: 'Copilot Fees',
+              errorMessage: getMessageFromError(error),
             })
             throw error
           }
@@ -318,6 +323,7 @@ export class WebhookService extends BaseService {
     copilotId: string,
     invoiceNumber: string,
     total?: number,
+    errorMessage?: string,
   ) {
     const syncLogService = new SyncLogService(this.user)
     await syncLogService.createQBSyncLog({
@@ -328,6 +334,7 @@ export class WebhookService extends BaseService {
       copilotId,
       amount: total?.toFixed(2),
       invoiceNumber,
+      errorMessage,
     })
   }
 
@@ -354,6 +361,7 @@ export class WebhookService extends BaseService {
         deletePayload.id,
         deletePayload.number,
         deletePayload.total,
+        getMessageFromError(error),
       )
       throw error
     }
