@@ -539,7 +539,10 @@ export const useInvoiceDetailSettings = () => {
 }
 
 export const useSettings = () => {
-  const [openItems, setOpenItems] = useState<string[]>(['product-mapping'])
+  const { isEnabled } = useApp()
+  const [openItems, setOpenItems] = useState<string[]>(
+    isEnabled ? ['product-mapping'] : ['product-mapping', 'invoice-detail'],
+  )
 
   return { openItems, setOpenItems }
 }
