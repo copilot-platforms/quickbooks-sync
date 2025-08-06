@@ -324,6 +324,12 @@ export const InvoiceResponseSchema = z.object({
   taxPercentage: z.number().default(0),
   sentDate: z.string().datetime().nullish(),
   dueDate: z.string().datetime().nullish(),
+  paymentMethodPreferences: z.array(
+    z.object({
+      type: z.string(),
+      feePaidByClient: z.boolean(),
+    }),
+  ),
 })
 export type InvoiceResponse = z.infer<typeof InvoiceResponseSchema>
 
