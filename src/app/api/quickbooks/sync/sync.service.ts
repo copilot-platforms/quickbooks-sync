@@ -224,6 +224,7 @@ export class SyncService extends BaseService {
     const qbTokenInfo = await authService.getQBPortalConnection(
       this.user.workspaceId,
     )
+    console.info({ qbTokenInfo, user: this.user })
     const copilotApi = new CopilotAPI(this.user.token)
     const invoices = await copilotApi.getInvoices()
     const products = await copilotApi.getProducts(

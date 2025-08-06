@@ -13,10 +13,12 @@ export default class CronService {
       workspaceId,
     }
     const token = encodePayload(copilotAPIKey, payload)
+    console.info({ token })
 
     // check if token is valid or not
     const copilot = new CopilotAPI(token)
     const tokenPayload = await copilot.getTokenPayload()
+    console.info({ tokenPayload })
     if (!tokenPayload) throw new APIError(500, 'Encoded token is not valid') // this should trigger p-retry and re-run the function
 
     const user = new User(token, tokenPayload)
