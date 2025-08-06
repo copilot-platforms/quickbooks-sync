@@ -28,6 +28,8 @@ import {
   NotificationCreatedResponse,
   NotificationCreatedResponseSchema,
   NotificationRequestBody,
+  PaymentsResponse,
+  PaymentsResponseSchema,
   PriceResponse,
   PriceResponseSchema,
   PricesResponse,
@@ -414,6 +416,13 @@ export class CopilotAPI {
     return z.array(InvoiceResponseSchema).parse(data.data)
   }
 
+  async _getPayments(invoiceId: string): Promise<PaymentsResponse | undefined> {
+    console.info('CopilotAPI#getPayments | token =', this.token)
+    return PaymentsResponseSchema.parse(
+      await this.copilot.listPayments({ invoiceId }),
+    )
+  }
+
   private wrapWithRetry<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
   ): (...args: Args) => Promise<R> {
@@ -451,4 +460,5 @@ export class CopilotAPI {
   getPrices = this.wrapWithRetry(this._getPrices)
   getInvoice = this.wrapWithRetry(this._getInvoice)
   getInvoices = this.wrapWithRetry(this._getInvoices)
+  getPayments = this.wrapWithRetry(this._getPayments)
 }
