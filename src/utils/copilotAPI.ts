@@ -421,7 +421,13 @@ export class CopilotAPI {
     workspaceId?: string,
   ): Promise<InvoiceResponse[] | undefined> {
     console.info('CopilotAPI#getInvoices | token =', this.token)
-    const data = await this.manualFetch('invoices', undefined, workspaceId)
+    const data = await this.manualFetch(
+      'invoices',
+      {
+        limit: MAX_INVOICE_LIST_LIMIT.toString(),
+      },
+      workspaceId,
+    )
 
     console.info(`CopilotAPI#getInvoices | data length = ${data.data?.length}`)
     return z.array(InvoiceResponseSchema).parse(data.data)
