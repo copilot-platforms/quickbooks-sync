@@ -225,7 +225,7 @@ export class SyncService extends BaseService {
       this.user.workspaceId,
     )
     const copilotApi = new CopilotAPI(this.user.token)
-    const invoices = await copilotApi.getInvoices()
+    const invoices = await copilotApi.getInvoices(this.user.workspaceId)
     const products = await copilotApi.getProducts(
       undefined,
       undefined,
@@ -280,11 +280,15 @@ export class SyncService extends BaseService {
       await this.syncLogService.getFailedSyncLogsByEntityType()
 
     if (failedSyncLogs.length === 0) {
-      console.info('No failed sync logs found.')
+      console.info(
+        `No failed sync logs found for portal ${this.user.workspaceId}`,
+      )
       return
     }
 
-    console.info('Failed sync logs: ', failedSyncLogs)
+    console.info(
+      `Failed sync logs for portal: ${this.user.workspaceId}. Logs: ${failedSyncLogs}`,
+    )
 
     // 2. for each log, perform the sync based on the event type and also update the sync log status to success after successful sync
     await this.intiateSync(failedSyncLogs)

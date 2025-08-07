@@ -56,7 +56,11 @@ export class CopilotAPI {
     this.copilot = copilotApi({ apiKey, token })
   }
 
-  private async manualFetch(route: string, query?: Record<string, string>) {
+  private async manualFetch(
+    route: string,
+    query?: Record<string, string>,
+    workspaceId?: string,
+  ) {
     const url = new URL(`${API_DOMAIN}/v1/${route}`)
     if (query) {
       for (const key of Object.keys(query)) {
@@ -64,10 +68,15 @@ export class CopilotAPI {
       }
     }
 
-    console.info(`CopilotAPI#manualFetch | url = ${url}, apiKey = ${apiKey}`)
+    console.info(
+      `CopilotAPI#manualFetch | url = ${url}, apiKey = ${apiKey}, workspaceId = ${workspaceId}`,
+    )
 
     const resp = await fetch(url, {
-      headers: { 'X-API-KEY': apiKey, accept: 'application/json' },
+      headers: {
+        'X-API-KEY': workspaceId ? `${workspaceId}/${apiKey}` : apiKey,
+        accept: 'application/json',
+      },
     })
     return await resp.json()
   }
@@ -408,13 +417,18 @@ export class CopilotAPI {
     )
   }
 
-  async _getInvoices(): Promise<InvoiceResponse[] | undefined> {
+  async _getInvoices(
+    workspaceId?: string,
+  ): Promise<InvoiceResponse[] | undefined> {
     console.info('CopilotAPI#getInvoices | token =', this.token)
-    const data = await this.manualFetch('invoices', {
-      limit: MAX_INVOICE_LIST_LIMIT.toString(),
-    })
+    const data = await this.manualFetch(
+      'invoices',
+      {
+        limit: MAX_INVOICE_LIST_LIMIT.toString(),
+      },
+      workspaceId,
+    )
 
-    console.log('CopilotAPI#getInvoices | data = ', data)
     console.info(`CopilotAPI#getInvoices | data length = ${data.data?.length}`)
 
     return z.array(InvoiceResponseSchema).parse(data.data)
