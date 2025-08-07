@@ -10,5 +10,8 @@ export const processFailedSync = async (request: NextRequest) => {
   }
   const cronService = new CronService()
   await cronService.rerunFailedSync()
-  return NextResponse.json({ success: true })
+  return NextResponse.json({
+    success: true,
+    message: 'Failed logs are re-synced successfully.',
+  })
 }
