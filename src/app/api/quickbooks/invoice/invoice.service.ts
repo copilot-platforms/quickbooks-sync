@@ -529,10 +529,10 @@ export class InvoiceService extends BaseService {
     ])
 
     if (!invoiceSync) {
-      throw new APIError(
-        httpStatus.NOT_FOUND,
+      console.error(
         'WebhookService#webhookInvoicePaid | Invoice not found in sync table',
       )
+      return
     }
 
     // check if the entity invoice has successful event paid
