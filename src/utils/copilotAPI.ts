@@ -403,6 +403,8 @@ export class CopilotAPI {
 
   async _getInvoice(id: string): Promise<InvoiceResponse | undefined> {
     console.info('CopilotAPI#getInvoice | token =', this.token)
+
+    console.log('Test log')
     return InvoiceResponseSchema.parse(
       await this.copilot.retrieveInvoice({ id }),
     )
