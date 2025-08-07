@@ -7,23 +7,14 @@ import {
 import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { AuthService } from '@/app/api/quickbooks/auth/auth.service'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
-import {
-  InvoiceResponse,
-  ProductResponse,
-  ProductsResponse,
-  WhereClause,
-} from '@/type/common'
+import { InvoiceResponse } from '@/type/common'
 import { CopilotAPI } from '@/utils/copilotAPI'
-import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
+import { EntityType, EventType } from '@/app/api/core/types/log'
 import postgres from 'postgres'
 import User from '@/app/api/core/models/User.model'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import dayjs from 'dayjs'
-import { MAX_PRODUCT_LIST_LIMIT } from '@/app/api/core/constants/limit'
-import { convert } from 'html-to-text'
-import { QBProductSync } from '@/db/schema/qbProductSync'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
-import { and, eq, isNull, or } from 'drizzle-orm'
 import { bottleneck } from '@/utils/bottleneck'
 
 export class SyncService extends BaseService {
