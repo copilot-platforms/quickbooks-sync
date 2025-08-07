@@ -277,6 +277,20 @@ export class InvoiceService extends BaseService {
   ): Promise<void> {
     const invoiceResource = payload.data
 
+    // Check if the invoice with ID already exists in the db. This check is done in this function as it is also called from re-sync failed function
+    const existingInvoice = await this.getInvoiceByNumber(
+      invoiceResource.number,
+      ['id'],
+    )
+
+    // Do not store if invoice already exists
+    if (existingInvoice) {
+      console.info(
+        'WebhookService#handleWebhookEvent#exists | Invoice already exists in the db',
+      )
+      return
+    }
+
     const customerService = new CustomerService(this.user)
     // 1. get client (retrieve receipentId from invoice resource). Copilot: Retrieve client. If not found, retrieve company and get first client from the company
     const { recipientInfo, companyInfo } =

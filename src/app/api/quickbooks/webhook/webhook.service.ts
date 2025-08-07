@@ -77,23 +77,9 @@ export class WebhookService extends BaseService {
           break
         }
 
-        const invoiceService = new InvoiceService(this.user)
-        // Check if the invoice with ID already exists in the db
-        const invoice = await invoiceService.getInvoiceByNumber(
-          parsedInvoiceResource.data.number,
-          ['id'],
-        )
-
-        // Do not store if invoice already exists
-        if (invoice) {
-          console.info(
-            'WebhookService#handleWebhookEvent#exists | Invoice already exists in the db',
-          )
-          break
-        }
-
         try {
           validateAccessToken(qbTokenInfo)
+          const invoiceService = new InvoiceService(this.user)
           await invoiceService.webhookInvoiceCreated(
             parsedInvoiceResource,
             qbTokenInfo,

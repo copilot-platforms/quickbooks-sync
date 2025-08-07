@@ -411,6 +411,7 @@ export class CopilotAPI {
       limit: MAX_INVOICE_LIST_LIMIT.toString(),
     })
 
+    console.log('CopilotAPI#getInvoices | data =', data)
     return z.array(InvoiceResponseSchema).parse(data.data)
   }
 
