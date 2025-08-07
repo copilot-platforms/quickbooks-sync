@@ -38,6 +38,9 @@ export class SyncService extends BaseService {
     eventType: EventType,
   ) {
     const invoiceIds = records.map((e: any) => e.copilotId)
+    console.info(
+      `syncService#processInvoiceSync | eventType: ${eventType} | invoiceIds: ${invoiceIds}`,
+    )
 
     if (invoices) {
       await Promise.all(
@@ -82,6 +85,8 @@ export class SyncService extends BaseService {
     records: CustomSyncLogRecordType[],
     qbTokenInfo: IntuitAPITokensType,
   ) {
+    console.info('syncService#processPaymentSucceededSync | records: ', records)
+
     await Promise.all(
       records.map(async (record) => {
         const expensePayload = {
@@ -124,6 +129,10 @@ export class SyncService extends BaseService {
     const intuitApi = new IntuitAPI(qbTokenInfo)
     const copilotApi = new CopilotAPI(this.user.token)
     const productService = new ProductService(this.user)
+
+    console.info(
+      `syncService#processProductSync | eventType: ${eventType} | productIds: ${productIds}`,
+    )
 
     if (products && products.data) {
       const productProcessPromises = []
@@ -210,12 +219,13 @@ export class SyncService extends BaseService {
   }
 
   async intiateSync(logs: postgres.RowList<CustomSyncLogType[]>) {
+    console.info('\n###### Initiating re-sync ######')
     const authService = new AuthService(this.user)
     const qbTokenInfo = await authService.getQBPortalConnection(
       this.user.workspaceId,
     )
     const copilotApi = new CopilotAPI(this.user.token)
-    const invoices = await copilotApi.getInvoices()
+    const invoices = await copilotApi.getInvoices(this.user.workspaceId)
     const products = await copilotApi.getProducts(
       undefined,
       undefined,
@@ -225,6 +235,7 @@ export class SyncService extends BaseService {
     for (const log of logs) {
       switch (log.entityType) {
         case EntityType.INVOICE:
+          console.info('Invoice re-sync started')
           await this.processInvoiceSync(
             log.records,
             qbTokenInfo,
@@ -235,11 +246,13 @@ export class SyncService extends BaseService {
 
         case EntityType.PAYMENT:
           if (log.eventType === EventType.SUCCEEDED) {
+            console.info('Payment re-sync started')
             await this.processPaymentSucceededSync(log.records, qbTokenInfo)
           }
           break
 
         case EntityType.PRODUCT:
+          console.info('product re-sync started')
           await this.processProductSync(
             log.records,
             qbTokenInfo,
@@ -268,9 +281,15 @@ export class SyncService extends BaseService {
         await this.syncLogService.getFailedSyncLogsByEntityType()
 
       if (failedSyncLogs.length === 0) {
-        console.info('No failed sync logs found.')
+        console.info(
+          `No failed sync logs found for portal ${this.user.workspaceId}`,
+        )
         return
       }
+
+      console.info(
+        `Failed sync logs for portal: ${this.user.workspaceId}. Logs: ${failedSyncLogs}`,
+      )
 
       // 2. for each log, perform the sync based on the event type and also update the sync log status to success after successful sync
       await this.intiateSync(failedSyncLogs)
