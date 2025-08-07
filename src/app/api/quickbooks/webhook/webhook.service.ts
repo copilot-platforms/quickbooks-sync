@@ -8,13 +8,13 @@ import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
 import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
+import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import {
   InvoiceCreatedResponseSchema,
   InvoiceDeletedResponseSchema,
   InvoiceResponseSchema,
   PaymentSucceededResponseSchema,
   PriceCreatedResponseSchema,
-  ProductCreatedResponseSchema,
   ProductUpdatedResponseSchema,
   WebhookEventResponseSchema,
   WebhookEventResponseType,
@@ -22,6 +22,7 @@ import {
 import { validateAccessToken } from '@/utils/auth'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import { IntuitAPITokensType } from '@/utils/intuitAPI'
+import { and, eq } from 'drizzle-orm'
 import httpStatus from 'http-status'
 
 export class WebhookService extends BaseService {
@@ -29,8 +30,6 @@ export class WebhookService extends BaseService {
     body: WebhookEventResponseType,
     qbTokenInfo: IntuitAPITokensType,
   ): Promise<void> {
-    let productService: ProductService
-
     const parsedBody = WebhookEventResponseSchema.safeParse(body)
     if (!parsedBody.success || !parsedBody.data) {
       console.error(
@@ -59,240 +58,25 @@ export class WebhookService extends BaseService {
 
     switch (payload.eventType) {
       case WebhookEvents.INVOICE_CREATED:
-        console.info('###### INVOICE CREATED ######')
-        const parsedPayload = InvoiceCreatedResponseSchema.safeParse(payload)
-        if (!parsedPayload.success || !parsedPayload.data) {
-          console.error(
-            'WebhookService#handleWebhookEvent | Could not parse invoice response',
-          )
-          break
-        }
-        const parsedInvoiceResource = parsedPayload.data
-
-        // Check if invoice is in draft status
-        if (parsedInvoiceResource.data.status === InvoiceStatus.DRAFT) {
-          console.info(
-            'WebhookService#handleWebhookEvent#draft | Invoice is in draft status',
-          )
-          break
-        }
-
-        try {
-          validateAccessToken(qbTokenInfo)
-          const invoiceService = new InvoiceService(this.user)
-          await invoiceService.webhookInvoiceCreated(
-            parsedInvoiceResource,
-            qbTokenInfo,
-          )
-          break
-        } catch (error: unknown) {
-          await this.pushFailedInvoiceToSyncLog(
-            EventType.CREATED,
-            parsedInvoiceResource.data.id,
-            parsedInvoiceResource.data.number,
-            parsedInvoiceResource.data.total,
-          )
-          throw error
-        }
+        return await this.handleInvoiceCreated(payload, qbTokenInfo)
 
       case WebhookEvents.INVOICE_DELETED:
         return await this.handleInvoiceDeleted(payload.data, qbTokenInfo)
 
       case WebhookEvents.PRODUCT_UPDATED:
-        console.info('###### PRODUCT UPDATED ######')
-        const parsedProduct = ProductUpdatedResponseSchema.safeParse(payload)
-        if (!parsedProduct.success || !parsedProduct.data) {
-          console.error(
-            'WebhookService#handleWebhookEvent | Could not parse product updated resource',
-          )
-          break
-        }
-        const parsedProductResource = parsedProduct.data
-
-        try {
-          productService = new ProductService(this.user)
-          await productService.webhookProductUpdated(
-            parsedProductResource,
-            qbTokenInfo,
-          )
-          break
-        } catch (error: unknown) {
-          const syncLogService = new SyncLogService(this.user)
-          await syncLogService.updateOrCreateQBSyncLog({
-            portalId: this.user.workspaceId,
-            entityType: EntityType.PRODUCT,
-            eventType: EventType.UPDATED,
-            status: LogStatus.FAILED,
-            copilotId: parsedProductResource.data.id,
-            productName: parsedProductResource.data.name,
-          })
-          throw error
-        }
+        return await this.handleProductUpdated(payload, qbTokenInfo)
 
       case WebhookEvents.PRICE_CREATED:
-        console.info('###### PRICE CREATED ######')
-        const parsedCreatedPrice = PriceCreatedResponseSchema.safeParse(payload)
-        if (!parsedCreatedPrice.success || !parsedCreatedPrice.data) {
-          console.error(
-            'WebhookService#handleWebhookEvent | Could not parse price created resource',
-          )
-          break
-        }
-        const parsedCreatedPriceResource = parsedCreatedPrice.data
-
-        try {
-          productService = new ProductService(this.user)
-          await productService.webhookPriceCreated(
-            parsedCreatedPriceResource,
-            qbTokenInfo,
-          )
-          break
-        } catch (error: unknown) {
-          const syncLogService = new SyncLogService(this.user)
-          await syncLogService.updateOrCreateQBSyncLog({
-            portalId: this.user.workspaceId,
-            entityType: EntityType.PRODUCT,
-            eventType: EventType.CREATED,
-            status: LogStatus.FAILED,
-            copilotId: parsedCreatedPriceResource.data.productId,
-            productPrice: parsedCreatedPriceResource.data.amount?.toFixed(2),
-          })
-          throw error
-        }
+        return await this.handlePriceCreated(payload, qbTokenInfo)
 
       case WebhookEvents.INVOICE_PAID:
-        console.info('###### INVOICE PAID ######')
-        const parsedPaidInvoice = InvoiceResponseSchema.safeParse(payload)
-        if (!parsedPaidInvoice.success || !parsedPaidInvoice.data) {
-          console.error(
-            'WebhookService#handleWebhookEvent | Could not parse invoice paid response',
-          )
-          break
-        }
-        const parsedPaidInvoiceResource = parsedPaidInvoice.data
-        try {
-          validateAccessToken(qbTokenInfo)
-          const invService = new InvoiceService(this.user)
-          await invService.webhookInvoicePaid(
-            parsedPaidInvoiceResource,
-            qbTokenInfo,
-          )
-          break
-        } catch (error: unknown) {
-          const syncLogService = new SyncLogService(this.user)
-
-          await syncLogService.updateOrCreateQBSyncLog({
-            portalId: this.user.workspaceId,
-            entityType: EntityType.INVOICE,
-            eventType: EventType.PAID,
-            status: LogStatus.FAILED,
-            copilotId: parsedPaidInvoiceResource.data.id,
-            invoiceNumber: parsedPaidInvoiceResource.data.number,
-            amount: parsedPaidInvoiceResource.data.total.toFixed(2),
-          })
-          throw error
-        }
+        return await this.handleInvoicePaid(payload, qbTokenInfo)
 
       case WebhookEvents.INVOICE_VOIDED:
-        console.info('###### INVOICE VOIDED ######')
-        const parsedVoidedInvoice = InvoiceResponseSchema.safeParse(payload)
-        if (!parsedVoidedInvoice.success || !parsedVoidedInvoice.data) {
-          console.error(
-            'WebhookService#handleWebhookEvent | Could not parse invoice void response',
-          )
-          break
-        }
-        const parsedVoidedInvoiceResource = parsedVoidedInvoice.data
-
-        try {
-          validateAccessToken(qbTokenInfo)
-          const invoiceServce = new InvoiceService(this.user)
-          await invoiceServce.webhookInvoiceVoided(
-            parsedVoidedInvoiceResource,
-            qbTokenInfo,
-          )
-        } catch (error: unknown) {
-          await this.pushFailedInvoiceToSyncLog(
-            EventType.VOIDED,
-            parsedVoidedInvoiceResource.data.id,
-            parsedVoidedInvoiceResource.data.number,
-            parsedVoidedInvoiceResource.data.total,
-          )
-          throw error
-        }
-        break
+        return await this.handleInvoiceVoided(payload, qbTokenInfo)
 
       case WebhookEvents.PAYMENT_SUCCEEDED:
-        console.info('###### PAYMENT SUCCEEDED ######')
-        const parsedPaymentSucceed =
-          PaymentSucceededResponseSchema.safeParse(payload)
-        if (!parsedPaymentSucceed.success || !parsedPaymentSucceed.data) {
-          console.error(
-            'WebhookService#handleWebhookEvent | Could not parse payment success response',
-          )
-          break
-        }
-        const parsedPaymentSucceedResource = parsedPaymentSucceed.data
-
-        if (parsedPaymentSucceedResource.data.feeAmount.paidByPlatform > 0) {
-          // check if absorbed fee flag is true
-          const settingService = new SettingService(this.user)
-          const setting = await settingService.getOneByPortalId([
-            'absorbedFeeFlag',
-          ])
-
-          if (!setting?.absorbedFeeFlag) {
-            console.info(
-              'WebhookService#handleWebhookEvent#payment-succeeded | Absorbed fee flag is false',
-            )
-            break
-          }
-
-          const syncLogService = new SyncLogService(this.user)
-          const syncLog = await syncLogService.getOneByCopilotIdAndEventType(
-            parsedPaymentSucceedResource.data.id,
-            EventType.SUCCEEDED,
-          )
-          if (syncLog?.status === LogStatus.SUCCESS) {
-            console.info(
-              'WebhookService#webhookPaymentSucceeded | Payment already succeeded',
-            )
-            return
-          }
-
-          try {
-            const copilotApp = new CopilotAPI(this.user.token)
-            const invoice = await copilotApp.getInvoice(
-              parsedPaymentSucceedResource.data.invoiceId,
-            )
-            if (!invoice)
-              throw new APIError(httpStatus.NOT_FOUND, 'Invoice not found')
-            validateAccessToken(qbTokenInfo)
-            // only track if the fee amount is paid by platform
-            const paymentService = new PaymentService(this.user)
-            await paymentService.webhookPaymentSucceeded(
-              parsedPaymentSucceedResource,
-              qbTokenInfo,
-              invoice,
-            )
-          } catch (error: unknown) {
-            await syncLogService.updateOrCreateQBSyncLog({
-              portalId: this.user.workspaceId,
-              entityType: EntityType.PAYMENT,
-              eventType: EventType.SUCCEEDED,
-              status: LogStatus.FAILED,
-              copilotId: parsedPaymentSucceedResource.data.id,
-              feeAmount:
-                parsedPaymentSucceedResource.data.feeAmount.paidByPlatform.toFixed(
-                  2,
-                ),
-              remark: 'Absorbed fees',
-              qbItemName: 'Copilot Fees',
-            })
-            throw error
-          }
-        }
-        break
+        return await this.handlePaymentSucceeded(payload, qbTokenInfo)
 
       default:
         console.error('WebhookService#handleWebhookEvent | Unknown event type')
@@ -315,6 +99,78 @@ export class WebhookService extends BaseService {
       amount: total?.toFixed(2),
       invoiceNumber,
     })
+  }
+
+  private async handleInvoiceCreated(
+    payload: unknown,
+    qbTokenInfo: IntuitAPITokensType,
+  ) {
+    console.info('###### INVOICE CREATED ######')
+    const parsedPayload = InvoiceCreatedResponseSchema.safeParse(payload)
+    if (!parsedPayload.success || !parsedPayload.data) {
+      console.error(
+        'WebhookService#handleWebhookEvent | Could not parse invoice response',
+      )
+      return
+    }
+    const parsedInvoiceResource = parsedPayload.data
+
+    // Check if invoice is in draft status
+    if (parsedInvoiceResource.data.status === InvoiceStatus.DRAFT) {
+      console.info(
+        'WebhookService#handleWebhookEvent#draft | Invoice is in draft status',
+      )
+      return
+    }
+
+    try {
+      validateAccessToken(qbTokenInfo)
+      const invoiceService = new InvoiceService(this.user)
+      await invoiceService.webhookInvoiceCreated(
+        parsedInvoiceResource,
+        qbTokenInfo,
+      )
+    } catch (error: unknown) {
+      await this.pushFailedInvoiceToSyncLog(
+        EventType.CREATED,
+        parsedInvoiceResource.data.id,
+        parsedInvoiceResource.data.number,
+        parsedInvoiceResource.data.total,
+      )
+      throw error
+    }
+  }
+
+  private async handleInvoiceVoided(
+    payload: unknown,
+    qbTokenInfo: IntuitAPITokensType,
+  ) {
+    console.info('###### INVOICE VOIDED ######')
+    const parsedVoidedInvoice = InvoiceResponseSchema.safeParse(payload)
+    if (!parsedVoidedInvoice.success || !parsedVoidedInvoice.data) {
+      console.error(
+        'WebhookService#handleWebhookEvent | Could not parse invoice void response',
+      )
+      return
+    }
+    const parsedVoidedInvoiceResource = parsedVoidedInvoice.data
+
+    try {
+      validateAccessToken(qbTokenInfo)
+      const invoiceServce = new InvoiceService(this.user)
+      await invoiceServce.webhookInvoiceVoided(
+        parsedVoidedInvoiceResource,
+        qbTokenInfo,
+      )
+    } catch (error: unknown) {
+      await this.pushFailedInvoiceToSyncLog(
+        EventType.VOIDED,
+        parsedVoidedInvoiceResource.data.id,
+        parsedVoidedInvoiceResource.data.number,
+        parsedVoidedInvoiceResource.data.total,
+      )
+      throw error
+    }
   }
 
   private async handleInvoiceDeleted(
@@ -342,6 +198,194 @@ export class WebhookService extends BaseService {
         deletePayload.total,
       )
       throw error
+    }
+  }
+
+  private async handleInvoicePaid(
+    payload: unknown,
+    qbTokenInfo: IntuitAPITokensType,
+  ) {
+    console.info('###### INVOICE PAID ######')
+    const parsedPaidInvoice = InvoiceResponseSchema.safeParse(payload)
+    if (!parsedPaidInvoice.success || !parsedPaidInvoice.data) {
+      console.error(
+        'WebhookService#handleWebhookEvent | Could not parse invoice paid response',
+      )
+      return
+    }
+    const parsedPaidInvoiceResource = parsedPaidInvoice.data
+    try {
+      validateAccessToken(qbTokenInfo)
+      const invService = new InvoiceService(this.user)
+      await invService.webhookInvoicePaid(
+        parsedPaidInvoiceResource,
+        qbTokenInfo,
+      )
+    } catch (error: unknown) {
+      const syncLogService = new SyncLogService(this.user)
+
+      await syncLogService.updateOrCreateQBSyncLog({
+        portalId: this.user.workspaceId,
+        entityType: EntityType.INVOICE,
+        eventType: EventType.PAID,
+        status: LogStatus.FAILED,
+        copilotId: parsedPaidInvoiceResource.data.id,
+        invoiceNumber: parsedPaidInvoiceResource.data.number,
+        amount: parsedPaidInvoiceResource.data.total.toFixed(2),
+      })
+      throw error
+    }
+  }
+
+  private async handleProductUpdated(
+    payload: unknown,
+    qbTokenInfo: IntuitAPITokensType,
+  ) {
+    console.info('###### PRODUCT UPDATED ######')
+    const parsedProduct = ProductUpdatedResponseSchema.safeParse(payload)
+    if (!parsedProduct.success || !parsedProduct.data) {
+      console.error(
+        'WebhookService#handleWebhookEvent | Could not parse product updated resource',
+      )
+      return
+    }
+    const parsedProductResource = parsedProduct.data
+
+    try {
+      const productService = new ProductService(this.user)
+      await productService.webhookProductUpdated(
+        parsedProductResource,
+        qbTokenInfo,
+      )
+    } catch (error: unknown) {
+      const syncLogService = new SyncLogService(this.user)
+      await syncLogService.updateOrCreateQBSyncLog({
+        portalId: this.user.workspaceId,
+        entityType: EntityType.PRODUCT,
+        eventType: EventType.UPDATED,
+        status: LogStatus.FAILED,
+        copilotId: parsedProductResource.data.id,
+        productName: parsedProductResource.data.name,
+      })
+      throw error
+    }
+  }
+
+  private async handlePriceCreated(
+    payload: unknown,
+    qbTokenInfo: IntuitAPITokensType,
+  ) {
+    console.info('###### PRICE CREATED ######')
+    const parsedCreatedPrice = PriceCreatedResponseSchema.safeParse(payload)
+    if (!parsedCreatedPrice.success || !parsedCreatedPrice.data) {
+      console.error(
+        'WebhookService#handlePriceCreated | Could not parse price created resource',
+      )
+      return
+    }
+    const parsedCreatedPriceResource = parsedCreatedPrice.data
+    const priceResource = parsedCreatedPriceResource.data
+
+    try {
+      const productService = new ProductService(this.user)
+      await productService.webhookPriceCreated(
+        parsedCreatedPriceResource,
+        qbTokenInfo,
+      )
+    } catch (error: unknown) {
+      const syncLogService = new SyncLogService(this.user)
+      const conditions = and(
+        eq(QBSyncLog.portalId, this.user.workspaceId),
+        eq(QBSyncLog.copilotId, priceResource.productId),
+        eq(QBSyncLog.copilotPriceId, priceResource.id),
+        eq(QBSyncLog.eventType, EventType.CREATED),
+      )
+      await syncLogService.updateOrCreateQBSyncLog(
+        {
+          portalId: this.user.workspaceId,
+          entityType: EntityType.PRODUCT,
+          eventType: EventType.CREATED,
+          status: LogStatus.FAILED,
+          copilotId: priceResource.productId,
+          productPrice: priceResource.amount?.toFixed(2),
+          copilotPriceId: priceResource.id,
+        },
+        conditions,
+      )
+      throw error
+    }
+  }
+
+  private async handlePaymentSucceeded(
+    payload: unknown,
+    qbTokenInfo: IntuitAPITokensType,
+  ) {
+    console.info('###### PAYMENT SUCCEEDED ######')
+    const parsedPaymentSucceed =
+      PaymentSucceededResponseSchema.safeParse(payload)
+    if (!parsedPaymentSucceed.success || !parsedPaymentSucceed.data) {
+      console.error(
+        'WebhookService#handleWebhookEvent | Could not parse payment success response',
+      )
+      return
+    }
+    const parsedPaymentSucceedResource = parsedPaymentSucceed.data
+
+    if (parsedPaymentSucceedResource.data.feeAmount.paidByPlatform > 0) {
+      // check if absorbed fee flag is true
+      const settingService = new SettingService(this.user)
+      const setting = await settingService.getOneByPortalId(['absorbedFeeFlag'])
+
+      if (!setting?.absorbedFeeFlag) {
+        console.info(
+          'WebhookService#handleWebhookEvent#payment-succeeded | Absorbed fee flag is false',
+        )
+        return
+      }
+
+      const syncLogService = new SyncLogService(this.user)
+      const syncLog = await syncLogService.getOneByCopilotIdAndEventType(
+        parsedPaymentSucceedResource.data.id,
+        EventType.SUCCEEDED,
+      )
+      if (syncLog?.status === LogStatus.SUCCESS) {
+        console.info(
+          'WebhookService#webhookPaymentSucceeded | Payment already succeeded',
+        )
+        return
+      }
+
+      try {
+        const copilotApp = new CopilotAPI(this.user.token)
+        const invoice = await copilotApp.getInvoice(
+          parsedPaymentSucceedResource.data.invoiceId,
+        )
+        if (!invoice)
+          throw new APIError(httpStatus.NOT_FOUND, 'Invoice not found')
+        validateAccessToken(qbTokenInfo)
+        // only track if the fee amount is paid by platform
+        const paymentService = new PaymentService(this.user)
+        await paymentService.webhookPaymentSucceeded(
+          parsedPaymentSucceedResource,
+          qbTokenInfo,
+          invoice,
+        )
+      } catch (error: unknown) {
+        await syncLogService.updateOrCreateQBSyncLog({
+          portalId: this.user.workspaceId,
+          entityType: EntityType.PAYMENT,
+          eventType: EventType.SUCCEEDED,
+          status: LogStatus.FAILED,
+          copilotId: parsedPaymentSucceedResource.data.id,
+          feeAmount:
+            parsedPaymentSucceedResource.data.feeAmount.paidByPlatform.toFixed(
+              2,
+            ),
+          remark: 'Absorbed fees',
+          qbItemName: 'Copilot Fees',
+        })
+        throw error
+      }
     }
   }
 }

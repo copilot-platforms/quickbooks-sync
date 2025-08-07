@@ -180,77 +180,60 @@ export class SyncService extends BaseService {
   }
 
   private async processProductCreate(
-    productService: ProductService,
-    product: ProductResponse,
+    logRecords: CustomSyncLogRecordType[],
     qbTokenInfo: IntuitAPITokensType,
   ) {
-    try {
-      const copilotApi = new CopilotAPI(this.user.token)
-      const intuitApi = new IntuitAPI(qbTokenInfo)
+    const productService = new ProductService(this.user)
+    const copilotApi = new CopilotAPI(this.user.token)
+    const productProcessPromises = []
 
-      // NOTE: Followed thorough flow of creating product in QB as the item creation failed can it is effected by price or product webhooks
-      const priceInfo = await copilotApi.getPrices(product.id)
-      const singlePrice = priceInfo?.data?.[0] // only get single price as first created product has firs single price
-      if (singlePrice) {
-        const productDescription = convert(product.description)
+    for (const record of logRecords) {
+      productProcessPromises.push(
+        bottleneck.schedule(async () => {
+          if (!record.copilotPriceId) return
 
-        // create item in QB
-        const item = await productService.createItemInQB(
-          {
-            productName: product.name,
-            unitPrice: singlePrice.amount,
-            incomeAccRefVal: qbTokenInfo.incomeAccountRef,
-            productDescription,
-          },
-          intuitApi,
-        )
+          const priceResponse = await copilotApi.getPrice(record.copilotPriceId)
+          if (!priceResponse) return
 
-        // update mapping table
-        const conditions = and(
-          eq(QBProductSync.portalId, this.user.workspaceId),
-          or(
-            eq(QBProductSync.productId, product.id),
-            eq(QBProductSync.priceId, singlePrice.id),
-          ),
-          isNull(QBProductSync.qbItemId),
-          isNull(QBProductSync.qbSyncToken),
-        ) as WhereClause
-        await productService.updateOrCreateQBProduct(
-          {
-            portalId: this.user.workspaceId,
-            productId: product.id,
-            priceId: singlePrice.id,
-            name: product.name,
-            description: productDescription,
-            qbItemId: item.Id,
-            qbSyncToken: item.SyncToken,
-          },
-          conditions,
-        )
-
-        // update the sync log
-        await this.syncLogService.updateOrCreateQBSyncLog({
-          portalId: this.user.workspaceId,
-          entityType: EntityType.PRODUCT,
-          eventType: EventType.CREATED,
-          status: LogStatus.SUCCESS,
-          copilotId: product.id,
-          quickbooksId: item.Id,
-          syncAt: dayjs().toDate(),
-        })
-      }
-    } catch (error: unknown) {
-      console.error('SyncService#processProductCreate | Error =', error)
+          try {
+            await productService.webhookPriceCreated(
+              { data: priceResponse },
+              qbTokenInfo,
+            )
+          } catch (error: unknown) {
+            console.error(
+              `SyncService#processProductCreate | Error for product with ID: ${record.copilotId}. Error: ${error}`,
+            )
+          }
+        }),
+      )
     }
+    await Promise.all(productProcessPromises)
   }
 
   private async processProductUpdate(
-    productService: ProductService,
-    product: ProductResponse,
+    logRecords: CustomSyncLogRecordType[],
     qbTokenInfo: IntuitAPITokensType,
   ) {
+    const productService = new ProductService(this.user)
+    const copilotApi = new CopilotAPI(this.user.token)
+    const productProcessPromises = []
+
     try {
-      await productService.webhookProductUpdated({ data: product }, qbTokenInfo)
+      for (const record of logRecords) {
+        productProcessPromises.push(
+          bottleneck.schedule(async () => {
+            const product = await copilotApi.getProduct(record.copilotId)
+            if (!product) return
+
+            await productService.webhookProductUpdated(
+              { data: product },
+              qbTokenInfo,
+            )
+          }),
+        )
+      }
+      await Promise.all(productProcessPromises)
     } catch (error: unknown) {
       console.error('SyncService#processProductUpdate | Error =', error)
     }
@@ -259,52 +242,23 @@ export class SyncService extends BaseService {
   private async processProductSync(
     records: CustomSyncLogRecordType[],
     qbTokenInfo: IntuitAPITokensType,
-    products: ProductsResponse | undefined,
     eventType: EventType,
   ) {
-    const productIds = records.map((e: any) => e.copilotId)
-    const productService = new ProductService(this.user)
+    console.info(`syncService#processProductSync | eventType: ${eventType}`)
 
-    console.info(
-      `syncService#processProductSync | eventType: ${eventType} | productIds: ${productIds}`,
-    )
+    switch (eventType) {
+      case EventType.CREATED:
+        return await this.processProductCreate(records, qbTokenInfo)
 
-    if (products && products.data) {
-      const productProcessPromises = []
-      for (const product of products.data) {
-        if (productIds.includes(product.id)) {
-          productProcessPromises.push(
-            bottleneck.schedule(async () => {
-              switch (eventType) {
-                case EventType.CREATED:
-                  await this.processProductCreate(
-                    productService,
-                    product,
-                    qbTokenInfo,
-                  )
-                  break
+      case EventType.UPDATED:
+        return await this.processProductUpdate(records, qbTokenInfo)
 
-                case EventType.UPDATED:
-                  await this.processProductUpdate(
-                    productService,
-                    product,
-                    qbTokenInfo,
-                  )
-                  break
-
-                default:
-                  console.error(
-                    'SyncLogService#processProductSync | Unknown product status: ',
-                    product.status,
-                  )
-                  break
-              }
-            }),
-          )
-        }
-      }
-
-      await Promise.all(productProcessPromises)
+      default:
+        console.error(
+          'SyncLogService#processProductSync | Unknown product type: ',
+          eventType,
+        )
+        return
     }
   }
 
@@ -317,11 +271,6 @@ export class SyncService extends BaseService {
     console.info({ qbTokenInfo, user: this.user })
     const copilotApi = new CopilotAPI(this.user.token)
     const invoices = await copilotApi.getInvoices()
-    const products = await copilotApi.getProducts(
-      undefined,
-      undefined,
-      MAX_PRODUCT_LIST_LIMIT,
-    )
 
     for (const log of logs) {
       switch (log.entityType) {
@@ -344,12 +293,7 @@ export class SyncService extends BaseService {
 
         case EntityType.PRODUCT:
           console.info('product re-sync started')
-          await this.processProductSync(
-            log.records,
-            qbTokenInfo,
-            products,
-            log.eventType,
-          )
+          await this.processProductSync(log.records, qbTokenInfo, log.eventType)
           break
 
         default:
