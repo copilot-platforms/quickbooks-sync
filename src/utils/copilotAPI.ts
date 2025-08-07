@@ -63,6 +63,9 @@ export class CopilotAPI {
         url.searchParams.set(key, query[key])
       }
     }
+
+    console.info(`CopilotAPI#manualFetch | url = ${url}, apiKey = ${apiKey}`)
+
     const resp = await fetch(url, {
       headers: { 'X-API-KEY': apiKey, accept: 'application/json' },
     })
@@ -410,6 +413,8 @@ export class CopilotAPI {
     const data = await this.manualFetch('invoices', {
       limit: MAX_INVOICE_LIST_LIMIT.toString(),
     })
+
+    console.info(`CopilotAPI#getInvoices | data length = ${data.data?.length}`)
 
     return z.array(InvoiceResponseSchema).parse(data.data)
   }
