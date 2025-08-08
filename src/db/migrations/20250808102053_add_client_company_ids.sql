@@ -1,0 +1,2 @@
+ALTER TABLE "qb_customers" ADD COLUMN "client_company_id" varchar(255), ADD COLUMN "client_id" uuid, ADD COLUMN "company_id" uuid, ADD COLUMN "display_name" varchar(255);--> statement-breakpoint
+ALTER TABLE "qb_invoice_sync" ADD COLUMN "customer_id" uuid, ADD CONSTRAINT "qb_invoice_sync_customer_id_qb_customers_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."qb_customers"("id") ON DELETE cascade ON UPDATE cascade;
