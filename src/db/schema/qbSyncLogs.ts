@@ -34,6 +34,7 @@ export const QBSyncLog = table('qb_sync_logs', {
   productName: t.varchar('product_name', { length: 100 }),
   productPrice: t.decimal('product_price'),
   qbItemName: t.varchar('qb_item_name', { length: 100 }),
+  copilotPriceId: t.varchar('copilot_price_id', { length: 100 }),
   errorMessage: t.varchar('error_message', { length: 255 }),
   ...newTimestamps,
 })

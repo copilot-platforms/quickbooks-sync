@@ -7,18 +7,14 @@ import {
 import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { AuthService } from '@/app/api/quickbooks/auth/auth.service'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
-import { InvoiceResponse, ProductsResponse, WhereClause } from '@/type/common'
+import { InvoiceResponse } from '@/type/common'
 import { CopilotAPI } from '@/utils/copilotAPI'
-import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
+import { EntityType, EventType } from '@/app/api/core/types/log'
 import postgres from 'postgres'
 import User from '@/app/api/core/models/User.model'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import dayjs from 'dayjs'
-import { MAX_PRODUCT_LIST_LIMIT } from '@/app/api/core/constants/limit'
-import { convert } from 'html-to-text'
-import { QBProductSync } from '@/db/schema/qbProductSync'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
-import { and, eq, isNull, or } from 'drizzle-orm'
 import { bottleneck } from '@/utils/bottleneck'
 
 export class SyncService extends BaseService {
@@ -29,6 +25,59 @@ export class SyncService extends BaseService {
     super(user)
     this.invoiceService = new InvoiceService(user)
     this.syncLogService = new SyncLogService(user)
+  }
+
+  private async processInvoiceCreate(
+    invoice: InvoiceResponse,
+    qbTokenInfo: IntuitAPITokensType,
+  ) {
+    try {
+      await this.invoiceService.webhookInvoiceCreated(
+        { data: invoice },
+        qbTokenInfo,
+      )
+    } catch (error: unknown) {
+      console.error('SyncService#processInvoiceCreate | Error =', error)
+    }
+  }
+
+  private async processInvoicePaid(
+    invoice: InvoiceResponse,
+    qbTokenInfo: IntuitAPITokensType,
+  ) {
+    try {
+      await this.invoiceService.webhookInvoicePaid(
+        { data: invoice },
+        qbTokenInfo,
+      )
+    } catch (error: unknown) {
+      console.error('SyncService#processInvoicePaid | Error =', error)
+    }
+  }
+
+  private async processInvoiceVoided(
+    invoice: InvoiceResponse,
+    qbTokenInfo: IntuitAPITokensType,
+  ) {
+    try {
+      await this.invoiceService.webhookInvoiceVoided(
+        { data: invoice },
+        qbTokenInfo,
+      )
+    } catch (error: unknown) {
+      console.error('SyncService#processInvoiceVoided | Error =', error)
+    }
+  }
+
+  private async processInvoiceDeleted(
+    invoice: InvoiceResponse,
+    qbTokenInfo: IntuitAPITokensType,
+  ) {
+    try {
+      await this.invoiceService.handleInvoiceDeleted(invoice, qbTokenInfo)
+    } catch (error: unknown) {
+      console.error('SyncService#processInvoiceDeleted | Error =', error)
+    }
   }
 
   private async processInvoiceSync(
@@ -48,24 +97,19 @@ export class SyncService extends BaseService {
           if (invoiceIds.includes(invoice.id)) {
             switch (eventType) {
               case EventType.CREATED:
-                await this.invoiceService.webhookInvoiceCreated(
-                  { data: invoice },
-                  qbTokenInfo,
-                )
+                await this.processInvoiceCreate(invoice, qbTokenInfo)
                 break
 
               case EventType.PAID:
-                await this.invoiceService.webhookInvoicePaid(
-                  { data: invoice },
-                  qbTokenInfo,
-                )
+                await this.processInvoicePaid(invoice, qbTokenInfo)
                 break
 
               case EventType.VOIDED:
-                await this.invoiceService.webhookInvoiceVoided(
-                  { data: invoice },
-                  qbTokenInfo,
-                )
+                await this.processInvoiceVoided(invoice, qbTokenInfo)
+                break
+
+              case EventType.DELETED:
+                await this.processInvoiceDeleted(invoice, qbTokenInfo)
                 break
 
               default:
@@ -85,136 +129,127 @@ export class SyncService extends BaseService {
     records: CustomSyncLogRecordType[],
     qbTokenInfo: IntuitAPITokensType,
   ) {
-    console.info('syncService#processPaymentSucceededSync | records: ', records)
+    try {
+      console.info(
+        'syncService#processPaymentSucceededSync | records: ',
+        records,
+      )
 
-    await Promise.all(
-      records.map(async (record) => {
-        const expensePayload = {
-          PaymentType: 'Cash' as const,
-          AccountRef: {
-            value: qbTokenInfo.assetAccountRef,
-          },
-          DocNumber: record.invoiceNumber || '',
-          TxnDate: dayjs(record.createdAt).format('YYYY-MM-DD'), // the date format for due date follows XML Schema standard (YYYY-MM-DD). For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase#the-purchase-object
-          Line: [
-            {
-              DetailType: 'AccountBasedExpenseLineDetail' as const,
-              Amount: record.amount / 100,
-              AccountBasedExpenseLineDetail: {
-                AccountRef: {
-                  value: qbTokenInfo.expenseAccountRef,
+      await Promise.all(
+        records.map(async (record) => {
+          const expensePayload = {
+            PaymentType: 'Cash' as const,
+            AccountRef: {
+              value: qbTokenInfo.assetAccountRef,
+            },
+            DocNumber: record.invoiceNumber || '',
+            TxnDate: dayjs(record.createdAt).format('YYYY-MM-DD'), // the date format for due date follows XML Schema standard (YYYY-MM-DD). For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase#the-purchase-object
+            Line: [
+              {
+                DetailType: 'AccountBasedExpenseLineDetail' as const,
+                Amount: record.amount / 100,
+                AccountBasedExpenseLineDetail: {
+                  AccountRef: {
+                    value: qbTokenInfo.expenseAccountRef,
+                  },
                 },
               },
-            },
-          ],
-        }
-        const paymentService = new PaymentService(this.user)
-        const intuitApi = new IntuitAPI(qbTokenInfo)
-        await paymentService.createExpenseForAbsorbedFees(
-          expensePayload,
-          intuitApi,
-          record.copilotId,
+            ],
+          }
+          const paymentService = new PaymentService(this.user)
+          const intuitApi = new IntuitAPI(qbTokenInfo)
+          await paymentService.createExpenseForAbsorbedFees(
+            expensePayload,
+            intuitApi,
+            record.copilotId,
+          )
+        }),
+      )
+    } catch (error: unknown) {
+      console.error('SyncService#processPaymentSucceededSync | Error =', error)
+    }
+  }
+
+  private async processProductCreate(
+    logRecords: CustomSyncLogRecordType[],
+    qbTokenInfo: IntuitAPITokensType,
+  ) {
+    const productService = new ProductService(this.user)
+    const copilotApi = new CopilotAPI(this.user.token)
+    const productProcessPromises = []
+
+    for (const record of logRecords) {
+      productProcessPromises.push(
+        bottleneck.schedule(async () => {
+          if (!record.copilotPriceId) return
+
+          const priceResponse = await copilotApi.getPrice(record.copilotPriceId)
+          if (!priceResponse) return
+
+          try {
+            await productService.webhookPriceCreated(
+              { data: priceResponse },
+              qbTokenInfo,
+            )
+          } catch (error: unknown) {
+            console.error(
+              `SyncService#processProductCreate | Error for product with ID: ${record.copilotId}. Error: ${error}`,
+            )
+          }
+        }),
+      )
+    }
+    await Promise.all(productProcessPromises)
+  }
+
+  private async processProductUpdate(
+    logRecords: CustomSyncLogRecordType[],
+    qbTokenInfo: IntuitAPITokensType,
+  ) {
+    const productService = new ProductService(this.user)
+    const copilotApi = new CopilotAPI(this.user.token)
+    const productProcessPromises = []
+
+    try {
+      for (const record of logRecords) {
+        productProcessPromises.push(
+          bottleneck.schedule(async () => {
+            const product = await copilotApi.getProduct(record.copilotId)
+            if (!product) return
+
+            await productService.webhookProductUpdated(
+              { data: product },
+              qbTokenInfo,
+            )
+          }),
         )
-      }),
-    )
+      }
+      await Promise.all(productProcessPromises)
+    } catch (error: unknown) {
+      console.error('SyncService#processProductUpdate | Error =', error)
+    }
   }
 
   private async processProductSync(
     records: CustomSyncLogRecordType[],
     qbTokenInfo: IntuitAPITokensType,
-    products: ProductsResponse | undefined,
     eventType: EventType,
   ) {
-    const productIds = records.map((e: any) => e.copilotId)
-    const intuitApi = new IntuitAPI(qbTokenInfo)
-    const copilotApi = new CopilotAPI(this.user.token)
-    const productService = new ProductService(this.user)
+    console.info(`syncService#processProductSync | eventType: ${eventType}`)
 
-    console.info(
-      `syncService#processProductSync | eventType: ${eventType} | productIds: ${productIds}`,
-    )
+    switch (eventType) {
+      case EventType.CREATED:
+        return await this.processProductCreate(records, qbTokenInfo)
 
-    if (products && products.data) {
-      const productProcessPromises = []
-      for (const product of products.data) {
-        if (productIds.includes(product.id)) {
-          productProcessPromises.push(
-            bottleneck.schedule(async () => {
-              switch (eventType) {
-                case EventType.CREATED:
-                  // NOTE: Followed thorough flow of creating product in QB as the item creation failed can it is effected by price or product webhooks
-                  const priceInfo = await copilotApi.getPrices(product.id)
-                  const singlePrice = priceInfo?.data?.[0] // only get single price as first created product has firs single price
-                  if (singlePrice) {
-                    const productDescription = convert(product.description)
+      case EventType.UPDATED:
+        return await this.processProductUpdate(records, qbTokenInfo)
 
-                    // create item in QB
-                    const item = await productService.createItemInQB(
-                      {
-                        productName: product.name,
-                        unitPrice: singlePrice.amount,
-                        incomeAccRefVal: qbTokenInfo.incomeAccountRef,
-                        productDescription,
-                      },
-                      intuitApi,
-                    )
-
-                    // update mapping table
-                    const conditions = and(
-                      eq(QBProductSync.portalId, this.user.workspaceId),
-                      or(
-                        eq(QBProductSync.productId, product.id),
-                        eq(QBProductSync.priceId, singlePrice.id),
-                      ),
-                      isNull(QBProductSync.qbItemId),
-                      isNull(QBProductSync.qbSyncToken),
-                    ) as WhereClause
-                    await productService.updateOrCreateQBProduct(
-                      {
-                        portalId: this.user.workspaceId,
-                        productId: product.id,
-                        priceId: singlePrice.id,
-                        name: product.name,
-                        description: productDescription,
-                        qbItemId: item.Id,
-                        qbSyncToken: item.SyncToken,
-                      },
-                      conditions,
-                    )
-
-                    // update the sync log
-                    await this.syncLogService.updateOrCreateQBSyncLog({
-                      portalId: this.user.workspaceId,
-                      entityType: EntityType.PRODUCT,
-                      eventType: EventType.CREATED,
-                      status: LogStatus.SUCCESS,
-                      copilotId: product.id,
-                      quickbooksId: item.Id,
-                      syncAt: dayjs().toDate(),
-                    })
-                  }
-                  break
-
-                case EventType.UPDATED:
-                  await productService.webhookProductUpdated(
-                    { data: product },
-                    qbTokenInfo,
-                  )
-                  break
-
-                default:
-                  console.error(
-                    'SyncLogService#processProductSync | Unknown product status: ',
-                    product.status,
-                  )
-                  break
-              }
-            }),
-          )
-        }
-      }
-
-      await Promise.all(productProcessPromises)
+      default:
+        console.error(
+          'SyncLogService#processProductSync | Unknown product type: ',
+          eventType,
+        )
+        return
     }
   }
 
@@ -224,13 +259,9 @@ export class SyncService extends BaseService {
     const qbTokenInfo = await authService.getQBPortalConnection(
       this.user.workspaceId,
     )
+    console.info({ qbTokenInfo, user: this.user })
     const copilotApi = new CopilotAPI(this.user.token)
     const invoices = await copilotApi.getInvoices(this.user.workspaceId)
-    const products = await copilotApi.getProducts(
-      undefined,
-      undefined,
-      MAX_PRODUCT_LIST_LIMIT,
-    )
 
     for (const log of logs) {
       switch (log.entityType) {
@@ -253,12 +284,7 @@ export class SyncService extends BaseService {
 
         case EntityType.PRODUCT:
           console.info('product re-sync started')
-          await this.processProductSync(
-            log.records,
-            qbTokenInfo,
-            products,
-            log.eventType,
-          )
+          await this.processProductSync(log.records, qbTokenInfo, log.eventType)
           break
 
         default:

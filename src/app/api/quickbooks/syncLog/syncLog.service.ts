@@ -22,6 +22,7 @@ export type CustomSyncLogRecordType = {
   invoiceNumber: string
   amount: number
   createdAt: Date
+  copilotPriceId: string | null
 }
 
 export type CustomSyncLogType = {
@@ -90,12 +91,11 @@ export class SyncLogService extends BaseService {
 
   async updateOrCreateQBSyncLog(
     payload: QBSyncLogCreateSchemaType,
-    forMapProducts?: boolean,
     conditions?: WhereClause,
   ) {
     let existingLog
 
-    if (forMapProducts && conditions) {
+    if (conditions) {
       existingLog = await this.getOne(conditions)
     } else {
       existingLog = await this.getOneByCopilotIdAndEventType(
@@ -103,6 +103,7 @@ export class SyncLogService extends BaseService {
         payload.eventType,
       )
     }
+
     if (existingLog) {
       await this.updateQBSyncLog(payload, eq(QBSyncLog.id, existingLog.id))
     } else {
@@ -122,6 +123,7 @@ export class SyncLogService extends BaseService {
         json_agg(
           json_build_object(
             'copilotId', copilot_id,
+            'copilotPriceId', copilot_price_id,
             'status', status,
             'eventType', event_type,
             'invoiceNumber', invoice_number,
