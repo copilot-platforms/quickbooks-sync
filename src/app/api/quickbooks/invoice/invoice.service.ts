@@ -347,6 +347,8 @@ export class InvoiceService extends BaseService {
         portalId: this.user.workspaceId,
         customerId: recipientInfo.recipientId,
         clientCompanyId: recipientInfo.clientCompanyId,
+        clientId: invoiceResource.clientId, // TODO: remove everything related to this field. in case anything goes off the track
+        companyId: invoiceResource.companyId,
         givenName: recipientInfo.givenName,
         familyName: recipientInfo.familyName,
         displayName: recipientInfo.displayName,
