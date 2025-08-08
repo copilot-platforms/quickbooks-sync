@@ -29,7 +29,9 @@ export const InvoiceCreatedResponseSchema = z.object({
     id: z.string(),
     lineItems: z.array(InvoiceLineItemSchema),
     number: z.string(),
-    recipientId: z.string(),
+    // recipientId: z.string(),
+    clientId: z.string(),
+    companyId: z.string(),
     status: z.nativeEnum(InvoiceStatus),
     total: z.number(),
     taxPercentage: z.number().default(0),
@@ -46,7 +48,9 @@ export const InvoiceDeletedResponseSchema = z.object({
   id: z.string(),
   number: z.string(),
   total: z.number(),
-  recipientId: z.string(),
+  // recipientId: z.string(),
+  clientId: z.string(),
+  companyId: z.string(),
 })
 export type InvoiceDeletedResponse = z.infer<
   typeof InvoiceDeletedResponseSchema
@@ -96,7 +100,9 @@ export const InvoiceResponseSchema = z.object({
     status: z.nativeEnum(InvoiceStatus),
     total: z.number(),
     taxPercentage: z.number().default(0),
-    recipientId: z.string(),
+    // recipientId: z.string(),
+    clientId: z.string(),
+    companyId: z.string(),
   }),
 })
 export type InvoiceResponseType = z.infer<typeof InvoiceResponseSchema>
