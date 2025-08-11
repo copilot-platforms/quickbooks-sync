@@ -319,8 +319,8 @@ export const InvoiceResponseSchema = z.object({
   lineItems: z.array(InvoiceLineItemSchema),
   number: z.string(),
   // recipientId: z.string(),
-  clientId: z.string(),
-  companyId: z.string(),
+  clientId: z.string().uuid().or(z.literal('')), // allow uuid or empty string
+  companyId: z.string().uuid().or(z.literal('')), // allow uuid or empty string
   status: z.nativeEnum(InvoiceStatus),
   total: z.number(),
   taxPercentage: z.number().default(0),

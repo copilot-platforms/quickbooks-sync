@@ -119,7 +119,6 @@ export class CustomerService extends BaseService {
     } else if (clientId) {
       return clientId
     }
-    return company?.id
   }
 
   /**
@@ -213,7 +212,7 @@ export class CustomerService extends BaseService {
      * In QB, the display name is unique, so we need to ensure that if the client has the same name in different companies,
      * we can distinguish them.
      */
-    if (client && company && company.name) {
+    if (company && company.name) {
       displayName = `${client.givenName} ${client.familyName} - ${company.name}`
     }
 
