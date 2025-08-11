@@ -430,7 +430,6 @@ export class CopilotAPI {
     )
 
     console.info(`CopilotAPI#getInvoices | data length = ${data.data?.length}`)
-
     return z.array(InvoiceResponseSchema).parse(data.data)
   }
 

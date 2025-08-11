@@ -568,7 +568,6 @@ export class ProductService extends BaseService {
         )
         return await this.syncLogService.updateOrCreateQBSyncLog(
           payload,
-          true,
           conditions,
         )
       }),
