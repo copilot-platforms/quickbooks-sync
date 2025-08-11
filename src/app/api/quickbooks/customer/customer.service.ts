@@ -10,13 +10,14 @@ import {
   QBCustomerUpdateSchema,
   QBCustomerUpdateSchemaType,
 } from '@/db/schema/qbCustomers'
-import { WhereClause } from '@/type/common'
+import { CompanyResponse, WhereClause } from '@/type/common'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import { and, isNull } from 'drizzle-orm'
 import httpStatus from 'http-status'
 
 type ClientCompanyType = {
-  id: string
+  clientCompanyId: string
+  recipientId: string
   givenName: string
   familyName: string
   companyId: string
@@ -69,8 +70,8 @@ export class CustomerService extends BaseService {
     return customer
   }
 
-  async getByCustomerId(
-    customerId: string,
+  async getCustomerById(
+    id: string,
     returningFields?: (keyof typeof QBCustomers)[],
   ) {
     let columns = null
@@ -82,16 +83,72 @@ export class CustomerService extends BaseService {
       where: (QBCustomers, { eq }) =>
         and(
           isNull(QBCustomers.deletedAt),
-          eq(QBCustomers.customerId, customerId),
+          eq(QBCustomers.id, id),
+          eq(QBCustomers.portalId, this.user.workspaceId),
         ),
       ...(columns && { columns }),
     })
   }
 
-  async getRecipientInfo(recipientId: string) {
+  async getByClientCompanyId(
+    clientCompanyId: string,
+    returningFields?: (keyof typeof QBCustomers)[],
+  ) {
+    let columns = null
+    if (returningFields?.length) {
+      columns = buildReturningFields(QBCustomers, returningFields, true)
+    }
+
+    return await this.db.query.QBCustomers.findFirst({
+      where: (QBCustomers, { eq }) =>
+        and(
+          isNull(QBCustomers.deletedAt),
+          eq(QBCustomers.clientCompanyId, clientCompanyId),
+          eq(QBCustomers.portalId, this.user.workspaceId),
+        ),
+      ...(columns && { columns }),
+    })
+  }
+
+  private composeClientCompanyById(
+    clientId: string,
+    company: CompanyResponse | undefined,
+  ) {
+    if (clientId && company?.id && company.name) {
+      return `${clientId}/${company?.id}`
+    } else if (clientId) {
+      return clientId
+    }
+  }
+
+  /**
+   * @param clientId will be empty when the invoice is billed to a company
+   */
+  async getRecipientInfo({
+    clientId,
+    companyId,
+  }: {
+    clientId: string
+    companyId: string
+  }) {
+    if (!clientId && !companyId) {
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'Either clientId or companyId must be provided',
+      )
+    }
+
     const copilot = new CopilotAPI(this.user.token)
+    let client, company: CompanyResponse | undefined
+
+    // get client and company info from copilot
+    if (clientId) client = await copilot.getClient(clientId)
+    if (companyId) company = await copilot.getCompany(companyId)
+
     let clientCompany: ClientCompanyType = {
-      id: recipientId,
+      clientCompanyId:
+        this.composeClientCompanyById(clientId, company) || companyId,
+      recipientId: clientId || companyId, // TODO: remove everything related to this field. in case anything goes off the track
       companyId: '',
       displayName: '',
       type: 'client',
@@ -101,12 +158,7 @@ export class CustomerService extends BaseService {
       companyName: '',
     }
 
-    let client = await copilot.getClient(recipientId)
-
-    let company
     if (!client) {
-      company = await copilot.getCompany(recipientId)
-
       // NOTE: If company is not a valid company, company.name will be an empty string
       if (!company || !company.name) {
         console.info(
@@ -153,13 +205,23 @@ export class CustomerService extends BaseService {
       }
       return { recipientInfo: clientCompany, companyInfo: company }
     }
+
+    let displayName = `${client.givenName} ${client.familyName}`
+    /**
+     * The following condition is to distinguish client from which company is billed.
+     * In QB, the display name is unique, so we need to ensure that if the client has the same name in different companies,
+     * we can distinguish them.
+     */
+    if (company && company.name) {
+      displayName = `${client.givenName} ${client.familyName} - ${company.name}`
+    }
+
     return {
       recipientInfo: {
         ...clientCompany,
         familyName: client?.familyName || '',
         givenName: client?.givenName || '',
-        displayName: `${client?.givenName} ${client?.familyName}`,
-        type: 'client' as const,
+        displayName,
         email: client?.email || '',
         companyId: client?.companyId || '',
       },
