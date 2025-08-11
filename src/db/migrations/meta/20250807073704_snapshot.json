@@ -1,5 +1,5 @@
 {
-  "id": "13932f2f-d142-4182-b2cb-838c99ca44e5",
+  "id": "de79cb79-e4ef-4d06-99bf-cf7b458e760c",
   "prevId": "e577eccc-15ef-43e8-81fa-fa172167cde9",
   "version": "7",
   "dialect": "postgresql",
@@ -376,12 +376,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "client_fee_ref": {
-          "name": "client_fee_ref",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -746,6 +740,12 @@
         },
         "qb_item_name": {
           "name": "qb_item_name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "copilot_price_id": {
+          "name": "copilot_price_id",
           "type": "varchar(100)",
           "primaryKey": false,
           "notNull": false

@@ -33,8 +33,22 @@
     {
       "idx": 4,
       "version": "7",
-      "when": 1754479457170,
-      "tag": "20250806112417_add_client_fee_ref_in_portal_connections",
+      "when": 1754552224548,
+      "tag": "20250807073704_add_price_id_in_sync_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1754648453011,
+      "tag": "20250808102053_add_client_company_ids",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1754912075168,
+      "tag": "20250811113435_add_client_fee_ref_in_portal_connections",
       "breakpoints": true
     }
   ]

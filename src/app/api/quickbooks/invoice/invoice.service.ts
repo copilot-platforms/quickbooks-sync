@@ -361,14 +361,31 @@ export class InvoiceService extends BaseService {
   ): Promise<void> {
     const invoiceResource = payload.data
 
+    // Check if the invoice with ID already exists in the db. This check is done in this function as it is also called from re-sync failed function
+    const existingInvoice = await this.getInvoiceByNumber(
+      invoiceResource.number,
+      ['id'],
+    )
+
+    // Do not store if invoice already exists
+    if (existingInvoice) {
+      console.info(
+        'WebhookService#handleWebhookEvent#exists | Invoice already exists in the db',
+      )
+      return
+    }
+
     const customerService = new CustomerService(this.user)
     // 1. get client (retrieve receipentId from invoice resource). Copilot: Retrieve client. If not found, retrieve company and get first client from the company
     const { recipientInfo, companyInfo } =
-      await customerService.getRecipientInfo(invoiceResource.recipientId)
+      await customerService.getRecipientInfo({
+        clientId: invoiceResource.clientId,
+        companyId: invoiceResource.companyId,
+      })
 
     // 2. search client in our mapping table
-    const existingCustomer = await customerService.getByCustomerId(
-      recipientInfo.id,
+    const existingCustomer = await customerService.getByClientCompanyId(
+      recipientInfo.clientCompanyId,
       [
         'id',
         'qbCustomerId',
@@ -381,33 +398,20 @@ export class InvoiceService extends BaseService {
     )
 
     InvoiceService.intuitApiService = new IntuitAPI(qbTokenInfo)
-    let customer
+    let customer,
+      existingCustomerMapId = existingCustomer?.id
     if (!existingCustomer) {
       // 2.1. search client in qb using client's given name and family name
       customer = await InvoiceService.intuitApiService.getACustomer(
         recipientInfo.displayName,
       )
 
-      let company
       // 3. if not found, create a new client in the QB
       if (!customer) {
-        if (!companyInfo || !companyInfo.name) {
-          // Case when client is retrieved directly from recipientId
-          company = await this.copilot.getCompany(recipientInfo.companyId)
-
-          if (!company || !company.name) {
-            // Indicates company is not available in any case. This only logs as error and allows to create customer in QB since company name is optional
-            console.error(
-              'InvoiceService#handleInvoiceCreated | Could not retrieve company for client = ',
-              recipientInfo.id,
-            )
-          }
-        }
-
         // Create a new customer in QB
         let customerPayload: QBCustomerCreatePayloadType = {
           DisplayName: recipientInfo.displayName,
-          CompanyName: company?.name || companyInfo?.name,
+          CompanyName: companyInfo?.name,
           PrimaryEmailAddr: {
             Address: recipientInfo?.email || '',
           },
@@ -428,16 +432,22 @@ export class InvoiceService extends BaseService {
       // create map for customer into mapping table
       const customerSyncPayload = {
         portalId: this.user.workspaceId,
-        customerId: recipientInfo.id,
+        customerId: recipientInfo.recipientId, // TODO: remove everything related to this field. in case anything goes off the track
+        clientCompanyId: recipientInfo.clientCompanyId,
+        clientId: invoiceResource.clientId || null,
+        companyId: invoiceResource.companyId || null,
         givenName: recipientInfo.givenName,
         familyName: recipientInfo.familyName,
+        displayName: recipientInfo.displayName,
         email: recipientInfo.email,
-        companyName: company?.name || companyInfo?.name,
+        companyName: companyInfo?.name,
         qbSyncToken: customer.SyncToken,
         qbCustomerId: customer.Id,
       }
 
-      await customerService.createQBCustomer(customerSyncPayload)
+      const customerSync =
+        await customerService.createQBCustomer(customerSyncPayload)
+      existingCustomerMapId = customerSync.id
     } else {
       // update the customer in qb
       const sparseUpdatePayload: Omit<
@@ -445,26 +455,26 @@ export class InvoiceService extends BaseService {
         'Id' | 'SyncToken' | 'sparse'
       > = {}
 
-      if (existingCustomer.familyName !== recipientInfo.familyName) {
-        sparseUpdatePayload.FamilyName = recipientInfo.familyName
-      }
-      if (existingCustomer.givenName !== recipientInfo.givenName) {
-        sparseUpdatePayload.GivenName = recipientInfo.givenName
-      }
       if (existingCustomer.email !== recipientInfo.email) {
         sparseUpdatePayload.PrimaryEmailAddr = {
           Address: recipientInfo.email,
         }
+      }
+      if (existingCustomer.displayName !== recipientInfo.displayName) {
+        // DisplayName = GivenName + FamilyName + CompanyName (if exists)
+        sparseUpdatePayload.DisplayName = recipientInfo.displayName
+        sparseUpdatePayload.GivenName = recipientInfo.givenName
+        sparseUpdatePayload.FamilyName = recipientInfo.familyName
+        sparseUpdatePayload.CompanyName = companyInfo?.name
       }
       if (Object.keys(sparseUpdatePayload).length > 0) {
         const customerSparsePayload = {
           ...sparseUpdatePayload,
           Id: existingCustomer.qbCustomerId,
           SyncToken: existingCustomer.qbSyncToken,
-          DisplayName: recipientInfo.displayName,
           BillAddr: {
             Line1: `${existingCustomer.givenName} ${existingCustomer.familyName}`,
-            Line2: existingCustomer.companyName,
+            Line2: companyInfo?.name,
           },
           sparse: true as const,
         }
@@ -479,6 +489,7 @@ export class InvoiceService extends BaseService {
         const customerSyncUpPayload = {
           givenName: recipientInfo.givenName,
           familyName: recipientInfo.familyName,
+          displayName: recipientInfo.displayName,
           email: recipientInfo.email,
           companyName: companyInfo?.name,
           qbSyncToken: customer.SyncToken,
@@ -557,7 +568,8 @@ export class InvoiceService extends BaseService {
       invoiceNumber: invoiceResource.number,
       qbInvoiceId: invoiceRes.Invoice.Id,
       qbSyncToken: invoiceRes.Invoice.SyncToken,
-      recipientId: recipientInfo.id,
+      recipientId: recipientInfo.recipientId,
+      customerId: existingCustomerMapId, // foreign key to customer mapping
       status: invoiceResource.status,
     }
     await this.createQBInvoice(invoicePayload)
@@ -627,14 +639,14 @@ export class InvoiceService extends BaseService {
       'id',
       'qbInvoiceId',
       'status',
-      'recipientId',
+      'customerId',
     ])
 
     if (!invoiceSync) {
-      throw new APIError(
-        httpStatus.NOT_FOUND,
+      console.error(
         'WebhookService#webhookInvoicePaid | Invoice not found in sync table',
       )
+      return
     }
 
     // check if the entity invoice has successful event paid
@@ -648,16 +660,17 @@ export class InvoiceService extends BaseService {
       return
     }
 
+    // TODO: direct customer fetch with invoice.
     // 2. if not, create payment in QB, sync payment in payment sync table and change invoice status to paid
-    if (!invoiceSync.recipientId) {
+    if (!invoiceSync.customerId) {
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'WebhookService#webhookInvoicePaid | RecipientId not found',
+        'WebhookService#webhookInvoicePaid | CustomerId not found',
       )
     }
     const customerService = new CustomerService(this.user)
-    const existingCustomer = await customerService.getByCustomerId(
-      invoiceSync.recipientId,
+    const existingCustomer = await customerService.getCustomerById(
+      invoiceSync.customerId,
       ['id', 'qbCustomerId', 'givenName', 'familyName', 'email', 'companyName'],
     )
     if (!existingCustomer) {
@@ -789,9 +802,10 @@ export class InvoiceService extends BaseService {
 
     await intuitApi.voidInvoice(safeParsedPayload.data)
     const customerService = new CustomerService(this.user)
-    const { recipientInfo } = await customerService.getRecipientInfo(
-      payload.data.recipientId,
-    )
+    const { recipientInfo } = await customerService.getRecipientInfo({
+      clientId: payload.data.clientId,
+      companyId: payload.data.companyId,
+    })
 
     await Promise.all([
       this.updateQBInvoice(
@@ -866,9 +880,10 @@ export class InvoiceService extends BaseService {
     }
 
     const customerService = new CustomerService(this.user)
-    const { recipientInfo } = await customerService.getRecipientInfo(
-      payload.recipientId,
-    )
+    const { recipientInfo } = await customerService.getRecipientInfo({
+      clientId: payload.clientId,
+      companyId: payload.companyId,
+    })
 
     await intuitApi.deleteInvoice(safeParsedPayload.data)
 

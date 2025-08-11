@@ -1,0 +1,1 @@
+ALTER TABLE "qb_sync_logs" ADD COLUMN "copilot_price_id" varchar(100);
