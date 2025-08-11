@@ -345,10 +345,10 @@ export class InvoiceService extends BaseService {
       // create map for customer into mapping table
       const customerSyncPayload = {
         portalId: this.user.workspaceId,
-        customerId: recipientInfo.recipientId,
+        customerId: recipientInfo.recipientId, // TODO: remove everything related to this field. in case anything goes off the track
         clientCompanyId: recipientInfo.clientCompanyId,
-        clientId: invoiceResource.clientId, // TODO: remove everything related to this field. in case anything goes off the track
-        companyId: invoiceResource.companyId,
+        clientId: invoiceResource.clientId || null,
+        companyId: invoiceResource.companyId || null,
         givenName: recipientInfo.givenName,
         familyName: recipientInfo.familyName,
         displayName: recipientInfo.displayName,
@@ -378,6 +378,7 @@ export class InvoiceService extends BaseService {
         sparseUpdatePayload.DisplayName = recipientInfo.displayName
         sparseUpdatePayload.GivenName = recipientInfo.givenName
         sparseUpdatePayload.FamilyName = recipientInfo.familyName
+        sparseUpdatePayload.CompanyName = companyInfo?.name
       }
       if (Object.keys(sparseUpdatePayload).length > 0) {
         const customerSparsePayload = {
