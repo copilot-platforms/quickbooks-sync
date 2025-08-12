@@ -18,11 +18,9 @@ export function useDropdownPosition(
             dropdown.style.top = 'auto'
             dropdown.style.bottom = '100%' // position it above
             dropdown.style.marginTop = '0'
-            dropdown.style.marginBottom = '4px'
           } else {
             dropdown.style.top = '100%' // position it below
             dropdown.style.bottom = 'auto'
-            dropdown.style.marginTop = '4px'
             dropdown.style.marginBottom = '0'
           }
           // Optionally check horizontal overflow too
