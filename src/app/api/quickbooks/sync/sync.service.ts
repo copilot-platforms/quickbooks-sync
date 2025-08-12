@@ -342,8 +342,6 @@ export class SyncService extends BaseService {
       this.user.workspaceId,
     )
     console.info({ qbTokenInfo, user: this.user })
-    const copilotApi = new CopilotAPI(this.user.token)
-    const invoices = await copilotApi.getInvoices(this.user.workspaceId)
 
     for (const log of logs) {
       switch (log.entityType) {
