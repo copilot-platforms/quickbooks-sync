@@ -56,6 +56,15 @@ export type InvoiceDeletedResponse = z.infer<
   typeof InvoiceDeletedResponseSchema
 >
 
+export const InvoiceVoidedResponseSchema = z.object({
+  id: z.string(),
+  number: z.string(),
+  total: z.number(),
+  clientId: z.string().uuid().or(z.literal('')), // allow uuid or empty string
+  companyId: z.string().uuid().or(z.literal('')), // allow uuid or empty string
+})
+export type InvoiceVoidedResponse = z.infer<typeof InvoiceDeletedResponseSchema>
+
 /** Product */
 export const ProductCreatedResponseSchema = z.object({
   data: z.object({
