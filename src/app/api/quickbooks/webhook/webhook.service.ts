@@ -163,7 +163,7 @@ export class WebhookService extends BaseService {
       validateAccessToken(qbTokenInfo)
       const invoiceServce = new InvoiceService(this.user)
       await invoiceServce.webhookInvoiceVoided(
-        parsedVoidedInvoiceResource,
+        parsedVoidedInvoiceResource.data,
         qbTokenInfo,
       )
     } catch (error: unknown) {
@@ -259,6 +259,7 @@ export class WebhookService extends BaseService {
     const parsedProductResource = parsedProduct.data
 
     try {
+      validateAccessToken(qbTokenInfo)
       const productService = new ProductService(this.user)
       await productService.webhookProductUpdated(
         parsedProductResource,
@@ -295,6 +296,7 @@ export class WebhookService extends BaseService {
     const priceResource = parsedCreatedPriceResource.data
 
     try {
+      validateAccessToken(qbTokenInfo)
       const productService = new ProductService(this.user)
       await productService.webhookPriceCreated(
         parsedCreatedPriceResource,

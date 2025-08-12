@@ -384,10 +384,6 @@ export class ProductService extends BaseService {
       return
     }
 
-    if (qbTokenInfo.accessToken === '') {
-      throw new APIError(httpStatus.UNAUTHORIZED, 'Refresh token is expired')
-    }
-
     await Promise.all(
       mappedProducts.map(async (product) => {
         // 02. track change and sparse update the each item
@@ -441,8 +437,8 @@ export class ProductService extends BaseService {
             EventType.UPDATED,
             {
               productName: productResource.name,
-              productPrice: product.unitPrice,
               qbItemName: itemRes.Item.Name,
+              copilotPriceId: product.priceId || '',
             },
           )
         }
@@ -525,6 +521,7 @@ export class ProductService extends BaseService {
         productName: copilotProduct.name,
         productPrice: priceResource.amount.toFixed(2),
         qbItemName: item.Name,
+        copilotPriceId: priceResource.id,
       })
 
       this.unsetTransaction()
@@ -578,21 +575,30 @@ export class ProductService extends BaseService {
     copilotId: string,
     quickbooksId: string,
     eventType: EventType,
-    opts?: {
-      productPrice: string | null
+    opts: {
+      copilotPriceId: string
       qbItemName: string | null
       productName: string | null
+      productPrice?: string
     },
   ) {
-    await this.syncLogService.updateOrCreateQBSyncLog({
-      portalId: this.user.workspaceId,
-      entityType: EntityType.PRODUCT,
-      eventType,
-      status: LogStatus.SUCCESS,
-      copilotId,
-      syncAt: dayjs().toDate(),
-      quickbooksId,
-      ...opts,
-    })
+    const conditions = and(
+      eq(QBSyncLog.portalId, this.user.workspaceId),
+      eq(QBSyncLog.copilotPriceId, z.string().parse(opts.copilotPriceId)),
+    )
+    await this.syncLogService.updateOrCreateQBSyncLog(
+      {
+        portalId: this.user.workspaceId,
+        entityType: EntityType.PRODUCT,
+        eventType,
+        status: LogStatus.SUCCESS,
+        copilotId,
+        syncAt: dayjs().toDate(),
+        quickbooksId,
+        errorMessage: null,
+        ...opts,
+      },
+      conditions,
+    )
   }
 }
