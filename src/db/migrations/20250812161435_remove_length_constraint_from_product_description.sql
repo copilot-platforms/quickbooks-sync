@@ -1,0 +1,1 @@
+ALTER TABLE "qb_product_sync" ALTER COLUMN "description" SET DATA TYPE text;
