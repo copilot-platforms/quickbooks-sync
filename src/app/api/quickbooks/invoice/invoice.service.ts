@@ -21,6 +21,7 @@ import {
 import { QBPortalConnection } from '@/db/schema/qbPortalConnections'
 import { QBProductSync } from '@/db/schema/qbProductSync'
 import { getPortalConnection } from '@/db/service/token.service'
+import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import { TransactionType, WhereClause } from '@/type/common'
 import {
   QBCustomerSparseUpdatePayloadType,
@@ -34,6 +35,7 @@ import {
   InvoiceDeletedResponse,
   InvoiceLineItemSchemaType,
   InvoiceResponseType,
+  InvoiceVoidedResponse,
 } from '@/type/dto/webhook.dto'
 import { bottleneck } from '@/utils/bottleneck'
 import { CopilotAPI } from '@/utils/copilotAPI'
@@ -119,6 +121,9 @@ export class InvoiceService extends BaseService {
           eq(QBInvoiceSync.invoiceNumber, invoiceNumber),
           eq(QBInvoiceSync.portalId, this.user.workspaceId),
         ),
+      with: {
+        customer: true,
+      },
       ...(columns && { columns }),
     })
   }
@@ -228,8 +233,20 @@ export class InvoiceService extends BaseService {
       productName: productInfo.name,
       productPrice: Number(priceInfo.amount).toFixed(2),
       qbItemName: qbItem.Name,
+      copilotPriceId: priceId,
+      errorMessage: null,
     }
-    await this.syncLogService.createQBSyncLog(syncLogPayload)
+
+    // insert or update the sync log for product creation
+    const syncLogConditions = and(
+      eq(QBSyncLog.portalId, this.user.workspaceId),
+      eq(QBSyncLog.copilotPriceId, priceId),
+      eq(QBSyncLog.eventType, EventType.CREATED),
+    ) as WhereClause
+    await this.syncLogService.updateOrCreateQBSyncLog(
+      syncLogPayload,
+      syncLogConditions,
+    )
 
     return { ref: { value: qbItem.Id }, productDescription }
   }
@@ -745,11 +762,11 @@ export class InvoiceService extends BaseService {
   }
 
   async webhookInvoiceVoided(
-    payload: InvoiceResponseType,
+    payload: InvoiceVoidedResponse,
     qbTokenInfo: IntuitAPITokensType,
   ): Promise<void> {
     // 1. check if the status of invoice is already paid in sync table
-    const invoiceSync = await this.getInvoiceByNumber(payload.data.number, [
+    const invoiceSync = await this.getInvoiceByNumber(payload.number, [
       'id',
       'qbInvoiceId',
       'status',
@@ -773,7 +790,7 @@ export class InvoiceService extends BaseService {
 
     // get invoice sync log
     const invoiceLog = await this.syncLogService.getOneByCopilotIdAndEventType(
-      payload.data.id,
+      payload.id,
       EventType.CREATED,
     )
 
@@ -803,8 +820,8 @@ export class InvoiceService extends BaseService {
     await intuitApi.voidInvoice(safeParsedPayload.data)
     const customerService = new CustomerService(this.user)
     const { recipientInfo } = await customerService.getRecipientInfo({
-      clientId: payload.data.clientId,
-      companyId: payload.data.companyId,
+      clientId: payload.clientId,
+      companyId: payload.companyId,
     })
 
     await Promise.all([
@@ -815,7 +832,7 @@ export class InvoiceService extends BaseService {
         eq(QBInvoiceSync.id, invoiceSync.id),
         ['id'],
       ),
-      this.logSync(payload.data.id, invoiceSync, EventType.VOIDED, {
+      this.logSync(payload.id, invoiceSync, EventType.VOIDED, {
         amount: z.string().parse(invoiceLog.amount),
         taxAmount: z.string().parse(invoiceLog.taxAmount),
         customerName: recipientInfo.displayName,
@@ -911,6 +928,7 @@ export class InvoiceService extends BaseService {
       taxAmount?: string
       customerName?: string
       customerEmail?: string
+      errorMessage?: string
     },
   ) {
     await this.syncLogService.updateOrCreateQBSyncLog({
@@ -922,7 +940,7 @@ export class InvoiceService extends BaseService {
       syncAt: dayjs().toDate(),
       quickbooksId: syncedInvoice.qbInvoiceId,
       invoiceNumber: syncedInvoice.invoiceNumber,
-      ...opts,
+      ...{ ...opts, errorMessage: opts?.errorMessage || null },
     })
   }
 }

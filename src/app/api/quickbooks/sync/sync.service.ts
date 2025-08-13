@@ -7,7 +7,6 @@ import {
 import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { AuthService } from '@/app/api/quickbooks/auth/auth.service'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
-import { InvoiceResponse } from '@/type/common'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import { EntityType, EventType } from '@/app/api/core/types/log'
 import postgres from 'postgres'
@@ -28,62 +27,153 @@ export class SyncService extends BaseService {
   }
 
   private async processInvoiceCreate(
-    invoice: InvoiceResponse,
+    logRecords: CustomSyncLogRecordType[],
     qbTokenInfo: IntuitAPITokensType,
   ) {
-    try {
-      await this.invoiceService.webhookInvoiceCreated(
-        { data: invoice },
-        qbTokenInfo,
+    const copilotApi = new CopilotAPI(this.user.token)
+    const invoicePromises = []
+
+    for (const record of logRecords) {
+      invoicePromises.push(
+        bottleneck.schedule(async () => {
+          try {
+            // get invoice from Copilot API
+            const invoice = await copilotApi.getInvoice(record.copilotId)
+            if (!invoice) return
+
+            // start re-sync process
+            await this.invoiceService.webhookInvoiceCreated(
+              { data: invoice },
+              qbTokenInfo,
+            )
+          } catch (error: unknown) {
+            console.error(
+              `SyncService#processInvoiceCreate | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
+            )
+          }
+        }),
       )
-    } catch (error: unknown) {
-      console.error('SyncService#processInvoiceCreate | Error =', error)
     }
+    await Promise.all(invoicePromises)
   }
 
   private async processInvoicePaid(
-    invoice: InvoiceResponse,
+    logRecords: CustomSyncLogRecordType[],
     qbTokenInfo: IntuitAPITokensType,
   ) {
-    try {
-      await this.invoiceService.webhookInvoicePaid(
-        { data: invoice },
-        qbTokenInfo,
+    const copilotApi = new CopilotAPI(this.user.token)
+    const invoicePromises = []
+
+    for (const record of logRecords) {
+      invoicePromises.push(
+        bottleneck.schedule(async () => {
+          try {
+            // get invoice from Copilot API
+            const invoice = await copilotApi.getInvoice(record.copilotId)
+            if (!invoice) return
+
+            // start re-sync process
+            await this.invoiceService.webhookInvoicePaid(
+              { data: invoice },
+              qbTokenInfo,
+            )
+          } catch (error: unknown) {
+            console.error(
+              `SyncService#processInvoicePaid | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
+            )
+          }
+        }),
       )
-    } catch (error: unknown) {
-      console.error('SyncService#processInvoicePaid | Error =', error)
     }
+    await Promise.all(invoicePromises)
   }
 
   private async processInvoiceVoided(
-    invoice: InvoiceResponse,
+    logRecords: CustomSyncLogRecordType[],
     qbTokenInfo: IntuitAPITokensType,
   ) {
-    try {
-      await this.invoiceService.webhookInvoiceVoided(
-        { data: invoice },
-        qbTokenInfo,
-      )
-    } catch (error: unknown) {
-      console.error('SyncService#processInvoiceVoided | Error =', error)
-    }
+    await Promise.all(
+      logRecords.map(async (record) => {
+        try {
+          const invoiceSync = await this.invoiceService.getInvoiceByNumber(
+            record.invoiceNumber,
+          )
+          if (!invoiceSync) {
+            console.warn(
+              `SyncService#processInvoiceVoided | No invoice found for number: ${record.invoiceNumber}`,
+            )
+            return
+          }
+
+          if (!invoiceSync.customer) {
+            console.warn(
+              `SyncService#processInvoiceVoided | No customer found for number: ${record.invoiceNumber}`,
+            )
+            return
+          }
+
+          const invoice = {
+            id: record.copilotId,
+            number: record.invoiceNumber,
+            total: record.amount / 100, // assuming amount is in cents
+            clientId: invoiceSync.customer.clientId || '',
+            companyId: invoiceSync.customer.companyId || '',
+          }
+          await this.invoiceService.webhookInvoiceVoided(invoice, qbTokenInfo)
+        } catch (error: unknown) {
+          console.error(
+            `SyncService#processInvoiceVoided | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
+          )
+        }
+      }),
+    )
   }
 
   private async processInvoiceDeleted(
-    invoice: InvoiceResponse,
+    logRecords: CustomSyncLogRecordType[],
     qbTokenInfo: IntuitAPITokensType,
   ) {
-    try {
-      await this.invoiceService.handleInvoiceDeleted(invoice, qbTokenInfo)
-    } catch (error: unknown) {
-      console.error('SyncService#processInvoiceDeleted | Error =', error)
-    }
+    await Promise.all(
+      logRecords.map(async (record) => {
+        try {
+          const invoiceSync = await this.invoiceService.getInvoiceByNumber(
+            record.invoiceNumber,
+          )
+          if (!invoiceSync) {
+            console.warn(
+              `SyncService#processInvoiceVoided | No invoice found for number: ${record.invoiceNumber}`,
+            )
+            return
+          }
+
+          if (!invoiceSync.customer) {
+            console.warn(
+              `SyncService#processInvoiceVoided | No customer found for number: ${record.invoiceNumber}`,
+            )
+            return
+          }
+
+          const invoice = {
+            id: record.copilotId,
+            number: record.invoiceNumber,
+            total: record.amount / 100, // assuming amount is in cents
+            clientId: invoiceSync.customer.clientId || '',
+            companyId: invoiceSync.customer.companyId || '',
+          }
+
+          await this.invoiceService.handleInvoiceDeleted(invoice, qbTokenInfo)
+        } catch (error: unknown) {
+          console.error(
+            `SyncService#processInvoiceDeleted | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
+          )
+        }
+      }),
+    )
   }
 
   private async processInvoiceSync(
     records: CustomSyncLogRecordType[],
     qbTokenInfo: IntuitAPITokensType,
-    invoices: InvoiceResponse[] | undefined,
     eventType: EventType,
   ) {
     const invoiceIds = records.map((e: any) => e.copilotId)
@@ -91,37 +181,29 @@ export class SyncService extends BaseService {
       `syncService#processInvoiceSync | eventType: ${eventType} | invoiceIds: ${invoiceIds}`,
     )
 
-    if (invoices) {
-      await Promise.all(
-        invoices.map(async (invoice) => {
-          if (invoiceIds.includes(invoice.id)) {
-            switch (eventType) {
-              case EventType.CREATED:
-                await this.processInvoiceCreate(invoice, qbTokenInfo)
-                break
+    switch (eventType) {
+      case EventType.CREATED:
+        await this.processInvoiceCreate(records, qbTokenInfo)
+        break
 
-              case EventType.PAID:
-                await this.processInvoicePaid(invoice, qbTokenInfo)
-                break
+      case EventType.PAID:
+        await this.processInvoicePaid(records, qbTokenInfo)
+        break
 
-              case EventType.VOIDED:
-                await this.processInvoiceVoided(invoice, qbTokenInfo)
-                break
+      case EventType.VOIDED:
+        await this.processInvoiceVoided(records, qbTokenInfo)
+        break
 
-              case EventType.DELETED:
-                await this.processInvoiceDeleted(invoice, qbTokenInfo)
-                break
+      case EventType.DELETED:
+        await this.processInvoiceDeleted(records, qbTokenInfo)
+        break
 
-              default:
-                console.error(
-                  'SyncLogService#processInvoiceSync | Unknown event type: ',
-                  eventType,
-                )
-                break
-            }
-          }
-        }),
-      )
+      default:
+        console.error(
+          'SyncLogService#processInvoiceSync | Unknown event type: ',
+          eventType,
+        )
+        break
     }
   }
 
@@ -260,19 +342,12 @@ export class SyncService extends BaseService {
       this.user.workspaceId,
     )
     console.info({ qbTokenInfo, user: this.user })
-    const copilotApi = new CopilotAPI(this.user.token)
-    const invoices = await copilotApi.getInvoices(this.user.workspaceId)
 
     for (const log of logs) {
       switch (log.entityType) {
         case EntityType.INVOICE:
           console.info('Invoice re-sync started')
-          await this.processInvoiceSync(
-            log.records,
-            qbTokenInfo,
-            invoices,
-            log.eventType,
-          )
+          await this.processInvoiceSync(log.records, qbTokenInfo, log.eventType)
           break
 
         case EntityType.PAYMENT:

@@ -134,7 +134,6 @@ export class SyncLogService extends BaseService {
       FROM ${QBSyncLog}
       WHERE ${QBSyncLog.portalId} = ${this.user.workspaceId} 
       AND ${QBSyncLog.status} = ${LogStatus.FAILED}
-      AND ${QBSyncLog.quickbooksId} IS NULL
       GROUP BY ${QBSyncLog.entityType}, ${QBSyncLog.eventType}`
 
     return await this.db.execute(query)
