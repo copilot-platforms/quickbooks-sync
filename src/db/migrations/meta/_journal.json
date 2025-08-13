@@ -43,6 +43,13 @@
       "when": 1754648453011,
       "tag": "20250808102053_add_client_company_ids",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1754912075168,
+      "tag": "20250811113435_add_client_fee_ref_in_portal_connections",
+      "breakpoints": true
     }
   ]
 }
