@@ -1,4 +1,4 @@
-import { InvoiceStatus } from '@/app/api/core/types/invoice'
+import { InvoiceStatus, PaymentStatus } from '@/app/api/core/types/invoice'
 import { ProductStatus } from '@/app/api/core/types/product'
 import { InvoiceLineItemSchema } from '@/type/dto/webhook.dto'
 import { SQL } from 'drizzle-orm'
@@ -326,5 +326,25 @@ export const InvoiceResponseSchema = z.object({
   taxPercentage: z.number().default(0),
   sentDate: z.string().datetime().nullish(),
   dueDate: z.string().datetime().nullish(),
+  paymentMethodPreferences: z.array(
+    z.object({
+      type: z.string(),
+      feePaidByClient: z.boolean(),
+    }),
+  ),
 })
 export type InvoiceResponse = z.infer<typeof InvoiceResponseSchema>
+
+const PaymentResponseSchema = z.object({
+  id: z.string(),
+  invoiceId: z.string(),
+  status: z.nativeEnum(PaymentStatus),
+  feeAmount: z.object({
+    paidByPlatform: z.number(),
+    paidByClient: z.number(),
+  }),
+})
+export const PaymentsResponseSchema = z.object({
+  data: z.array(PaymentResponseSchema).optional(),
+})
+export type PaymentsResponse = z.infer<typeof PaymentsResponseSchema>

@@ -291,6 +291,7 @@ export class ProductService extends BaseService {
       productDescription?: string
     },
     intuitApi: IntuitAPI,
+    taxable: boolean = true,
   ) {
     // create item in QB
     const qbItemPayload = {
@@ -300,7 +301,7 @@ export class ProductService extends BaseService {
         value: opts.incomeAccRefVal, // required to enable sales in QB company
       },
       Type: QBItemType.SERVICE,
-      Taxable: true, // to enable tax for the product
+      Taxable: taxable, // to enable/disable tax for the product
       Description: opts.productDescription,
     }
     return await intuitApi.createItem(qbItemPayload)
