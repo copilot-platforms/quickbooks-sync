@@ -47,15 +47,8 @@
     {
       "idx": 6,
       "version": "7",
-      "when": 1754912075168,
-      "tag": "20250811113435_add_client_fee_ref_in_portal_connections",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1755105447900,
-      "tag": "20250813171727_changed_description_data_type",
+      "when": 1755106607072,
+      "tag": "20250813173647_add_client_ref_column",
       "breakpoints": true
     }
   ]
