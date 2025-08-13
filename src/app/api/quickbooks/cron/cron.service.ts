@@ -6,6 +6,7 @@ import { copilotAPIKey } from '@/config'
 import { getAllPortalConnections } from '@/db/service/token.service'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import { encodePayload } from '@/utils/crypto'
+import { infoLog } from '@/utils/logger'
 
 export default class CronService {
   private async _scheduleSinglePortal(workspaceId: string) {
@@ -17,7 +18,11 @@ export default class CronService {
     // check if token is valid or not
     const copilot = new CopilotAPI(token)
     const tokenPayload = await copilot.getTokenPayload()
-    console.info({ copilotApiCronToken: token, tokenPayload })
+    infoLog({
+      obj: { copilotApiCronToken: token, tokenPayload },
+      message:
+        'CronService#_scheduleSinglePortal | Copilot API token and payload',
+    })
     if (!tokenPayload) throw new APIError(500, 'Encoded token is not valid') // this should trigger p-retry and re-run the function
 
     const user = new User(token, tokenPayload)

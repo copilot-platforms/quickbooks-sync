@@ -15,6 +15,7 @@ import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import dayjs from 'dayjs'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
 import { bottleneck } from '@/utils/bottleneck'
+import { infoLog } from '@/utils/logger'
 
 export class SyncService extends BaseService {
   private invoiceService: InvoiceService
@@ -176,10 +177,7 @@ export class SyncService extends BaseService {
     qbTokenInfo: IntuitAPITokensType,
     eventType: EventType,
   ) {
-    const invoiceIds = records.map((e: any) => e.copilotId)
-    console.info(
-      `syncService#processInvoiceSync | eventType: ${eventType} | invoiceIds: ${invoiceIds}`,
-    )
+    console.info(`syncService#processInvoiceSync | eventType: ${eventType}`)
 
     switch (eventType) {
       case EventType.CREATED:
@@ -212,10 +210,10 @@ export class SyncService extends BaseService {
     qbTokenInfo: IntuitAPITokensType,
   ) {
     try {
-      console.info(
-        'syncService#processPaymentSucceededSync | records: ',
-        records,
-      )
+      infoLog({
+        message: 'syncService#processPaymentSucceededSync | records: ',
+        obj: records,
+      })
 
       await Promise.all(
         records.map(async (record) => {
@@ -341,7 +339,10 @@ export class SyncService extends BaseService {
     const qbTokenInfo = await authService.getQBPortalConnection(
       this.user.workspaceId,
     )
-    console.info({ qbTokenInfo, user: this.user })
+    infoLog({
+      obj: { qbTokenInfo, user: this.user },
+      message: 'SyncService#intiateSync | QB Token Info and User',
+    })
 
     for (const log of logs) {
       switch (log.entityType) {
@@ -388,9 +389,10 @@ export class SyncService extends BaseService {
         return
       }
 
-      console.info(
-        `Failed sync logs for portal: ${this.user.workspaceId}. Logs: ${failedSyncLogs}`,
-      )
+      infoLog({
+        message: `Failed sync logs for portal: ${this.user.workspaceId}.`,
+        obj: { failedSyncLogs },
+      })
 
       // 2. for each log, perform the sync based on the event type and also update the sync log status to success after successful sync
       await this.intiateSync(failedSyncLogs)
