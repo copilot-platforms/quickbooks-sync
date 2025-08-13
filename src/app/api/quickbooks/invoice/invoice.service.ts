@@ -8,6 +8,7 @@ import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
 import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
+import { TokenService } from '@/app/api/quickbooks/token/token.service'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
 import { QBCustomers } from '@/db/schema/qbCustomers'
 import {
@@ -17,7 +18,9 @@ import {
   QBInvoiceUpdateSchema,
   QBInvoiceUpdateSchemaType,
 } from '@/db/schema/qbInvoiceSync'
+import { QBPortalConnection } from '@/db/schema/qbPortalConnections'
 import { QBProductSync } from '@/db/schema/qbProductSync'
+import { getPortalConnection } from '@/db/service/token.service'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import { TransactionType, WhereClause } from '@/type/common'
 import {
@@ -25,6 +28,7 @@ import {
   QBCustomerCreatePayloadType,
   QBDestructiveInvoicePayloadSchema,
   QBNameValueSchemaType,
+  QBInvoiceLineItemSchemaType,
 } from '@/type/dto/intuitAPI.dto'
 import {
   InvoiceCreatedResponseType,
@@ -56,6 +60,7 @@ type InvoiceItemRefAndDescriptionType = {
 export class InvoiceService extends BaseService {
   private copilot: CopilotAPI
   private syncLogService: SyncLogService
+  private static intuitApiService: IntuitAPI
 
   constructor(user: User) {
     super(user)
@@ -284,6 +289,85 @@ export class InvoiceService extends BaseService {
     }
   }
 
+  async manageClientFeeRef(): Promise<string> {
+    const intuitService = InvoiceService.intuitApiService
+    const productName = 'Copilot Fees paid by Client'
+    const tokenService = new TokenService(this.user)
+
+    const existingProduct = await intuitService.getAnItem(productName)
+    let clientFeeRef
+    if (existingProduct) {
+      console.info("Item with name 'Copilot fee paid by Client' found in QB")
+      clientFeeRef = existingProduct.Id
+    } else {
+      // create client fee as an item in QB
+      console.info("Create 'Copilot fee paid by Client' as an item in QB")
+      const productService = new ProductService(this.user)
+      const qbItem = await productService.createItemInQB(
+        {
+          productName,
+          unitPrice: 0,
+          incomeAccRefVal: intuitService.tokens.incomeAccountRef,
+        },
+        intuitService,
+        false, // flag that this item is non-taxable
+      )
+      clientFeeRef = qbItem.Id
+    }
+
+    // update clientFeeRef in our DB
+    const updatedPayload = {
+      clientFeeRef,
+      updatedAt: dayjs().toDate(),
+    }
+
+    console.info("Store the 'Copilot fee paid by Client' item ref in DB")
+    await tokenService.updateQBPortalConnection(
+      updatedPayload,
+      eq(QBPortalConnection.portalId, this.user.workspaceId),
+      ['id'],
+    )
+    return clientFeeRef
+  }
+
+  async handleFeePaidByClient(
+    invoiceResource: InvoiceCreatedResponseType,
+  ): Promise<QBInvoiceLineItemSchemaType | undefined> {
+    const intuitApi = InvoiceService.intuitApiService
+    const invoice = invoiceResource.data
+    const clientWithFee = invoice?.paymentMethodPreferences.find(
+      (preference) => preference.feePaidByClient === true,
+    )
+    if (clientWithFee) {
+      console.info(
+        'InvoiceService#handleFeePaidByClient | Fee is paid by Client',
+      )
+      const currentPortal = await getPortalConnection(this.user.workspaceId)
+      let clientFeeRef = currentPortal?.clientFeeRef
+      if (!clientFeeRef) clientFeeRef = await this.manageClientFeeRef() // manage client fee ref (create new item in QB and store it into our DB)
+      // get payment via invoice id
+      const payments = await this.copilot.getPayments(invoice.id)
+      if (!payments || !payments.data) return
+
+      const feeAmount =
+        payments.data.reduce((acc, payment) => {
+          if (payment.feeAmount.paidByClient > 0) {
+            return acc + payment.feeAmount.paidByClient
+          }
+          return acc
+        }, 0) / 100 // convert to dollar
+      return {
+        DetailType: 'SalesItemLineDetail',
+        Amount: feeAmount,
+        SalesItemLineDetail: {
+          ItemRef: { value: clientFeeRef },
+          Qty: 1,
+          UnitPrice: feeAmount,
+        },
+      }
+    }
+  }
+
   /**
    * This function is executed when invoice.created event is triggered
    * Handles the invoice creation in QuickBooks
@@ -330,12 +414,14 @@ export class InvoiceService extends BaseService {
       ],
     )
 
-    const intuitApi = new IntuitAPI(qbTokenInfo)
+    InvoiceService.intuitApiService = new IntuitAPI(qbTokenInfo)
     let customer,
       existingCustomerMapId = existingCustomer?.id
     if (!existingCustomer) {
       // 2.1. search client in qb using client's given name and family name
-      customer = await intuitApi.getACustomer(recipientInfo.displayName)
+      customer = await InvoiceService.intuitApiService.getACustomer(
+        recipientInfo.displayName,
+      )
 
       // 3. if not found, create a new client in the QB
       if (!customer) {
@@ -356,7 +442,8 @@ export class InvoiceService extends BaseService {
           }
         }
 
-        const customerRes = await intuitApi.createCustomer(customerPayload)
+        const customerRes =
+          await InvoiceService.intuitApiService.createCustomer(customerPayload)
         customer = customerRes.Customer
       }
       // create map for customer into mapping table
@@ -409,9 +496,10 @@ export class InvoiceService extends BaseService {
           sparse: true as const,
         }
 
-        const customerRes = await intuitApi.customerSparseUpdate(
-          customerSparsePayload,
-        )
+        const customerRes =
+          await InvoiceService.intuitApiService.customerSparseUpdate(
+            customerSparsePayload,
+          )
         customer = customerRes.Customer
 
         // update the customer map in our table
@@ -437,19 +525,32 @@ export class InvoiceService extends BaseService {
     for (const lineItem of invoiceResource.lineItems) {
       lineItemPromises.push(
         bottleneck.schedule(() => {
-          return this.prepareLineItemPayload(lineItem, intuitApi)
+          return this.prepareLineItemPayload(
+            lineItem,
+            InvoiceService.intuitApiService,
+          )
         }),
       )
     }
 
-    const lineItems = await Promise.all(lineItemPromises)
-    const actualTotalAmount = lineItems.reduce((acc, item) => {
+    const lineItems: QBInvoiceLineItemSchemaType[] =
+      await Promise.all(lineItemPromises)
+
+    const subtotal = lineItems.reduce((acc, item) => {
       // calculate the actual tax amount from the lineItems. Not using invoiceResource amount directly as the amount for mapped items can be different (mapped QB amount).
       return acc + item.Amount
     }, 0)
+    let actualTotalAmount = subtotal
     const totalTax = parseFloat(
-      ((actualTotalAmount * invoiceResource.taxPercentage) / 100).toFixed(2),
+      ((subtotal * invoiceResource.taxPercentage) / 100).toFixed(2),
     )
+
+    // check if invoice fee is paid by client. This needs to be done after actualTotalAmount and totalTax calculation to avoid miscalculation
+    const clientFeeLineItem = await this.handleFeePaidByClient(payload)
+    if (clientFeeLineItem) {
+      lineItems.push(clientFeeLineItem)
+      actualTotalAmount += clientFeeLineItem.Amount
+    }
 
     // 5. create invoice in QB
     const customerRefValue: string =
@@ -476,7 +577,8 @@ export class InvoiceService extends BaseService {
     }
 
     // 6. create invoice in QB
-    const invoiceRes = await intuitApi.createInvoice(qbInvoicePayload)
+    const invoiceRes =
+      await InvoiceService.intuitApiService.createInvoice(qbInvoicePayload)
 
     const invoicePayload = {
       portalId: this.user.workspaceId,
@@ -530,7 +632,7 @@ export class InvoiceService extends BaseService {
         ],
       }
       await paymentService.createPaymentAndSync(
-        intuitApi,
+        InvoiceService.intuitApiService,
         qbPaymentPayload,
         {
           invoiceNumber: invoiceResource.number,

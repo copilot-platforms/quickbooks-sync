@@ -1,6 +1,6 @@
 {
-  "id": "9a995846-f3c2-4d6a-98a7-963b8b2bf0e1",
-  "prevId": "30c1e24d-72f6-49d5-8c15-ad9313dd9558",
+  "id": "b87da677-2ed1-4875-9666-2693f7a65465",
+  "prevId": "38cd42c7-fd09-4ddb-a747-7be6bb09afe3",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -419,6 +419,12 @@
           "type": "varchar(100)",
           "primaryKey": false,
           "notNull": true
+        },
+        "client_fee_ref": {
+          "name": "client_fee_ref",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",

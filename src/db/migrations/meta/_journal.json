@@ -47,8 +47,15 @@
     {
       "idx": 6,
       "version": "7",
-      "when": 1755015275242,
-      "tag": "20250812161435_remove_length_constraint_from_product_description",
+      "when": 1754912075168,
+      "tag": "20250811113435_add_client_fee_ref_in_portal_connections",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1755105447900,
+      "tag": "20250813171727_changed_description_data_type",
       "breakpoints": true
     }
   ]
