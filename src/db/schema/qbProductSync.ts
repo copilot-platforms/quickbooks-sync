@@ -10,7 +10,7 @@ export const QBProductSync = table('qb_product_sync', {
   productId: t.uuid('product_id'),
   priceId: t.varchar('price_id'),
   name: t.varchar({ length: 100 }),
-  description: t.varchar({ length: 255 }),
+  description: t.text(),
   copilotName: t.varchar('copilot_name', { length: 100 }),
   unitPrice: t.decimal('unit_price'),
   qbItemId: t.varchar('qb_item_id'),
