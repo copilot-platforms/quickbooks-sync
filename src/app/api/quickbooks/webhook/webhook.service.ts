@@ -23,6 +23,7 @@ import { validateAccessToken } from '@/utils/auth'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import { getMessageFromError } from '@/utils/error'
 import { IntuitAPITokensType } from '@/utils/intuitAPI'
+import { infoLog } from '@/utils/logger'
 import { and, eq } from 'drizzle-orm'
 import httpStatus from 'http-status'
 
@@ -40,7 +41,10 @@ export class WebhookService extends BaseService {
     }
 
     const payload = parsedBody.data
-    console.info('Webhook payload:\n', payload)
+    infoLog({
+      obj: { payload },
+      message: 'WebhookService#handleWebhookEvent | Webhook payload received',
+    })
 
     // for webhook event price.create, terminate process if createNewProductFlag is false
     if (WebhookEvents.PRICE_CREATED === payload.eventType) {

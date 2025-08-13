@@ -16,6 +16,7 @@ import {
   QBDeletePayloadType,
   QBDestructiveInvoicePayloadSchema,
 } from '@/type/dto/intuitAPI.dto'
+import { errorLog, infoLog } from '@/utils/logger'
 import httpStatus from 'http-status'
 
 export type IntuitAPITokensType = Pick<
@@ -77,7 +78,7 @@ export default class IntuitAPI {
   }
 
   async _customQuery(query: string) {
-    console.info('IntuitAPI#customQuery')
+    infoLog({ message: 'IntuitAPI#customQuery' })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/query?query=${query}&minorversion=${intuitApiMinorVersion}`
     const res = await this.getFetchWithHeader(url)
 
@@ -88,7 +89,7 @@ export default class IntuitAPI {
       )
 
     if (res?.Fault) {
-      console.error({ Error: res.Fault?.Error })
+      errorLog({ obj: res.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#customQuery | Error while executing custom query',
@@ -99,10 +100,10 @@ export default class IntuitAPI {
   }
 
   async _createInvoice(payload: QBInvoiceCreatePayloadType) {
-    console.info(
-      `IntuitAPI#createInvoice | invoice creation start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
-      payload,
-    )
+    infoLog({
+      obj: { payload },
+      message: `IntuitAPI#createInvoice | invoice creation start for realmId: ${this.tokens.intuitRealmId}.`,
+    })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
@@ -113,7 +114,7 @@ export default class IntuitAPI {
       )
 
     if (invoice?.Fault) {
-      console.error({ Error: invoice.Fault?.Error })
+      errorLog({ obj: invoice.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#createInvoice | Error while creating invoice',
@@ -121,18 +122,18 @@ export default class IntuitAPI {
       )
     }
 
-    console.info(
-      `IntuitAPI#createInvoice | invoice created with doc number = ${invoice.Invoice?.DocNumber}. Response: `,
-      invoice.Invoice,
-    )
+    infoLog({
+      obj: { response: invoice.Invoice },
+      message: `IntuitAPI#createInvoice | invoice created with doc number = ${invoice.Invoice?.DocNumber}.`,
+    })
     return invoice
   }
 
   async _createCustomer(payload: QBCustomerCreatePayloadType) {
-    console.info(
-      `IntuitAPI#createCustomer | customer creation start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
-      payload,
-    )
+    infoLog({
+      obj: { payload },
+      message: `IntuitAPI#createCustomer | customer creation start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+    })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/customer?minorversion=${intuitApiMinorVersion}`
     const customer = await this.postFetchWithHeaders(url, payload)
 
@@ -143,7 +144,7 @@ export default class IntuitAPI {
       )
 
     if (customer?.Fault) {
-      console.error({ Error: customer.Fault?.Error })
+      errorLog({ obj: customer.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#createCustomer | Error while creating customer',
@@ -151,18 +152,18 @@ export default class IntuitAPI {
       )
     }
 
-    console.info(
-      `IntuitAPI#createCustomer | customer created with name = ${customer.Customer?.FullyQualifiedName}. Response: `,
-      customer.Customer,
-    )
+    infoLog({
+      obj: { response: customer.Customer },
+      message: `IntuitAPI#createCustomer | customer created with name = ${customer.Customer?.FullyQualifiedName}.`,
+    })
     return customer
   }
 
   async _createItem(payload: QBItemCreatePayloadType) {
-    console.info(
-      `IntuitAPI#createItem | Item creation start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
-      payload,
-    )
+    infoLog({
+      obj: { payload },
+      message: `IntuitAPI#createItem | Item creation start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
+    })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/item?minorversion=${intuitApiMinorVersion}`
     const item = await this.postFetchWithHeaders(url, payload)
 
@@ -173,7 +174,7 @@ export default class IntuitAPI {
       )
 
     if (item?.Fault) {
-      console.error({ Error: item.Fault?.Error })
+      errorLog({ obj: item.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#createItem | Error while creating item',
@@ -181,17 +182,17 @@ export default class IntuitAPI {
       )
     }
 
-    console.info(
-      `IntuitAPI#createItem | item created with Id = ${item?.Item?.Id}. Response: `,
-      item.Item,
-    )
+    infoLog({
+      obj: { response: item.Item },
+      message: `IntuitAPI#createItem | item created with Id = ${item?.Item?.Id}. Response: `,
+    })
     return item.Item
   }
 
   async _getSingleIncomeAccount() {
-    console.info(
-      `IntuitAPI#getSingleIncomeAccount | Income account query start for realmId: ${this.tokens.intuitRealmId}`,
-    )
+    infoLog({
+      message: `IntuitAPI#getSingleIncomeAccount | Income account query start for realmId: ${this.tokens.intuitRealmId}`,
+    })
     const sqlQuery = `SELECT Id FROM Account WHERE AccountType = 'Income' AND AccountSubType = 'SalesOfProductIncome' AND Active = true maxresults 1`
     const qbIncomeAccountRefInfo = await this.customQuery(sqlQuery)
 
@@ -202,7 +203,7 @@ export default class IntuitAPI {
       )
 
     if (qbIncomeAccountRefInfo?.Fault) {
-      console.error({ Error: qbIncomeAccountRefInfo.Fault?.Error })
+      errorLog({ obj: qbIncomeAccountRefInfo.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#getSingleIncomeAccount | Error while fetching income account',
@@ -214,9 +215,9 @@ export default class IntuitAPI {
   }
 
   async _getACustomer(displayName: string) {
-    console.info(
-      `IntuitAPI#getACustomer | Customer query start for realmId: ${this.tokens.intuitRealmId}. Name: ${displayName}`,
-    )
+    infoLog({
+      message: `IntuitAPI#getACustomer | Customer query start for realmId: ${this.tokens.intuitRealmId}. Name: ${displayName}`,
+    })
     const customerQuery = `SELECT Id, SyncToken FROM Customer WHERE DisplayName = '${displayName}' AND Active = true`
     const qbCustomers = await this.customQuery(customerQuery)
 
@@ -227,7 +228,7 @@ export default class IntuitAPI {
       )
 
     if (qbCustomers?.Fault) {
-      console.error({ Error: qbCustomers.Fault?.Error })
+      errorLog({ obj: qbCustomers.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#getACustomer | Error while fetching a customer',
@@ -239,9 +240,9 @@ export default class IntuitAPI {
   }
 
   async _getAnItem(name: string) {
-    console.info(
-      `IntuitAPI#getAnItem | Item query start for realmId: ${this.tokens.intuitRealmId}. Name: ${name}`,
-    )
+    infoLog({
+      message: `IntuitAPI#getAnItem | Item query start for realmId: ${this.tokens.intuitRealmId}. Name: ${name}`,
+    })
     const customerQuery = `select Id, SyncToken from Item where Name = '${name}' maxresults 1`
     const qbItem = await this.customQuery(customerQuery)
 
@@ -252,7 +253,7 @@ export default class IntuitAPI {
       )
 
     if (qbItem?.Fault) {
-      console.error({ Error: qbItem.Fault?.Error })
+      errorLog({ obj: qbItem.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#getAnItem | Error while fetching an item',
@@ -264,12 +265,12 @@ export default class IntuitAPI {
   }
 
   async _getAllItems(limit: number, columns: string[] = ['Id']) {
-    console.info(
-      `IntuitAPI#getAllItems | Item query start for realmId: ${this.tokens.intuitRealmId}`,
-    )
+    infoLog({
+      message: `IntuitAPI#getAllItems | Item query start for realmId: ${this.tokens.intuitRealmId}`,
+    })
     const stringColumns = columns.map((column) => `${column}`).join(',')
     const customerQuery = `select ${stringColumns} from Item maxresults ${limit}`
-    console.info('IntuitAPI#getAllItems | ', { customerQuery })
+    infoLog({ obj: { customerQuery }, message: 'IntuitAPI#getAllItems' })
     const qbItems = await this.customQuery(customerQuery)
 
     if (!qbItems)
@@ -279,7 +280,7 @@ export default class IntuitAPI {
       )
 
     if (qbItems?.Fault) {
-      console.error({ Error: qbItems.Fault?.Error })
+      errorLog({ obj: qbItems.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#getAllItems | Error while fetching all items',
@@ -291,10 +292,10 @@ export default class IntuitAPI {
   }
 
   async _invoiceSparseUpdate(payload: QBInvoiceSparseUpdatePayloadType) {
-    console.info(
-      `IntuitAPI#InvoiceSparseUpdate | invoice sparse update start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
-      payload,
-    )
+    infoLog({
+      obj: { payload },
+      message: `IntuitAPI#InvoiceSparseUpdate | invoice sparse update start for realmId: ${this.tokens.intuitRealmId}. `,
+    })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
@@ -305,7 +306,7 @@ export default class IntuitAPI {
       )
 
     if (invoice?.Fault) {
-      console.error({ Error: invoice.Fault?.Error })
+      errorLog({ obj: invoice.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#InvoiceSparseUpdate | Error while sparse update an invoice',
@@ -313,18 +314,18 @@ export default class IntuitAPI {
       )
     }
 
-    console.info(
-      `IntuitAPI#InvoiceSparseUpdate | invoice sparse updated for doc number = ${invoice.Invoice?.DocNumber}. Response: `,
-      invoice.Invoice,
-    )
+    infoLog({
+      obj: { response: invoice.Invoice },
+      message: `IntuitAPI#InvoiceSparseUpdate | invoice sparse updated for doc number = ${invoice.Invoice?.DocNumber}.`,
+    })
     return invoice
   }
 
   async _customerSparseUpdate(payload: QBCustomerSparseUpdatePayloadType) {
-    console.info(
-      `IntuitAPI#customerSparseUpdate | customer sparse update start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
-      payload,
-    )
+    infoLog({
+      obj: { payload },
+      message: `IntuitAPI#customerSparseUpdate | customer sparse update start for realmId: ${this.tokens.intuitRealmId}. `,
+    })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/customer?minorversion=${intuitApiMinorVersion}`
     const customer = await this.postFetchWithHeaders(url, payload)
 
@@ -335,7 +336,7 @@ export default class IntuitAPI {
       )
 
     if (customer?.Fault) {
-      console.error({ Error: customer.Fault?.Error })
+      errorLog({ obj: customer.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#customerSparseUpdate | Error while sparse update a customer',
@@ -343,18 +344,18 @@ export default class IntuitAPI {
       )
     }
 
-    console.info(
-      `IntuitAPI#customerSparseUpdate | customer sparse updated with name = ${customer.Customer?.FullyQualifiedName}. Response: `,
-      customer.Customer,
-    )
+    infoLog({
+      obj: { response: customer.Customer },
+      message: `IntuitAPI#customerSparseUpdate | customer sparse updated with name = ${customer.Customer?.FullyQualifiedName}. `,
+    })
     return customer
   }
 
   async _itemFullUpdate(payload: QBItemFullUpdatePayloadType) {
-    console.info(
-      `IntuitAPI#itemFullUpdate | item full update start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
-      payload,
-    )
+    infoLog({
+      obj: { payload },
+      message: `IntuitAPI#itemFullUpdate | item full update start for realmId: ${this.tokens.intuitRealmId}. `,
+    })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/item?minorversion=${intuitApiMinorVersion}`
     const item = await this.postFetchWithHeaders(url, payload)
 
@@ -365,7 +366,7 @@ export default class IntuitAPI {
       )
 
     if (item?.Fault) {
-      console.error({ Error: item.Fault?.Error })
+      errorLog({ obj: item.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#itemFullUpdate | Error while item full update',
@@ -373,18 +374,18 @@ export default class IntuitAPI {
       )
     }
 
-    console.info(
-      `IntuitAPI#itemFullUpdate | item full updated with Id = ${item.Item?.Id}. Response: `,
-      item.Item,
-    )
+    infoLog({
+      obj: { response: item.Item },
+      message: `IntuitAPI#itemFullUpdate | item full updated with Id = ${item.Item?.Id}.`,
+    })
     return item
   }
 
   async _createPayment(payload: QBPaymentCreatePayloadType) {
-    console.info(
-      `IntuitAPI#createPayment | payment creation start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
-      payload,
-    )
+    infoLog({
+      obj: { payload },
+      message: `IntuitAPI#createPayment | payment creation start for realmId: ${this.tokens.intuitRealmId}. `,
+    })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/payment?minorversion=${intuitApiMinorVersion}`
     const payment = await this.postFetchWithHeaders(url, payload)
 
@@ -395,7 +396,7 @@ export default class IntuitAPI {
       )
 
     if (payment?.Fault) {
-      console.error({ Error: payment.Fault?.Error })
+      errorLog({ obj: payment.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#createPayment | Error while creating payment',
@@ -403,18 +404,18 @@ export default class IntuitAPI {
       )
     }
 
-    console.info(
-      `IntuitAPI#createPayment | payment created with Id = ${payment.Payment?.Id}. Response: `,
-      payment.Payment,
-    )
+    infoLog({
+      obj: { response: payment.Payment },
+      message: `IntuitAPI#createPayment | payment created with Id = ${payment.Payment?.Id}.`,
+    })
     return payment
   }
 
   async _voidInvoice(payload: QBDestructiveInvoicePayloadSchema) {
-    console.info(
-      `IntuitAPI#voidInvoice | invoice void start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
-      payload,
-    )
+    infoLog({
+      obj: { payload },
+      message: `IntuitAPI#voidInvoice | invoice void start for realmId: ${this.tokens.intuitRealmId}. `,
+    })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=void&minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
@@ -425,7 +426,7 @@ export default class IntuitAPI {
       )
 
     if (invoice?.Fault) {
-      console.error({ Error: invoice.Fault?.Error })
+      errorLog({ obj: invoice.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#voidInvoice | Error while voiding invoice',
@@ -433,18 +434,18 @@ export default class IntuitAPI {
       )
     }
 
-    console.info(
-      `IntuitAPI#voidInvoice | Voided invoice with Id = ${invoice.Invoice?.Id}. Response: `,
-      invoice.Invoice,
-    )
+    infoLog({
+      obj: { response: invoice.Invoice },
+      message: `IntuitAPI#voidInvoice | Voided invoice with Id = ${invoice.Invoice?.Id}.`,
+    })
     return invoice
   }
 
   async _deleteInvoice(payload: QBDestructiveInvoicePayloadSchema) {
-    console.info(
-      `IntuitAPI#deleteInvoice | invoice deletion start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
-      payload,
-    )
+    infoLog({
+      obj: { payload },
+      message: `IntuitAPI#deleteInvoice | invoice deletion start for realmId: ${this.tokens.intuitRealmId}. `,
+    })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=delete&minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
@@ -456,7 +457,7 @@ export default class IntuitAPI {
     }
 
     if (invoice.Fault) {
-      console.error(invoice.Fault.Error)
+      errorLog({ obj: invoice.Fault.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#deleteInvoice | Error while deleting invoice',
@@ -464,18 +465,18 @@ export default class IntuitAPI {
       )
     }
 
-    console.info(
-      `IntuitAPI#deleteInvoice | Deleted invoice with id = ${invoice.Invoice?.Id}. Response: `,
-      invoice.Invoice,
-    )
+    infoLog({
+      obj: { response: invoice.Invoice },
+      message: `IntuitAPI#deleteInvoice | Deleted invoice with id = ${invoice.Invoice?.Id}. `,
+    })
     return invoice
   }
 
   async _deletePayment(payload: QBDeletePayloadType) {
-    console.info(
-      `IntuitAPI#deletePayment | payment delete start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
-      payload,
-    )
+    infoLog({
+      obj: { payload },
+      message: `IntuitAPI#deletePayment | payment delete start for realmId: ${this.tokens.intuitRealmId}. `,
+    })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/payment?operation=delete&minorversion=${intuitApiMinorVersion}`
     const payment = await this.postFetchWithHeaders(url, payload)
 
@@ -486,7 +487,7 @@ export default class IntuitAPI {
       )
 
     if (payment?.Fault) {
-      console.error({ Error: payment.Fault?.Error })
+      errorLog({ obj: payment.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#deletePayment | Error while deleting payment',
@@ -494,18 +495,19 @@ export default class IntuitAPI {
       )
     }
 
-    console.info(
-      `IntuitAPI#deletePayment | payment deleted with Id = ${payment.Payment?.Id}. Response: `,
-      payment.Payment,
-    )
+    infoLog({
+      obj: { response: payment.Payment },
+      message: `IntuitAPI#deletePayment | payment deleted with Id = ${payment.Payment?.Id}. `,
+    })
     return payment
   }
 
   async _getAnAccountByName(accountName: string) {
-    console.info(
-      'IntuitAPI#getAnAccountByName | Account query start for realmId: ',
-      this.tokens.intuitRealmId,
-    )
+    infoLog({
+      obj: { realmId: this.tokens.intuitRealmId },
+      message:
+        'IntuitAPI#getAnAccountByName | Account query start for realmId: ',
+    })
     const query = `SELECT Id FROM Account where Name = '${accountName}' AND Active = true`
     const customQuery = await this.customQuery(query)
 
@@ -516,7 +518,7 @@ export default class IntuitAPI {
       )
 
     if (customQuery?.Fault) {
-      console.error({ Error: customQuery.Fault?.Error })
+      errorLog({ obj: customQuery.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#getAnAccountByName | Error while fetching an account',
@@ -528,10 +530,10 @@ export default class IntuitAPI {
   }
 
   async _createAccount(payload: QBAccountCreatePayloadType) {
-    console.info(
-      `IntuitAPI#createAssetAccount | Account create start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
-      payload,
-    )
+    infoLog({
+      obj: { payload },
+      message: `IntuitAPI#createAssetAccount | Account create start for realmId: ${this.tokens.intuitRealmId}. `,
+    })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/account?minorversion=${intuitApiMinorVersion}`
     const account = await this.postFetchWithHeaders(url, payload)
 
@@ -542,7 +544,7 @@ export default class IntuitAPI {
       )
 
     if (account?.Fault) {
-      console.error({ Error: account.Fault?.Error })
+      errorLog({ obj: account.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#createAssetAccount | Error while creating Account',
@@ -550,18 +552,18 @@ export default class IntuitAPI {
       )
     }
 
-    console.info(
-      `IntuitAPI#createAssetAccount | Account created with Id = ${account.Account?.Id}. Response: `,
-      account.Account,
-    )
+    infoLog({
+      obj: { response: account.Account },
+      message: `IntuitAPI#createAssetAccount | Account created with Id = ${account.Account?.Id}. `,
+    })
     return account.Account
   }
 
   async _createPurchase(payload: QBPurchaseCreatePayloadType) {
-    console.info(
-      `IntuitAPI#createPurchase | Purchase create start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
-      payload,
-    )
+    infoLog({
+      obj: { payload },
+      message: `IntuitAPI#createPurchase | Purchase create start for realmId: ${this.tokens.intuitRealmId}.`,
+    })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/purchase?minorversion=${intuitApiMinorVersion}`
     const purchase = await this.postFetchWithHeaders(url, payload)
 
@@ -572,7 +574,7 @@ export default class IntuitAPI {
       )
 
     if (purchase?.Fault) {
-      console.error({ Error: purchase.Fault?.Error })
+      errorLog({ obj: purchase.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#createPurchase | Error while creating purchase',
@@ -580,18 +582,18 @@ export default class IntuitAPI {
       )
     }
 
-    console.info(
-      `IntuitAPI#createPurchase | Purchase created with Id = ${purchase.Purchase?.Id}. Response: `,
-      purchase.Purchase,
-    )
+    infoLog({
+      obj: { response: purchase.Purchase },
+      message: `IntuitAPI#createPurchase | Purchase created with Id = ${purchase.Purchase?.Id}.`,
+    })
     return purchase
   }
 
   async _deletePurchase(payload: QBDeletePayloadType) {
-    console.info(
-      `IntuitAPI#deletePurchase | purchase delete start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
-      payload,
-    )
+    infoLog({
+      obj: { payload },
+      message: `IntuitAPI#deletePurchase | purchase delete start for realmId: ${this.tokens.intuitRealmId}.`,
+    })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/purchase?operation=delete&minorversion=${intuitApiMinorVersion}`
     const purchase = await this.postFetchWithHeaders(url, payload)
 
@@ -602,7 +604,7 @@ export default class IntuitAPI {
       )
 
     if (purchase?.Fault) {
-      console.error({ Error: purchase.Fault?.Error })
+      errorLog({ obj: purchase.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         'IntuitAPI#deletePurchase | error while deleting purchase',
@@ -610,10 +612,10 @@ export default class IntuitAPI {
       )
     }
 
-    console.info(
-      `IntuitAPI#deletePurchase | purchase deleted with Id = ${purchase.Purchase?.Id}. Response: `,
-      purchase.Purchase,
-    )
+    infoLog({
+      obj: { response: purchase.Purchase },
+      message: `IntuitAPI#deletePurchase | purchase deleted with Id = ${purchase.Purchase?.Id}. `,
+    })
     return purchase
   }
 
