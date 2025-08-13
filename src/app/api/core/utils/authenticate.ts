@@ -18,7 +18,9 @@ export const _authenticateWithToken = async (token: string): Promise<User> => {
   // Access to IU only. The reason for not checking the IUID directly is for the webhook events to pass
   if (
     payload.data.clientId ||
-    (payload.data.companyId && payload.data.companyId != 'default') // allow case when the parsed token have companyId = "default"
+    (payload.data.companyId &&
+      payload.data.internalUserId &&
+      payload.data.companyId != 'default') // allow case when the parsed token have companyId = "default"
   ) {
     throw new APIError(
       httpStatus.UNAUTHORIZED,
