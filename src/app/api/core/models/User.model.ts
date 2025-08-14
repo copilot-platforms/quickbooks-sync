@@ -1,6 +1,12 @@
 import { UserRole } from '@/app/api/core/types/user'
 import { Token } from '@/type/common'
 
+type QBConnectionProperties = {
+  accessToken: string
+  serviceItemRef?: string
+  clientFeeRef?: string
+}
+
 /**
  * Faux model for Copilot Users (IU + Client)
  * This model is used to repressent the current user based on the token payload decrypted by Copilot SDK
@@ -12,6 +18,7 @@ class User {
   clientId?: string
   companyId?: string
   internalUserId?: string
+  qbConnection?: QBConnectionProperties
 
   // Instantiate a User from a request token & decrypted payload
   constructor(token: string, tokenPayload: Token) {
