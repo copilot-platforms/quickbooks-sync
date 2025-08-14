@@ -333,8 +333,8 @@ export class InvoiceService extends BaseService {
   async handleFeePaidByClient(
     invoiceResource: InvoiceCreatedResponseType,
   ): Promise<QBInvoiceLineItemSchemaType | undefined> {
-    const intuitApi = InvoiceService.intuitApiService
     const invoice = invoiceResource.data
+    // check invoice fee is paid by client
     const clientWithFee = invoice?.paymentMethodPreferences.find(
       (preference) => preference.feePaidByClient === true,
     )
@@ -545,11 +545,13 @@ export class InvoiceService extends BaseService {
       ((subtotal * invoiceResource.taxPercentage) / 100).toFixed(2),
     )
 
-    // check if invoice fee is paid by client. This needs to be done after actualTotalAmount and totalTax calculation to avoid miscalculation
-    const clientFeeLineItem = await this.handleFeePaidByClient(payload)
-    if (clientFeeLineItem) {
-      lineItems.push(clientFeeLineItem)
-      actualTotalAmount += clientFeeLineItem.Amount
+    // check if invoice is paid. This needs to be done after actualTotalAmount and totalTax calculation to avoid miscalculation
+    if (invoiceResource.status === InvoiceStatus.PAID) {
+      const clientFeeLineItem = await this.handleFeePaidByClient(payload)
+      if (clientFeeLineItem) {
+        lineItems.push(clientFeeLineItem)
+        actualTotalAmount += clientFeeLineItem.Amount
+      }
     }
 
     // 5. create invoice in QB
