@@ -18,8 +18,7 @@ export const _authenticateWithToken = async (token: string): Promise<User> => {
   // Access to IU and webhook events.
   if (
     !payload.data.internalUserId &&
-    payload.data.clientId &&
-    payload.data.companyId
+    (payload.data.clientId || payload.data.companyId)
   ) {
     throw new APIError(
       httpStatus.UNAUTHORIZED,
