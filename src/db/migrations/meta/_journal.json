@@ -50,6 +50,13 @@
       "when": 1755106607072,
       "tag": "20250813173647_add_client_ref_column",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1755168503444,
+      "tag": "20250814104823_add_service_item_ref",
+      "breakpoints": true
     }
   ]
 }

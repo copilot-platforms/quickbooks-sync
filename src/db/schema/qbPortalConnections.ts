@@ -27,6 +27,7 @@ export const QBPortalConnection = table(
       .varchar('expense_account_ref', { length: 100 })
       .notNull(),
     clientFeeRef: t.varchar('client_fee_ref', { length: 100 }),
+    serviceItemRef: t.varchar('service_item_ref', { length: 100 }),
     ...timestamps,
   },
   (table) => [
