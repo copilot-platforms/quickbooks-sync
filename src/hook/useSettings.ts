@@ -19,6 +19,7 @@ import {
   ProductSettingType,
   SettingType,
 } from '@/type/common'
+import { postMessage as postMessageBridge } from '@/bridge/header'
 
 export type QuickbooksItemType = {
   Name: string
@@ -419,9 +420,18 @@ export const useProductTableSetting = (
       : undefined
   }
 
+  const handleCopilotProductCreate = () => {
+    const payload = {
+      type: 'history.push',
+      route: 'products.create',
+    }
+    postMessageBridge(payload)
+  }
+
   return {
     products: formatProductDataForListing(products),
     quickbooksItems: formatQBItemForListing(quickbooksItems),
+    handleCopilotProductCreate,
   }
 }
 
