@@ -804,7 +804,9 @@ export class InvoiceService extends BaseService {
       {
         invoiceNumber: payload.data.number,
         invoiceId: payload.data.id,
-        taxAmount: z.string().parse(invoiceLog.taxAmount),
+        taxAmount: invoiceLog.taxAmount
+          ? z.string().parse(invoiceLog.taxAmount)
+          : '0',
       },
       {
         displayName: customerDisplayName,
@@ -902,7 +904,9 @@ export class InvoiceService extends BaseService {
       ),
       this.logSync(payload.id, invoiceSync, EventType.VOIDED, {
         amount: z.string().parse(invoiceLog.amount),
-        taxAmount: z.string().parse(invoiceLog.taxAmount),
+        taxAmount: invoiceLog.taxAmount
+          ? z.string().parse(invoiceLog.taxAmount)
+          : '0',
         customerName: recipientInfo.displayName,
         customerEmail: recipientInfo.email,
       }),
@@ -986,7 +990,9 @@ export class InvoiceService extends BaseService {
       ),
       this.logSync(payload.id, syncedInvoice, EventType.DELETED, {
         amount: z.string().parse(invoiceLog.amount),
-        taxAmount: z.string().parse(invoiceLog.taxAmount),
+        taxAmount: invoiceLog.taxAmount
+          ? z.string().parse(invoiceLog.taxAmount)
+          : '0',
         customerName: recipientInfo.displayName,
         customerEmail: recipientInfo.email,
       }),
