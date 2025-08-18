@@ -6,7 +6,7 @@ import {
 } from '@/app/api/notification/notification.helper'
 import { InternalUsersResponse } from '@/type/common'
 import { CopilotAPI } from '@/utils/copilotAPI'
-import { infoLog } from '@/utils/logger'
+import CustomLogger from '@/utils/logger'
 
 export class NotificationService extends BaseService {
   async createBulkNotification(
@@ -40,7 +40,7 @@ export class NotificationService extends BaseService {
           : getIEmailNotificationDetail()[action]
 
         for (const party of parties.data) {
-          infoLog({
+          CustomLogger.info({
             obj: { party },
             message: 'Sending notification to party: ',
           })

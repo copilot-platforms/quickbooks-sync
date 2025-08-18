@@ -6,7 +6,7 @@ import { copilotAPIKey } from '@/config'
 import { getAllPortalConnections } from '@/db/service/token.service'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import { encodePayload } from '@/utils/crypto'
-import { infoLog } from '@/utils/logger'
+import CustomLogger from '@/utils/logger'
 
 export default class CronService {
   private async _scheduleSinglePortal(workspaceId: string) {
@@ -18,7 +18,7 @@ export default class CronService {
     // check if token is valid or not
     const copilot = new CopilotAPI(token)
     const tokenPayload = await copilot.getTokenPayload()
-    infoLog({
+    CustomLogger.info({
       obj: { copilotApiCronToken: token, tokenPayload },
       message:
         'CronService#_scheduleSinglePortal | Copilot API token and payload',
