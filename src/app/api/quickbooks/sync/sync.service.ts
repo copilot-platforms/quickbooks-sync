@@ -15,7 +15,7 @@ import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import dayjs from 'dayjs'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
 import { bottleneck } from '@/utils/bottleneck'
-import { infoLog } from '@/utils/logger'
+import CustomLogger from '@/utils/logger'
 
 export class SyncService extends BaseService {
   private invoiceService: InvoiceService
@@ -210,7 +210,7 @@ export class SyncService extends BaseService {
     qbTokenInfo: IntuitAPITokensType,
   ) {
     try {
-      infoLog({
+      CustomLogger.info({
         message: 'syncService#processPaymentSucceededSync | records: ',
         obj: records,
       })
@@ -339,7 +339,7 @@ export class SyncService extends BaseService {
     const qbTokenInfo = await authService.getQBPortalConnection(
       this.user.workspaceId,
     )
-    infoLog({
+    CustomLogger.info({
       obj: { qbTokenInfo, user: this.user },
       message: 'SyncService#intiateSync | QB Token Info and User',
     })
@@ -389,7 +389,7 @@ export class SyncService extends BaseService {
         return
       }
 
-      infoLog({
+      CustomLogger.info({
         message: `Failed sync logs for portal: ${this.user.workspaceId}.`,
         obj: { failedSyncLogs },
       })

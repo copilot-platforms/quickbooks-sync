@@ -61,7 +61,7 @@ const ensureHttps = (url: string) => {
   return `https://${url}`
 }
 
-const postMessage = (payload: object) => {
+export const postMessage = (payload: object) => {
   if (Array.isArray(DASHBOARD_DOMAIN)) {
     DASHBOARD_DOMAIN.forEach((domain) => {
       window.parent.postMessage(payload, ensureHttps(domain))

@@ -1,8 +1,18 @@
 import util from 'util'
 
-export const infoLog = ({ message, obj }: { message: string; obj?: any }) => {
-  console.info(message, util.inspect(obj, { depth: null, colors: true }))
+const CustomLogger = {
+  info({ message, obj }: { message: string; obj?: any }) {
+    const consoleBody = [message]
+    if (obj) consoleBody.push(util.inspect(obj, { depth: null, colors: true }))
+
+    console.info(...consoleBody)
+  },
+  error({ message, obj }: { message: string; obj?: any }) {
+    const consoleBody = [message]
+    if (obj) consoleBody.push(util.inspect(obj, { depth: null, colors: true }))
+
+    console.error(...consoleBody)
+  },
 }
-export const errorLog = ({ message, obj }: { message: string; obj?: any }) => {
-  console.error(message, util.inspect(obj, { depth: null, colors: true }))
-}
+
+export default CustomLogger

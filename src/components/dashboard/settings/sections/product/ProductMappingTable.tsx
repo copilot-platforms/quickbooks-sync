@@ -7,7 +7,7 @@ import {
   useMapItem,
   useProductTableSetting,
 } from '@/hook/useSettings'
-import { Icon, Spinner } from 'copilot-design-system'
+import { Icon } from 'copilot-design-system'
 import { useRef } from 'react'
 
 const MapItemComponent = ({
@@ -60,7 +60,8 @@ export default function ProductMappingTable({
   mappingItems,
   setMappingItems,
 }: Omit<ProductMappingComponentType, 'setting'>) {
-  const { products, quickbooksItems } = useProductTableSetting(setMappingItems)
+  const { products, quickbooksItems, handleCopilotProductCreate } =
+    useProductTableSetting(setMappingItems)
 
   const dropdownRef = useRef<HTMLDivElement>(null) // single ref for all dropdowns. Only opening one dropdown at a time.
   const buttonRefs = useRef<Record<number, HTMLButtonElement | null>>({})
@@ -232,9 +233,12 @@ export default function ProductMappingTable({
               <tr className="text-center">
                 <td colSpan={3} className="py-11">
                   Start by creating a product in Copilot.
-                  {/* <a href="#" className="ms-2 text-blue-300">
+                  <span
+                    onClick={handleCopilotProductCreate}
+                    className="ms-2 text-blue-300 cursor-pointer"
+                  >
                     Create Product
-                  </a> */}
+                  </span>
                 </td>
               </tr>
             )}

@@ -16,7 +16,7 @@ import {
   QBDeletePayloadType,
   QBDestructiveInvoicePayloadSchema,
 } from '@/type/dto/intuitAPI.dto'
-import { errorLog, infoLog } from '@/utils/logger'
+import CustomLogger from '@/utils/logger'
 import httpStatus from 'http-status'
 
 export type IntuitAPITokensType = Pick<
@@ -80,8 +80,8 @@ export default class IntuitAPI {
   }
 
   async _customQuery(query: string) {
-    infoLog({ message: 'IntuitAPI#customQuery' })
-    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/query?query=${query}&minorversion=${intuitApiMinorVersion}`
+    CustomLogger.info({ message: 'IntuitAPI#customQuery' })
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/query?query=${encodeURIComponent(query)}&minorversion=${intuitApiMinorVersion}`
     const res = await this.getFetchWithHeader(url)
 
     if (!res)
@@ -91,7 +91,7 @@ export default class IntuitAPI {
       )
 
     if (res?.Fault) {
-      errorLog({ obj: res.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: res.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -102,7 +102,7 @@ export default class IntuitAPI {
   }
 
   async _createInvoice(payload: QBInvoiceCreatePayloadType) {
-    infoLog({
+    CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#createInvoice | invoice creation start for realmId: ${this.tokens.intuitRealmId}.`,
     })
@@ -116,7 +116,7 @@ export default class IntuitAPI {
       )
 
     if (invoice?.Fault) {
-      errorLog({ obj: invoice.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: invoice.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -124,7 +124,7 @@ export default class IntuitAPI {
       )
     }
 
-    infoLog({
+    CustomLogger.info({
       obj: { response: invoice.Invoice },
       message: `IntuitAPI#createInvoice | invoice created with doc number = ${invoice.Invoice?.DocNumber}.`,
     })
@@ -132,7 +132,7 @@ export default class IntuitAPI {
   }
 
   async _createCustomer(payload: QBCustomerCreatePayloadType) {
-    infoLog({
+    CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#createCustomer | customer creation start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
     })
@@ -146,7 +146,7 @@ export default class IntuitAPI {
       )
 
     if (customer?.Fault) {
-      errorLog({ obj: customer.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: customer.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -154,7 +154,7 @@ export default class IntuitAPI {
       )
     }
 
-    infoLog({
+    CustomLogger.info({
       obj: { response: customer.Customer },
       message: `IntuitAPI#createCustomer | customer created with name = ${customer.Customer?.FullyQualifiedName}.`,
     })
@@ -162,7 +162,7 @@ export default class IntuitAPI {
   }
 
   async _createItem(payload: QBItemCreatePayloadType) {
-    infoLog({
+    CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#createItem | Item creation start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
     })
@@ -176,7 +176,7 @@ export default class IntuitAPI {
       )
 
     if (item?.Fault) {
-      errorLog({ obj: item.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: item.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -184,7 +184,7 @@ export default class IntuitAPI {
       )
     }
 
-    infoLog({
+    CustomLogger.info({
       obj: { response: item.Item },
       message: `IntuitAPI#createItem | item created with Id = ${item?.Item?.Id}. Response: `,
     })
@@ -192,7 +192,7 @@ export default class IntuitAPI {
   }
 
   async _getSingleIncomeAccount() {
-    infoLog({
+    CustomLogger.info({
       message: `IntuitAPI#getSingleIncomeAccount | Income account query start for realmId: ${this.tokens.intuitRealmId}`,
     })
     const sqlQuery = `SELECT Id FROM Account WHERE AccountType = 'Income' AND AccountSubType = 'SalesOfProductIncome' AND Active = true maxresults 1`
@@ -205,7 +205,10 @@ export default class IntuitAPI {
       )
 
     if (qbIncomeAccountRefInfo?.Fault) {
-      errorLog({ obj: qbIncomeAccountRefInfo.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({
+        obj: qbIncomeAccountRefInfo.Fault?.Error,
+        message: 'Error: ',
+      })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -217,7 +220,7 @@ export default class IntuitAPI {
   }
 
   async _getACustomer(displayName: string) {
-    infoLog({
+    CustomLogger.info({
       message: `IntuitAPI#getACustomer | Customer query start for realmId: ${this.tokens.intuitRealmId}. Name: ${displayName}`,
     })
     const customerQuery = `SELECT Id, SyncToken FROM Customer WHERE DisplayName = '${displayName}' AND Active = true`
@@ -230,7 +233,7 @@ export default class IntuitAPI {
       )
 
     if (qbCustomers?.Fault) {
-      errorLog({ obj: qbCustomers.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: qbCustomers.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -242,7 +245,7 @@ export default class IntuitAPI {
   }
 
   async _getAnItem(name: string) {
-    infoLog({
+    CustomLogger.info({
       message: `IntuitAPI#getAnItem | Item query start for realmId: ${this.tokens.intuitRealmId}. Name: ${name}`,
     })
     const customerQuery = `select Id, SyncToken from Item where Name = '${name}' maxresults 1`
@@ -255,7 +258,7 @@ export default class IntuitAPI {
       )
 
     if (qbItem?.Fault) {
-      errorLog({ obj: qbItem.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: qbItem.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -267,12 +270,15 @@ export default class IntuitAPI {
   }
 
   async _getAllItems(limit: number, columns: string[] = ['Id']) {
-    infoLog({
+    CustomLogger.info({
       message: `IntuitAPI#getAllItems | Item query start for realmId: ${this.tokens.intuitRealmId}`,
     })
     const stringColumns = columns.map((column) => `${column}`).join(',')
     const customerQuery = `select ${stringColumns} from Item maxresults ${limit}`
-    infoLog({ obj: { customerQuery }, message: 'IntuitAPI#getAllItems' })
+    CustomLogger.info({
+      obj: { customerQuery },
+      message: 'IntuitAPI#getAllItems',
+    })
     const qbItems = await this.customQuery(customerQuery)
 
     if (!qbItems)
@@ -282,7 +288,7 @@ export default class IntuitAPI {
       )
 
     if (qbItems?.Fault) {
-      errorLog({ obj: qbItems.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: qbItems.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -294,7 +300,7 @@ export default class IntuitAPI {
   }
 
   async _invoiceSparseUpdate(payload: QBInvoiceSparseUpdatePayloadType) {
-    infoLog({
+    CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#InvoiceSparseUpdate | invoice sparse update start for realmId: ${this.tokens.intuitRealmId}. `,
     })
@@ -308,7 +314,7 @@ export default class IntuitAPI {
       )
 
     if (invoice?.Fault) {
-      errorLog({ obj: invoice.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: invoice.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -316,7 +322,7 @@ export default class IntuitAPI {
       )
     }
 
-    infoLog({
+    CustomLogger.info({
       obj: { response: invoice.Invoice },
       message: `IntuitAPI#InvoiceSparseUpdate | invoice sparse updated for doc number = ${invoice.Invoice?.DocNumber}.`,
     })
@@ -324,7 +330,7 @@ export default class IntuitAPI {
   }
 
   async _customerSparseUpdate(payload: QBCustomerSparseUpdatePayloadType) {
-    infoLog({
+    CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#customerSparseUpdate | customer sparse update start for realmId: ${this.tokens.intuitRealmId}. `,
     })
@@ -338,7 +344,7 @@ export default class IntuitAPI {
       )
 
     if (customer?.Fault) {
-      errorLog({ obj: customer.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: customer.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -346,7 +352,7 @@ export default class IntuitAPI {
       )
     }
 
-    infoLog({
+    CustomLogger.info({
       obj: { response: customer.Customer },
       message: `IntuitAPI#customerSparseUpdate | customer sparse updated with name = ${customer.Customer?.FullyQualifiedName}. `,
     })
@@ -354,7 +360,7 @@ export default class IntuitAPI {
   }
 
   async _itemFullUpdate(payload: QBItemFullUpdatePayloadType) {
-    infoLog({
+    CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#itemFullUpdate | item full update start for realmId: ${this.tokens.intuitRealmId}. `,
     })
@@ -368,7 +374,7 @@ export default class IntuitAPI {
       )
 
     if (item?.Fault) {
-      errorLog({ obj: item.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: item.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -376,7 +382,7 @@ export default class IntuitAPI {
       )
     }
 
-    infoLog({
+    CustomLogger.info({
       obj: { response: item.Item },
       message: `IntuitAPI#itemFullUpdate | item full updated with Id = ${item.Item?.Id}.`,
     })
@@ -384,7 +390,7 @@ export default class IntuitAPI {
   }
 
   async _createPayment(payload: QBPaymentCreatePayloadType) {
-    infoLog({
+    CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#createPayment | payment creation start for realmId: ${this.tokens.intuitRealmId}. `,
     })
@@ -398,7 +404,7 @@ export default class IntuitAPI {
       )
 
     if (payment?.Fault) {
-      errorLog({ obj: payment.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: payment.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -406,7 +412,7 @@ export default class IntuitAPI {
       )
     }
 
-    infoLog({
+    CustomLogger.info({
       obj: { response: payment.Payment },
       message: `IntuitAPI#createPayment | payment created with Id = ${payment.Payment?.Id}.`,
     })
@@ -414,7 +420,7 @@ export default class IntuitAPI {
   }
 
   async _voidInvoice(payload: QBDestructiveInvoicePayloadSchema) {
-    infoLog({
+    CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#voidInvoice | invoice void start for realmId: ${this.tokens.intuitRealmId}. `,
     })
@@ -428,7 +434,7 @@ export default class IntuitAPI {
       )
 
     if (invoice?.Fault) {
-      errorLog({ obj: invoice.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: invoice.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -436,7 +442,7 @@ export default class IntuitAPI {
       )
     }
 
-    infoLog({
+    CustomLogger.info({
       obj: { response: invoice.Invoice },
       message: `IntuitAPI#voidInvoice | Voided invoice with Id = ${invoice.Invoice?.Id}.`,
     })
@@ -444,7 +450,7 @@ export default class IntuitAPI {
   }
 
   async _deleteInvoice(payload: QBDestructiveInvoicePayloadSchema) {
-    infoLog({
+    CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#deleteInvoice | invoice deletion start for realmId: ${this.tokens.intuitRealmId}. `,
     })
@@ -459,7 +465,7 @@ export default class IntuitAPI {
     }
 
     if (invoice.Fault) {
-      errorLog({ obj: invoice.Fault.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: invoice.Fault.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -467,7 +473,7 @@ export default class IntuitAPI {
       )
     }
 
-    infoLog({
+    CustomLogger.info({
       obj: { response: invoice.Invoice },
       message: `IntuitAPI#deleteInvoice | Deleted invoice with id = ${invoice.Invoice?.Id}. `,
     })
@@ -475,7 +481,7 @@ export default class IntuitAPI {
   }
 
   async _deletePayment(payload: QBDeletePayloadType) {
-    infoLog({
+    CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#deletePayment | payment delete start for realmId: ${this.tokens.intuitRealmId}. `,
     })
@@ -489,7 +495,7 @@ export default class IntuitAPI {
       )
 
     if (payment?.Fault) {
-      errorLog({ obj: payment.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: payment.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -497,7 +503,7 @@ export default class IntuitAPI {
       )
     }
 
-    infoLog({
+    CustomLogger.info({
       obj: { response: payment.Payment },
       message: `IntuitAPI#deletePayment | payment deleted with Id = ${payment.Payment?.Id}. `,
     })
@@ -505,7 +511,7 @@ export default class IntuitAPI {
   }
 
   async _getAnAccountByName(accountName: string) {
-    infoLog({
+    CustomLogger.info({
       obj: { realmId: this.tokens.intuitRealmId },
       message:
         'IntuitAPI#getAnAccountByName | Account query start for realmId: ',
@@ -520,7 +526,7 @@ export default class IntuitAPI {
       )
 
     if (customQuery?.Fault) {
-      errorLog({ obj: customQuery.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: customQuery.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -532,7 +538,7 @@ export default class IntuitAPI {
   }
 
   async _createAccount(payload: QBAccountCreatePayloadType) {
-    infoLog({
+    CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#createAssetAccount | Account create start for realmId: ${this.tokens.intuitRealmId}. `,
     })
@@ -546,7 +552,7 @@ export default class IntuitAPI {
       )
 
     if (account?.Fault) {
-      errorLog({ obj: account.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: account.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -554,7 +560,7 @@ export default class IntuitAPI {
       )
     }
 
-    infoLog({
+    CustomLogger.info({
       obj: { response: account.Account },
       message: `IntuitAPI#createAssetAccount | Account created with Id = ${account.Account?.Id}. `,
     })
@@ -562,7 +568,7 @@ export default class IntuitAPI {
   }
 
   async _createPurchase(payload: QBPurchaseCreatePayloadType) {
-    infoLog({
+    CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#createPurchase | Purchase create start for realmId: ${this.tokens.intuitRealmId}.`,
     })
@@ -576,7 +582,7 @@ export default class IntuitAPI {
       )
 
     if (purchase?.Fault) {
-      errorLog({ obj: purchase.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: purchase.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -584,7 +590,7 @@ export default class IntuitAPI {
       )
     }
 
-    infoLog({
+    CustomLogger.info({
       obj: { response: purchase.Purchase },
       message: `IntuitAPI#createPurchase | Purchase created with Id = ${purchase.Purchase?.Id}.`,
     })
@@ -592,7 +598,7 @@ export default class IntuitAPI {
   }
 
   async _deletePurchase(payload: QBDeletePayloadType) {
-    infoLog({
+    CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#deletePurchase | purchase delete start for realmId: ${this.tokens.intuitRealmId}.`,
     })
@@ -606,7 +612,7 @@ export default class IntuitAPI {
       )
 
     if (purchase?.Fault) {
-      errorLog({ obj: purchase.Fault?.Error, message: 'Error: ' })
+      CustomLogger.error({ obj: purchase.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
         IntuitAPIErrorMessage,
@@ -614,7 +620,7 @@ export default class IntuitAPI {
       )
     }
 
-    infoLog({
+    CustomLogger.info({
       obj: { response: purchase.Purchase },
       message: `IntuitAPI#deletePurchase | purchase deleted with Id = ${purchase.Purchase?.Id}. `,
     })

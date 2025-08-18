@@ -23,7 +23,7 @@ import { validateAccessToken } from '@/utils/auth'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import { getMessageFromError } from '@/utils/error'
 import { IntuitAPITokensType } from '@/utils/intuitAPI'
-import { infoLog } from '@/utils/logger'
+import CustomLogger from '@/utils/logger'
 import { and, eq } from 'drizzle-orm'
 import httpStatus from 'http-status'
 
@@ -41,7 +41,7 @@ export class WebhookService extends BaseService {
     }
 
     const payload = parsedBody.data
-    infoLog({
+    CustomLogger.info({
       obj: { payload },
       message: 'WebhookService#handleWebhookEvent | Webhook payload received',
     })

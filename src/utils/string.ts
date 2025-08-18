@@ -27,3 +27,31 @@ export function replaceBeforeParens(
     return replacement
   }
 }
+
+export function replaceSpecialCharsForQB(input: string) {
+  // list of allowed characters in QB.
+  // Doc: https://quickbooks.intuit.com/learn-support/en-us/help-article/account-management/acceptable-characters-quickbooks-online/L3CiHlD9J_US_en_US
+  const allowedCharacters = [
+    ',',
+    '?',
+    '@',
+    '&',
+    '!',
+    "'",
+    '*',
+    '(',
+    ')',
+    '_',
+    ';',
+    '+',
+    '#',
+    '~',
+    '.',
+    '-',
+    ' ',
+  ]
+  const a = allowedCharacters.map((c) => '\\' + c).join('')
+
+  const regex = new RegExp(`[^a-zA-Z0-9${a}]+`, 'g') // regex allow alphabets, numbers and special characters
+  return input.replace(regex, '-')
+}

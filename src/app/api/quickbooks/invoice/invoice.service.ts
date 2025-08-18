@@ -45,6 +45,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { convert } from 'html-to-text'
 import httpStatus from 'http-status'
 import { z } from 'zod'
+import { replaceSpecialCharsForQB } from '@/utils/string'
 
 type OneOffItemType = {
   name?: string
@@ -191,8 +192,9 @@ export class InvoiceService extends BaseService {
       eq(QBProductSync.productId, productId),
     )
 
-    const newName =
-      itemsCount > 0 ? `${productInfo.name} (${itemsCount})` : productInfo.name
+    const newName = replaceSpecialCharsForQB(
+      itemsCount > 0 ? `${productInfo.name} (${itemsCount})` : productInfo.name,
+    )
 
     // check if item exist with name in QB. If yes, map in mapping table
     let qbItem = await intuitApi.getAnItem(newName)
@@ -460,6 +462,7 @@ export class InvoiceService extends BaseService {
         'givenName',
         'email',
         'companyName',
+        'displayName',
       ],
     )
 
@@ -476,8 +479,9 @@ export class InvoiceService extends BaseService {
       if (!customer) {
         // Create a new customer in QB
         let customerPayload: QBCustomerCreatePayloadType = {
-          DisplayName: recipientInfo.displayName,
-          CompanyName: companyInfo?.name,
+          DisplayName: replaceSpecialCharsForQB(recipientInfo.displayName),
+          CompanyName:
+            companyInfo && replaceSpecialCharsForQB(companyInfo.name),
           PrimaryEmailAddr: {
             Address: recipientInfo?.email || '',
           },
@@ -486,8 +490,8 @@ export class InvoiceService extends BaseService {
         if (recipientInfo.givenName && recipientInfo.familyName) {
           customerPayload = {
             ...customerPayload,
-            GivenName: recipientInfo.givenName,
-            FamilyName: recipientInfo.familyName,
+            GivenName: replaceSpecialCharsForQB(recipientInfo.givenName),
+            FamilyName: replaceSpecialCharsForQB(recipientInfo.familyName),
           }
         }
 
@@ -528,10 +532,17 @@ export class InvoiceService extends BaseService {
       }
       if (existingCustomer.displayName !== recipientInfo.displayName) {
         // DisplayName = GivenName + FamilyName + CompanyName (if exists)
-        sparseUpdatePayload.DisplayName = recipientInfo.displayName
-        sparseUpdatePayload.GivenName = recipientInfo.givenName
-        sparseUpdatePayload.FamilyName = recipientInfo.familyName
-        sparseUpdatePayload.CompanyName = companyInfo?.name
+        sparseUpdatePayload.DisplayName = replaceSpecialCharsForQB(
+          recipientInfo.displayName,
+        )
+        sparseUpdatePayload.GivenName = replaceSpecialCharsForQB(
+          recipientInfo.givenName,
+        )
+        sparseUpdatePayload.FamilyName = replaceSpecialCharsForQB(
+          recipientInfo.familyName,
+        )
+        sparseUpdatePayload.CompanyName =
+          companyInfo && replaceSpecialCharsForQB(companyInfo.name)
       }
       if (Object.keys(sparseUpdatePayload).length > 0) {
         const customerSparsePayload = {
@@ -539,8 +550,10 @@ export class InvoiceService extends BaseService {
           Id: existingCustomer.qbCustomerId,
           SyncToken: existingCustomer.qbSyncToken,
           BillAddr: {
-            Line1: `${existingCustomer.givenName} ${existingCustomer.familyName}`,
-            Line2: companyInfo?.name,
+            Line1: replaceSpecialCharsForQB(
+              `${existingCustomer.givenName} ${existingCustomer.familyName}`,
+            ),
+            Line2: companyInfo && replaceSpecialCharsForQB(companyInfo.name),
           },
           sparse: true as const,
         }
