@@ -38,13 +38,12 @@ export default class CronService {
       return
     }
 
-    await Promise.all(
-      portalConnections.map(async (connection) => {
-        if (connection.setting?.syncFlag && connection.setting?.isEnabled) {
-          await this.scheduleSinglePortal(connection.portalId)
-        }
-      }),
-    )
+    // synchronously done because creating multiple instance of Copilot SDK simultaneously, is causing an issue.
+    for (const connection of portalConnections) {
+      if (connection.setting?.syncFlag && connection.setting?.isEnabled) {
+        await this.scheduleSinglePortal(connection.portalId)
+      }
+    }
   }
 
   private wrapWithRetry<Args extends unknown[], R>(
