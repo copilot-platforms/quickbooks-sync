@@ -46,9 +46,9 @@ import { convert } from 'html-to-text'
 import httpStatus from 'http-status'
 import { z } from 'zod'
 
-const oneOffItem = {
-  name: 'Services', // for one-off items
-  value: '1',
+type OneOffItemType = {
+  name?: string
+  value: string
 }
 
 type InvoiceItemRefAndDescriptionType = {
@@ -61,6 +61,7 @@ export class InvoiceService extends BaseService {
   private copilot: CopilotAPI
   private syncLogService: SyncLogService
   private static intuitApiService: IntuitAPI
+  private static oneOffItem: OneOffItemType
 
   constructor(user: User) {
     super(user)
@@ -131,7 +132,7 @@ export class InvoiceService extends BaseService {
   /**
    * Returns the invoice item reference (QB) for the given product and price
    */
-  async getInvoiceItemRef(
+  private async getInvoiceItemRef(
     productId: string,
     priceId: string,
     intuitApi: IntuitAPI,
@@ -145,7 +146,7 @@ export class InvoiceService extends BaseService {
       if (mapping.isExcluded) {
         // if excluded, do not include in invoice and send as one-off item
         console.info('InvoiceService#getInvoiceItemRef | Product is excluded')
-        return { ref: oneOffItem }
+        return { ref: InvoiceService.oneOffItem }
       }
       if (mapping.qbItemId) {
         console.info('InvoiceService#getInvoiceItemRef | Product map found')
@@ -167,9 +168,9 @@ export class InvoiceService extends BaseService {
 
     if (!setting?.createNewProductFlag) {
       console.info(
-        'WebhookService#getInvoiceItemRef | Create new product flag is false',
+        'InvoiceService#getInvoiceItemRef | Create new product flag is false',
       )
-      return { ref: oneOffItem }
+      return { ref: InvoiceService.oneOffItem }
     }
 
     // 2. create a new product in QB company
@@ -251,14 +252,14 @@ export class InvoiceService extends BaseService {
     return { ref: { value: qbItem.Id }, productDescription }
   }
 
-  async prepareLineItemPayload(
+  private async prepareLineItemPayload(
     lineItem: InvoiceLineItemSchemaType,
     intuitApi: IntuitAPI,
   ) {
     const actualAmount = lineItem.amount / 100 // Convert to dollar. amount received in cents.
 
     let itemRef: InvoiceItemRefAndDescriptionType = {
-      ref: oneOffItem,
+      ref: InvoiceService.oneOffItem,
       productDescription: lineItem.description,
     }
 
@@ -330,6 +331,46 @@ export class InvoiceService extends BaseService {
     return clientFeeRef
   }
 
+  async manageServiceItemRef(): Promise<string> {
+    const intuitService = InvoiceService.intuitApiService
+    const productName = 'Services'
+    const tokenService = new TokenService(this.user)
+
+    const existingProduct = await intuitService.getAnItem(productName)
+    let serviceItemRef
+    if (existingProduct) {
+      console.info(`Item with name '${productName}' found in QB`)
+      serviceItemRef = existingProduct.Id
+    } else {
+      // create client fee as an item in QB
+      console.info(`Create '${productName}' as an item in QB`)
+      const productService = new ProductService(this.user)
+      const qbItem = await productService.createItemInQB(
+        {
+          productName,
+          unitPrice: 0,
+          incomeAccRefVal: intuitService.tokens.incomeAccountRef,
+        },
+        intuitService,
+      )
+      serviceItemRef = qbItem.Id
+    }
+
+    // update serviceItemRef in our DB
+    const updatedPayload = {
+      serviceItemRef,
+      updatedAt: dayjs().toDate(),
+    }
+
+    console.info("Store the 'Copilot fee paid by Client' item ref in DB")
+    await tokenService.updateQBPortalConnection(
+      updatedPayload,
+      eq(QBPortalConnection.portalId, this.user.workspaceId),
+      ['id'],
+    )
+    return serviceItemRef
+  }
+
   async handleFeePaidByClient(
     invoiceResource: InvoiceCreatedResponseType,
   ): Promise<QBInvoiceLineItemSchemaType | undefined> {
@@ -368,6 +409,14 @@ export class InvoiceService extends BaseService {
     }
   }
 
+  async handleServiceItem() {
+    let serviceItemRef = this.user.qbConnection?.serviceItemRef
+    if (!serviceItemRef) {
+      serviceItemRef = await this.manageServiceItemRef()
+    }
+    InvoiceService.oneOffItem = { value: serviceItemRef }
+  }
+
   /**
    * This function is executed when invoice.created event is triggered
    * Handles the invoice creation in QuickBooks
@@ -387,7 +436,7 @@ export class InvoiceService extends BaseService {
     // Do not store if invoice already exists
     if (existingInvoice) {
       console.info(
-        'WebhookService#handleWebhookEvent#exists | Invoice already exists in the db',
+        'InvoiceService#handleWebhookEvent#exists | Invoice already exists in the db',
       )
       return
     }
@@ -519,6 +568,10 @@ export class InvoiceService extends BaseService {
         )
       }
     }
+
+    // Check if service item ref ID is present in our DB. If not create new
+    // in QB and store the id in our DB
+    await this.handleServiceItem()
 
     // bottleneck implementation (rate limiting)
     const lineItemPromises = []
@@ -663,9 +716,9 @@ export class InvoiceService extends BaseService {
 
     if (!invoiceSync) {
       console.error(
-        'WebhookService#webhookInvoicePaid | Invoice not found in sync table',
+        'InvoiceService#webhookInvoicePaid | Invoice not found in sync table',
       )
-      return
+      return // slient return if no invoice is synced at first place.
     }
 
     // check if the entity invoice has successful event paid
@@ -675,16 +728,17 @@ export class InvoiceService extends BaseService {
     )
 
     if (syncLog?.status === LogStatus.SUCCESS) {
-      console.info('WebhookService#webhookInvoicePaid | Invoice already paid')
+      console.info('InvoiceService#webhookInvoicePaid | Invoice already paid')
       return
     }
 
     // TODO: direct customer fetch with invoice.
     // 2. if not, create payment in QB, sync payment in payment sync table and change invoice status to paid
     if (!invoiceSync.customerId) {
+      console.error('InvoiceService#webhookInvoicePaid | CustomerId not found')
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'WebhookService#webhookInvoicePaid | CustomerId not found',
+        'CustomerId not found',
       )
     }
     const customerService = new CustomerService(this.user)
@@ -693,9 +747,12 @@ export class InvoiceService extends BaseService {
       ['id', 'qbCustomerId', 'givenName', 'familyName', 'email', 'companyName'],
     )
     if (!existingCustomer) {
+      console.error(
+        'InvoiceService#webhookInvoicePaid | Customer mapping not found',
+      )
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'WebhookService#webhookInvoicePaid | Customer mapping not found',
+        'Customer mapping not found',
       )
     }
 
@@ -706,9 +763,12 @@ export class InvoiceService extends BaseService {
     )
 
     if (!invoiceLog) {
+      console.error(
+        'InvoiceService#webhookInvoicePaid | Invoice sync log not found',
+      )
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'WebhookService#webhookInvoicePaid | Invoice sync log not found',
+        'Invoice sync log not found',
       )
     }
 
@@ -777,15 +837,15 @@ export class InvoiceService extends BaseService {
     ])
 
     if (!invoiceSync) {
-      throw new APIError(
-        httpStatus.NOT_FOUND,
-        'WebhookService#webhookInvoiceVoided | Invoice not found in sync table',
+      console.info(
+        'invoiceService#webhookInvoiceVoided | Invoice not found in sync table',
       )
+      return // slient return if no invoice is synced at first place.
     }
 
     if (invoiceSync.status !== InvoiceStatus.OPEN) {
       console.error(
-        'WebhookService#handleInvoiceVoided | Invoices void was requested for non-open record',
+        'InvoiceService#handleInvoiceVoided | Invoices void was requested for non-open record',
       )
       return // return early if invoice is not open
     }
@@ -797,9 +857,12 @@ export class InvoiceService extends BaseService {
     )
 
     if (!invoiceLog) {
+      console.error(
+        'InvoiceService#webhookInvoicePaid | Invoice sync log not found',
+      )
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'WebhookService#webhookInvoicePaid | Invoice sync log not found',
+        'Invoice sync log not found',
       )
     }
 
@@ -813,9 +876,12 @@ export class InvoiceService extends BaseService {
       QBDestructiveInvoicePayloadSchema.safeParse(voidPayload)
 
     if (!safeParsedPayload.success || !safeParsedPayload.data) {
+      console.error(
+        'InvoiceService#webhookInvoiceVoided | Could not parse invoice void payload',
+      )
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'WebhookService#webhookInvoiceVoided | Could not parse invoice void payload',
+        'Could not parse invoice void payload',
       )
     }
 
@@ -856,17 +922,17 @@ export class InvoiceService extends BaseService {
     ])
 
     if (!syncedInvoice) {
-      throw new APIError(
-        // NOTE: @sandeepbajracharya this can cause an issue where there are invoices that exist before QB sync app has been installed and set up
-        // We will not be able to sync new invoice updates for them
-        httpStatus.INTERNAL_SERVER_ERROR,
-        'WebhookService#handleInvoiceDeleted | Invoice not found in sync table',
+      console.info(
+        // NOTE: we will not sync invoices that were created before the QB app installation. Therefore just ignore such case
+        'InvoiceService#handleInvoiceDeleted | Invoice not found in sync table',
       )
+      return // slient return if no invoice is synced at first place.
     }
+
     // Copilot doesn't allow to delete invoice that are not voided. So, just log an error about possible edge cases without returning an error
     if (syncedInvoice.status !== InvoiceStatus.VOID) {
       console.error(
-        'WebhookService#handleInvoiceDeleted | Invoices delete was requested for non-voided record',
+        'InvoiceService#handleInvoiceDeleted | Invoices delete was requested for non-voided record',
       )
       return // return early if invoice is not voided
     }
@@ -878,9 +944,12 @@ export class InvoiceService extends BaseService {
     )
 
     if (!invoiceLog) {
+      console.error(
+        'InvoiceService#webhookInvoicePaid | Invoice sync log not found',
+      )
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'WebhookService#webhookInvoicePaid | Invoice sync log not found',
+        'Invoice sync log not found',
       )
     }
 
@@ -892,9 +961,12 @@ export class InvoiceService extends BaseService {
     const safeParsedPayload =
       QBDestructiveInvoicePayloadSchema.safeParse(deletePayload)
     if (!safeParsedPayload.success) {
+      console.error(
+        'InvoiceService#handleInvoiceDeleted | Could not parse invoice delete payload',
+      )
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'WebhookService#handleInvoiceDeleted | Could not parse invoice delete payload',
+        'Could not parse invoice delete payload',
       )
     }
 

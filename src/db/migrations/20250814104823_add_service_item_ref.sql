@@ -1,0 +1,1 @@
+ALTER TABLE "qb_portal_connections" ADD COLUMN "service_item_ref" varchar(100);

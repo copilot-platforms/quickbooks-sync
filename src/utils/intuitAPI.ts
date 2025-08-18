@@ -29,6 +29,8 @@ export type IntuitAPITokensType = Pick<
   | 'assetAccountRef'
 >
 
+export const IntuitAPIErrorMessage = '#IntuitAPIErrorMessage#'
+
 export default class IntuitAPI {
   tokens: IntuitAPITokensType
   private static headers: Record<string, string>
@@ -92,7 +94,7 @@ export default class IntuitAPI {
       errorLog({ obj: res.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#customQuery | Error while executing custom query',
+        IntuitAPIErrorMessage,
         res.Fault?.Error,
       )
     }
@@ -117,7 +119,7 @@ export default class IntuitAPI {
       errorLog({ obj: invoice.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#createInvoice | Error while creating invoice',
+        IntuitAPIErrorMessage,
         invoice.Fault?.Error,
       )
     }
@@ -147,7 +149,7 @@ export default class IntuitAPI {
       errorLog({ obj: customer.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#createCustomer | Error while creating customer',
+        IntuitAPIErrorMessage,
         customer.Fault?.Error,
       )
     }
@@ -177,7 +179,7 @@ export default class IntuitAPI {
       errorLog({ obj: item.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#createItem | Error while creating item',
+        IntuitAPIErrorMessage,
         item.Fault?.Error,
       )
     }
@@ -206,7 +208,7 @@ export default class IntuitAPI {
       errorLog({ obj: qbIncomeAccountRefInfo.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#getSingleIncomeAccount | Error while fetching income account',
+        IntuitAPIErrorMessage,
         qbIncomeAccountRefInfo.Fault?.Error,
       )
     }
@@ -231,7 +233,7 @@ export default class IntuitAPI {
       errorLog({ obj: qbCustomers.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#getACustomer | Error while fetching a customer',
+        IntuitAPIErrorMessage,
         qbCustomers.Fault?.Error,
       )
     }
@@ -256,7 +258,7 @@ export default class IntuitAPI {
       errorLog({ obj: qbItem.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#getAnItem | Error while fetching an item',
+        IntuitAPIErrorMessage,
         qbItem.Fault?.Error,
       )
     }
@@ -283,7 +285,7 @@ export default class IntuitAPI {
       errorLog({ obj: qbItems.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#getAllItems | Error while fetching all items',
+        IntuitAPIErrorMessage,
         qbItems.Fault?.Error,
       )
     }
@@ -309,7 +311,7 @@ export default class IntuitAPI {
       errorLog({ obj: invoice.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#InvoiceSparseUpdate | Error while sparse update an invoice',
+        IntuitAPIErrorMessage,
         invoice.Fault?.Error,
       )
     }
@@ -339,7 +341,7 @@ export default class IntuitAPI {
       errorLog({ obj: customer.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#customerSparseUpdate | Error while sparse update a customer',
+        IntuitAPIErrorMessage,
         customer.Fault?.Error,
       )
     }
@@ -369,7 +371,7 @@ export default class IntuitAPI {
       errorLog({ obj: item.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#itemFullUpdate | Error while item full update',
+        IntuitAPIErrorMessage,
         item.Fault?.Error,
       )
     }
@@ -399,7 +401,7 @@ export default class IntuitAPI {
       errorLog({ obj: payment.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#createPayment | Error while creating payment',
+        IntuitAPIErrorMessage,
         payment.Fault?.Error,
       )
     }
@@ -429,7 +431,7 @@ export default class IntuitAPI {
       errorLog({ obj: invoice.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#voidInvoice | Error while voiding invoice',
+        IntuitAPIErrorMessage,
         invoice.Fault?.Error,
       )
     }
@@ -460,7 +462,7 @@ export default class IntuitAPI {
       errorLog({ obj: invoice.Fault.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#deleteInvoice | Error while deleting invoice',
+        IntuitAPIErrorMessage,
         invoice.Fault?.Error,
       )
     }
@@ -490,7 +492,7 @@ export default class IntuitAPI {
       errorLog({ obj: payment.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#deletePayment | Error while deleting payment',
+        IntuitAPIErrorMessage,
         payment.Fault?.Error,
       )
     }
@@ -521,7 +523,7 @@ export default class IntuitAPI {
       errorLog({ obj: customQuery.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#getAnAccountByName | Error while fetching an account',
+        IntuitAPIErrorMessage,
         customQuery.Fault?.Error,
       )
     }
@@ -547,7 +549,7 @@ export default class IntuitAPI {
       errorLog({ obj: account.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#createAssetAccount | Error while creating Account',
+        IntuitAPIErrorMessage,
         account.Fault?.Error,
       )
     }
@@ -577,7 +579,7 @@ export default class IntuitAPI {
       errorLog({ obj: purchase.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#createPurchase | Error while creating purchase',
+        IntuitAPIErrorMessage,
         purchase.Fault?.Error,
       )
     }
@@ -607,7 +609,7 @@ export default class IntuitAPI {
       errorLog({ obj: purchase.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#deletePurchase | error while deleting purchase',
+        IntuitAPIErrorMessage,
         purchase.Fault?.Error,
       )
     }

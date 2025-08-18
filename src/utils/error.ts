@@ -1,6 +1,14 @@
 import APIError from '@/app/api/core/exceptions/api'
 import { isAxiosError } from '@/app/api/core/exceptions/custom'
 import { CopilotApiError, MessagableError } from '@/type/CopilotApiError'
+import { IntuitAPIErrorMessage } from '@/utils/intuitAPI'
+
+export type IntuitErrorType = {
+  Message: string
+  Detail: string
+  Code: string
+  Element?: string
+}
 
 export const getMessageFromError = (error: unknown): string => {
   // Default staus and message for JSON error response
@@ -11,7 +19,11 @@ export const getMessageFromError = (error: unknown): string => {
   if (error instanceof CopilotApiError) {
     return error.body.message || message
   } else if (error instanceof APIError) {
-    return error.message || message
+    let errorMessage = error.message || message
+    if (error.message === IntuitAPIErrorMessage) {
+      errorMessage = (error.errors?.[0] as IntuitErrorType).Detail
+    }
+    return errorMessage
   } else if (error instanceof Error && error.message) {
     return error.message
   } else if (isAxiosError(error)) {
