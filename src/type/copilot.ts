@@ -3,7 +3,7 @@ export enum TimeInterval {
   WEEKLY = 'weekly',
   MONTHLY = 'monthly',
   YEARLY = 'yearly',
-  QUARTERLY = 'quarterly',
-  BIANNUALLY = 'biannually',
-  EVERY_TWO_YEARS = 'every 2 Years',
+  QUARTERLY = 'every three months',
+  BIANNUALLY = 'every six months',
+  EVERY_TWO_YEARS = 'every two Years',
 }
