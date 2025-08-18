@@ -33,7 +33,7 @@ import httpStatus from 'http-status'
 import { QBSyncLog, QBSyncLogCreateSchemaType } from '@/db/schema/qbSyncLogs'
 import User from '@/app/api/core/models/User.model'
 import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
-import { replaceBeforeParens } from '@/utils/string'
+import { replaceBeforeParens, replaceSpecialCharsForQB } from '@/utils/string'
 
 export class ProductService extends BaseService {
   private syncLogService: SyncLogService
@@ -395,9 +395,11 @@ export class ProductService extends BaseService {
           console.info(
             `WebhookService#webhookProductUpdated | Update item in QB for QB Id = ${product.qbItemId}`,
           )
-          const newName = product.name
-            ? replaceBeforeParens(product.name, productResource.name)
-            : productResource.name
+          const qbItemName = replaceSpecialCharsForQB(
+            product.name
+              ? replaceBeforeParens(product.name, productResource.name)
+              : productResource.name,
+          )
 
           let productDescription = ''
           if (productResource.description) {
@@ -407,7 +409,7 @@ export class ProductService extends BaseService {
           const fullUpdatePayload: QBItemFullUpdatePayloadType = {
             Id: z.string().parse(product.qbItemId),
             SyncToken: z.string().parse(product.qbSyncToken),
-            Name: newName,
+            Name: qbItemName,
             ...(productDescription && { Description: productDescription }),
             ...(product.unitPrice
               ? { UnitPrice: parseFloat(product.unitPrice) / 100 }
@@ -425,7 +427,7 @@ export class ProductService extends BaseService {
           // update the product map in db
           const mapUpdatePayload = {
             qbSyncToken: itemRes.Item.SyncToken,
-            name: newName,
+            name: qbItemName,
             copilotName: productResource.name,
             description: productDescription,
           }
@@ -487,16 +489,17 @@ export class ProductService extends BaseService {
         throw new APIError(httpStatus.NOT_FOUND, 'Product not found')
       }
 
-      const newName =
+      const qbItemName = replaceSpecialCharsForQB(
         itemsCount && itemsCount > 0
           ? `${copilotProduct.name} (${itemsCount})`
-          : copilotProduct.name
+          : copilotProduct.name,
+      )
       const productDescription = convert(copilotProduct.description)
 
       // create item in QB
       const item = await this.createItemInQB(
         {
-          productName: z.string().parse(newName),
+          productName: z.string().parse(qbItemName),
           unitPrice: priceResource.amount,
           incomeAccRefVal: qbTokenInfo.incomeAccountRef,
           productDescription,
@@ -512,7 +515,7 @@ export class ProductService extends BaseService {
         unitPrice: priceResource.amount.toFixed(2),
         qbItemId: item.Id,
         qbSyncToken: item.SyncToken,
-        name: newName,
+        name: qbItemName,
         copilotName: copilotProduct.name,
         description: productDescription,
       })
