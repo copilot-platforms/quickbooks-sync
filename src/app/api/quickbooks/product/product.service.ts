@@ -441,7 +441,6 @@ export class ProductService extends BaseService {
             {
               productName: productResource.name,
               qbItemName: itemRes.Item.Name,
-              copilotPriceId: product.priceId || '',
             },
           )
         }
@@ -580,16 +579,20 @@ export class ProductService extends BaseService {
     quickbooksId: string,
     eventType: EventType,
     opts: {
-      copilotPriceId: string
+      copilotPriceId?: string
       qbItemName: string | null
       productName: string | null
       productPrice?: string
     },
   ) {
-    const conditions = and(
+    const conditions = [
       eq(QBSyncLog.portalId, this.user.workspaceId),
-      eq(QBSyncLog.copilotPriceId, z.string().parse(opts.copilotPriceId)),
-    )
+      eventType === EventType.UPDATED
+        ? (eq(QBSyncLog.copilotId, copilotId), // product update should be reflected to all the products with multiple prices
+          eq(QBSyncLog.status, LogStatus.FAILED))
+        : eq(QBSyncLog.copilotPriceId, z.string().parse(opts.copilotPriceId)), // product create should have different price Id,
+    ].filter(Boolean)
+
     await this.syncLogService.updateOrCreateQBSyncLog(
       {
         portalId: this.user.workspaceId,
@@ -602,7 +605,7 @@ export class ProductService extends BaseService {
         errorMessage: null,
         ...opts,
       },
-      conditions,
+      and(...conditions),
     )
   }
 }

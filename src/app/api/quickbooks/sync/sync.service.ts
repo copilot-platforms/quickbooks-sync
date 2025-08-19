@@ -16,6 +16,8 @@ import dayjs from 'dayjs'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
 import { bottleneck } from '@/utils/bottleneck'
 import CustomLogger from '@/utils/logger'
+import { QBSyncLogSelectSchemaType } from '@/db/schema/qbSyncLogs'
+import { z } from 'zod'
 
 export class SyncService extends BaseService {
   private invoiceService: InvoiceService
@@ -28,152 +30,128 @@ export class SyncService extends BaseService {
   }
 
   private async processInvoiceCreate(
-    logRecords: CustomSyncLogRecordType[],
+    record: QBSyncLogSelectSchemaType,
     qbTokenInfo: IntuitAPITokensType,
   ) {
     const copilotApi = new CopilotAPI(this.user.token)
-    const invoicePromises = []
 
-    for (const record of logRecords) {
-      invoicePromises.push(
-        bottleneck.schedule(async () => {
-          try {
-            // get invoice from Copilot API
-            const invoice = await copilotApi.getInvoice(record.copilotId)
-            if (!invoice) return
+    try {
+      // get invoice from Copilot API
+      const invoice = await copilotApi.getInvoice(record.copilotId)
+      if (!invoice) return
 
-            // start re-sync process
-            await this.invoiceService.webhookInvoiceCreated(
-              { data: invoice },
-              qbTokenInfo,
-            )
-          } catch (error: unknown) {
-            console.error(
-              `SyncService#processInvoiceCreate | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
-            )
-          }
-        }),
+      // start re-sync process
+      await this.invoiceService.webhookInvoiceCreated(
+        { data: invoice },
+        qbTokenInfo,
+      )
+    } catch (error: unknown) {
+      console.error(
+        `SyncService#processInvoiceCreate | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
       )
     }
-    await Promise.all(invoicePromises)
   }
 
   private async processInvoicePaid(
-    logRecords: CustomSyncLogRecordType[],
+    record: QBSyncLogSelectSchemaType,
     qbTokenInfo: IntuitAPITokensType,
   ) {
     const copilotApi = new CopilotAPI(this.user.token)
-    const invoicePromises = []
 
-    for (const record of logRecords) {
-      invoicePromises.push(
-        bottleneck.schedule(async () => {
-          try {
-            // get invoice from Copilot API
-            const invoice = await copilotApi.getInvoice(record.copilotId)
-            if (!invoice) return
+    try {
+      // get invoice from Copilot API
+      const invoice = await copilotApi.getInvoice(record.copilotId)
+      if (!invoice) return
 
-            // start re-sync process
-            await this.invoiceService.webhookInvoicePaid(
-              { data: invoice },
-              qbTokenInfo,
-            )
-          } catch (error: unknown) {
-            console.error(
-              `SyncService#processInvoicePaid | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
-            )
-          }
-        }),
+      // start re-sync process
+      await this.invoiceService.webhookInvoicePaid(
+        { data: invoice },
+        qbTokenInfo,
+      )
+    } catch (error: unknown) {
+      console.error(
+        `SyncService#processInvoicePaid | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
       )
     }
-    await Promise.all(invoicePromises)
   }
 
   private async processInvoiceVoided(
-    logRecords: CustomSyncLogRecordType[],
+    record: QBSyncLogSelectSchemaType,
     qbTokenInfo: IntuitAPITokensType,
   ) {
-    await Promise.all(
-      logRecords.map(async (record) => {
-        try {
-          const invoiceSync = await this.invoiceService.getInvoiceByNumber(
-            record.invoiceNumber,
-          )
-          if (!invoiceSync) {
-            console.warn(
-              `SyncService#processInvoiceVoided | No invoice found for number: ${record.invoiceNumber}`,
-            )
-            return
-          }
+    try {
+      const invNumber = z.string().parse(record.invoiceNumber)
+      const invoiceSync =
+        await this.invoiceService.getInvoiceByNumber(invNumber)
+      if (!invoiceSync) {
+        console.warn(
+          `SyncService#processInvoiceVoided | No invoice found for number: ${record.invoiceNumber}`,
+        )
+        return
+      }
 
-          if (!invoiceSync.customer) {
-            console.warn(
-              `SyncService#processInvoiceVoided | No customer found for number: ${record.invoiceNumber}`,
-            )
-            return
-          }
+      if (!invoiceSync.customer) {
+        console.warn(
+          `SyncService#processInvoiceVoided | No customer found for number: ${record.invoiceNumber}`,
+        )
+        return
+      }
 
-          const invoice = {
-            id: record.copilotId,
-            number: record.invoiceNumber,
-            total: record.amount / 100, // assuming amount is in cents
-            clientId: invoiceSync.customer.clientId || '',
-            companyId: invoiceSync.customer.companyId || '',
-          }
-          await this.invoiceService.webhookInvoiceVoided(invoice, qbTokenInfo)
-        } catch (error: unknown) {
-          console.error(
-            `SyncService#processInvoiceVoided | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
-          )
-        }
-      }),
-    )
+      const invoice = {
+        id: record.copilotId,
+        number: invNumber,
+        total: record.amount ? parseFloat(record.amount) / 100 : 0, // assuming amount is in cents
+        clientId: invoiceSync.customer.clientId || '',
+        companyId: invoiceSync.customer.companyId || '',
+      }
+      await this.invoiceService.webhookInvoiceVoided(invoice, qbTokenInfo)
+    } catch (error: unknown) {
+      console.error(
+        `SyncService#processInvoiceVoided | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
+      )
+    }
   }
 
   private async processInvoiceDeleted(
-    logRecords: CustomSyncLogRecordType[],
+    record: QBSyncLogSelectSchemaType,
     qbTokenInfo: IntuitAPITokensType,
   ) {
-    await Promise.all(
-      logRecords.map(async (record) => {
-        try {
-          const invoiceSync = await this.invoiceService.getInvoiceByNumber(
-            record.invoiceNumber,
-          )
-          if (!invoiceSync) {
-            console.warn(
-              `SyncService#processInvoiceVoided | No invoice found for number: ${record.invoiceNumber}`,
-            )
-            return
-          }
+    try {
+      const invNumber = z.string().parse(record.invoiceNumber)
+      const invoiceSync =
+        await this.invoiceService.getInvoiceByNumber(invNumber)
+      if (!invoiceSync) {
+        console.warn(
+          `SyncService#processInvoiceVoided | No invoice found for number: ${record.invoiceNumber}`,
+        )
+        return
+      }
 
-          if (!invoiceSync.customer) {
-            console.warn(
-              `SyncService#processInvoiceVoided | No customer found for number: ${record.invoiceNumber}`,
-            )
-            return
-          }
+      if (!invoiceSync.customer) {
+        console.warn(
+          `SyncService#processInvoiceVoided | No customer found for number: ${record.invoiceNumber}`,
+        )
+        return
+      }
 
-          const invoice = {
-            id: record.copilotId,
-            number: record.invoiceNumber,
-            total: record.amount / 100, // assuming amount is in cents
-            clientId: invoiceSync.customer.clientId || '',
-            companyId: invoiceSync.customer.companyId || '',
-          }
+      const invoice = {
+        id: record.copilotId,
+        number: invNumber,
+        total: record.amount ? parseFloat(record.amount) / 100 : 0, // assuming amount is in cents
+        clientId: invoiceSync.customer.clientId || '',
+        companyId: invoiceSync.customer.companyId || '',
+      }
 
-          await this.invoiceService.handleInvoiceDeleted(invoice, qbTokenInfo)
-        } catch (error: unknown) {
-          console.error(
-            `SyncService#processInvoiceDeleted | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
-          )
-        }
-      }),
-    )
+      await this.invoiceService.handleInvoiceDeleted(invoice, qbTokenInfo)
+    } catch (error: unknown) {
+      console.error(
+        `SyncService#processInvoiceDeleted | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
+      )
+    }
   }
 
   private async processInvoiceSync(
-    records: CustomSyncLogRecordType[],
+    record: QBSyncLogSelectSchemaType,
     qbTokenInfo: IntuitAPITokensType,
     eventType: EventType,
   ) {
@@ -181,19 +159,19 @@ export class SyncService extends BaseService {
 
     switch (eventType) {
       case EventType.CREATED:
-        await this.processInvoiceCreate(records, qbTokenInfo)
+        await this.processInvoiceCreate(record, qbTokenInfo)
         break
 
       case EventType.PAID:
-        await this.processInvoicePaid(records, qbTokenInfo)
+        await this.processInvoicePaid(record, qbTokenInfo)
         break
 
       case EventType.VOIDED:
-        await this.processInvoiceVoided(records, qbTokenInfo)
+        await this.processInvoiceVoided(record, qbTokenInfo)
         break
 
       case EventType.DELETED:
-        await this.processInvoiceDeleted(records, qbTokenInfo)
+        await this.processInvoiceDeleted(record, qbTokenInfo)
         break
 
       default:
@@ -206,44 +184,48 @@ export class SyncService extends BaseService {
   }
 
   private async processPaymentSucceededSync(
-    records: CustomSyncLogRecordType[],
+    record: QBSyncLogSelectSchemaType,
     qbTokenInfo: IntuitAPITokensType,
   ) {
     try {
+      if (!record.feeAmount) {
+        console.warn(
+          'Fee amount is not present in the sync log with id: ',
+          record.id,
+        )
+        return
+      }
+
       CustomLogger.info({
         message: 'syncService#processPaymentSucceededSync | records: ',
-        obj: records,
+        obj: record,
       })
 
-      await Promise.all(
-        records.map(async (record) => {
-          const expensePayload = {
-            PaymentType: 'Cash' as const,
-            AccountRef: {
-              value: qbTokenInfo.assetAccountRef,
-            },
-            DocNumber: record.invoiceNumber || '',
-            TxnDate: dayjs(record.createdAt).format('YYYY-MM-DD'), // the date format for due date follows XML Schema standard (YYYY-MM-DD). For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase#the-purchase-object
-            Line: [
-              {
-                DetailType: 'AccountBasedExpenseLineDetail' as const,
-                Amount: record.amount / 100,
-                AccountBasedExpenseLineDetail: {
-                  AccountRef: {
-                    value: qbTokenInfo.expenseAccountRef,
-                  },
-                },
+      const expensePayload = {
+        PaymentType: 'Cash' as const,
+        AccountRef: {
+          value: qbTokenInfo.assetAccountRef,
+        },
+        DocNumber: record.invoiceNumber || '',
+        TxnDate: dayjs(record.createdAt).format('YYYY-MM-DD'), // the date format for due date follows XML Schema standard (YYYY-MM-DD). For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase#the-purchase-object
+        Line: [
+          {
+            DetailType: 'AccountBasedExpenseLineDetail' as const,
+            Amount: parseFloat(record.feeAmount) / 100,
+            AccountBasedExpenseLineDetail: {
+              AccountRef: {
+                value: qbTokenInfo.expenseAccountRef,
               },
-            ],
-          }
-          const paymentService = new PaymentService(this.user)
-          const intuitApi = new IntuitAPI(qbTokenInfo)
-          await paymentService.createExpenseForAbsorbedFees(
-            expensePayload,
-            intuitApi,
-            record.copilotId,
-          )
-        }),
+            },
+          },
+        ],
+      }
+      const paymentService = new PaymentService(this.user)
+      const intuitApi = new IntuitAPI(qbTokenInfo)
+      await paymentService.createExpenseForAbsorbedFees(
+        expensePayload,
+        intuitApi,
+        record.copilotId,
       )
     } catch (error: unknown) {
       console.error('SyncService#processPaymentSucceededSync | Error =', error)
@@ -251,67 +233,48 @@ export class SyncService extends BaseService {
   }
 
   private async processProductCreate(
-    logRecords: CustomSyncLogRecordType[],
+    record: QBSyncLogSelectSchemaType,
     qbTokenInfo: IntuitAPITokensType,
   ) {
     const productService = new ProductService(this.user)
     const copilotApi = new CopilotAPI(this.user.token)
-    const productProcessPromises = []
 
-    for (const record of logRecords) {
-      productProcessPromises.push(
-        bottleneck.schedule(async () => {
-          if (!record.copilotPriceId) return
+    if (!record.copilotPriceId) return
 
-          const priceResponse = await copilotApi.getPrice(record.copilotPriceId)
-          if (!priceResponse) return
+    const priceResponse = await copilotApi.getPrice(record.copilotPriceId)
+    if (!priceResponse) return
 
-          try {
-            await productService.webhookPriceCreated(
-              { data: priceResponse },
-              qbTokenInfo,
-            )
-          } catch (error: unknown) {
-            console.error(
-              `SyncService#processProductCreate | Error for product with ID: ${record.copilotId}. Error: ${error}`,
-            )
-          }
-        }),
+    try {
+      await productService.webhookPriceCreated(
+        { data: priceResponse },
+        qbTokenInfo,
+      )
+    } catch (error: unknown) {
+      console.error(
+        `SyncService#processProductCreate | Error for product with ID: ${record.copilotId}. Error: ${error}`,
       )
     }
-    await Promise.all(productProcessPromises)
   }
 
   private async processProductUpdate(
-    logRecords: CustomSyncLogRecordType[],
+    record: QBSyncLogSelectSchemaType,
     qbTokenInfo: IntuitAPITokensType,
   ) {
     const productService = new ProductService(this.user)
     const copilotApi = new CopilotAPI(this.user.token)
-    const productProcessPromises = []
 
     try {
-      for (const record of logRecords) {
-        productProcessPromises.push(
-          bottleneck.schedule(async () => {
-            const product = await copilotApi.getProduct(record.copilotId)
-            if (!product) return
+      const product = await copilotApi.getProduct(record.copilotId)
+      if (!product) return
 
-            await productService.webhookProductUpdated(
-              { data: product },
-              qbTokenInfo,
-            )
-          }),
-        )
-      }
-      await Promise.all(productProcessPromises)
+      await productService.webhookProductUpdated({ data: product }, qbTokenInfo)
     } catch (error: unknown) {
       console.error('SyncService#processProductUpdate | Error =', error)
     }
   }
 
   private async processProductSync(
-    records: CustomSyncLogRecordType[],
+    record: QBSyncLogSelectSchemaType,
     qbTokenInfo: IntuitAPITokensType,
     eventType: EventType,
   ) {
@@ -319,10 +282,10 @@ export class SyncService extends BaseService {
 
     switch (eventType) {
       case EventType.CREATED:
-        return await this.processProductCreate(records, qbTokenInfo)
+        return await this.processProductCreate(record, qbTokenInfo)
 
       case EventType.UPDATED:
-        return await this.processProductUpdate(records, qbTokenInfo)
+        return await this.processProductUpdate(record, qbTokenInfo)
 
       default:
         console.error(
@@ -333,7 +296,7 @@ export class SyncService extends BaseService {
     }
   }
 
-  async intiateSync(logs: postgres.RowList<CustomSyncLogType[]>) {
+  async intiateSync(logs: QBSyncLogSelectSchemaType[]) {
     console.info('\n###### Initiating re-sync ######')
     const authService = new AuthService(this.user)
     const qbTokenInfo = await authService.getQBPortalConnection(
@@ -348,19 +311,19 @@ export class SyncService extends BaseService {
       switch (log.entityType) {
         case EntityType.INVOICE:
           console.info('Invoice re-sync started')
-          await this.processInvoiceSync(log.records, qbTokenInfo, log.eventType)
+          await this.processInvoiceSync(log, qbTokenInfo, log.eventType)
           break
 
         case EntityType.PAYMENT:
           if (log.eventType === EventType.SUCCEEDED) {
             console.info('Payment re-sync started')
-            await this.processPaymentSucceededSync(log.records, qbTokenInfo)
+            await this.processPaymentSucceededSync(log, qbTokenInfo)
           }
           break
 
         case EntityType.PRODUCT:
           console.info('product re-sync started')
-          await this.processProductSync(log.records, qbTokenInfo, log.eventType)
+          await this.processProductSync(log, qbTokenInfo, log.eventType)
           break
 
         default:
