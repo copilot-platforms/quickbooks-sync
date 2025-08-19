@@ -11,9 +11,8 @@ import {
 } from '@/db/schema/qbSyncLogs'
 import { WhereClause } from '@/type/common'
 import dayjs from 'dayjs'
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { json2csv } from 'json-2-csv'
-import postgres from 'postgres'
 
 export type CustomSyncLogRecordType = {
   copilotId: string
@@ -111,32 +110,31 @@ export class SyncLogService extends BaseService {
     }
   }
 
+  async deleteQBSyncLog(id: string): Promise<void> {
+    await this.db
+      .delete(QBSyncLog)
+      .where(
+        and(
+          eq(QBSyncLog.portalId, this.user.workspaceId),
+          eq(QBSyncLog.id, id),
+        ),
+      )
+  }
+
   /**
-   * Get all failed sync logs grouped by entity type
+   * Get all failed sync logs
    */
   async getFailedSyncLogsByEntityType(): Promise<
-    postgres.RowList<CustomSyncLogType[]>
+    QBSyncLogSelectSchemaType[] | []
   > {
-    const query = sql`SELECT 
-        entity_type as "entityType",
-        event_type as "eventType",
-        json_agg(
-          json_build_object(
-            'copilotId', copilot_id,
-            'copilotPriceId', copilot_price_id,
-            'status', status,
-            'eventType', event_type,
-            'invoiceNumber', invoice_number,
-            'amount', amount,
-            'createdAt', created_at
-          )
-        ) AS records
-      FROM ${QBSyncLog}
-      WHERE ${QBSyncLog.portalId} = ${this.user.workspaceId} 
-      AND ${QBSyncLog.status} = ${LogStatus.FAILED}
-      GROUP BY ${QBSyncLog.entityType}, ${QBSyncLog.eventType}`
-
-    return await this.db.execute(query)
+    return await this.db.query.QBSyncLog.findMany({
+      where: (logs, { eq, and }) =>
+        and(
+          eq(logs.portalId, this.user.workspaceId),
+          eq(logs.status, LogStatus.FAILED),
+        ),
+      orderBy: (logs, { asc }) => [asc(logs.createdAt)],
+    })
   }
 
   async getLatestSyncSuccessLog(): Promise<Pick<

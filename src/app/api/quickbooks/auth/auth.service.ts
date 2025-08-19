@@ -159,6 +159,8 @@ export class AuthService extends BaseService {
         incomeAccountRef: insertPayload.incomeAccountRef,
         expenseAccountRef: insertPayload.expenseAccountRef,
         assetAccountRef: insertPayload.assetAccountRef,
+        serviceItemRef: existingToken?.serviceItemRef || null,
+        clientFeeRef: existingToken?.clientFeeRef || null,
       })
       // manage acc ref from intuit and store in qbPortalConnections table
       if (!insertPayload.incomeAccountRef) {
@@ -198,6 +200,10 @@ export class AuthService extends BaseService {
       after(async () => {
         if (existingToken) {
           console.info('Not initial process. Starting the re-sync process')
+          this.user.qbConnection = {
+            serviceItemRef: existingToken.serviceItemRef,
+            clientFeeRef: existingToken.clientFeeRef,
+          }
           const syncService = new SyncService(this.user)
           await syncService.syncFailedRecords()
         }
@@ -259,6 +265,8 @@ export class AuthService extends BaseService {
       expenseAccountRef,
       assetAccountRef,
       setting,
+      serviceItemRef,
+      clientFeeRef,
     } = portalQBToken
 
     if (!setting)
@@ -276,6 +284,8 @@ export class AuthService extends BaseService {
       incomeAccountRef: '',
       expenseAccountRef: '',
       assetAccountRef: '',
+      serviceItemRef: '',
+      clientFeeRef: '',
     }
 
     // if sync is false but it has been enabled then don't throw error. We have to log in this case
@@ -298,6 +308,8 @@ export class AuthService extends BaseService {
       incomeAccountRef,
       expenseAccountRef,
       assetAccountRef,
+      serviceItemRef,
+      clientFeeRef,
     }
 
     // Refresh token if expired

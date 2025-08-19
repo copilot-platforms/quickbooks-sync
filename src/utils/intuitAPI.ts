@@ -27,6 +27,8 @@ export type IntuitAPITokensType = Pick<
   | 'incomeAccountRef'
   | 'expenseAccountRef'
   | 'assetAccountRef'
+  | 'serviceItemRef'
+  | 'clientFeeRef'
 >
 
 export const IntuitAPIErrorMessage = '#IntuitAPIErrorMessage#'
