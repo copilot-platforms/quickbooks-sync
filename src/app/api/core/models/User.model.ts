@@ -1,10 +1,9 @@
 import { UserRole } from '@/app/api/core/types/user'
 import { Token } from '@/type/common'
 
-type QBConnectionProperties = {
-  accessToken: string
-  serviceItemRef?: string
-  clientFeeRef?: string
+export type QBConnectionProperties = {
+  serviceItemRef: string | null
+  clientFeeRef: string | null
 }
 
 /**

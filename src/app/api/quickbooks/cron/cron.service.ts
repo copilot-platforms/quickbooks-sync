@@ -1,5 +1,5 @@
 import APIError from '@/app/api/core/exceptions/api'
-import User from '@/app/api/core/models/User.model'
+import User, { QBConnectionProperties } from '@/app/api/core/models/User.model'
 import { withRetry } from '@/app/api/core/utils/withRetry'
 import { SyncService } from '@/app/api/quickbooks/sync/sync.service'
 import { copilotAPIKey } from '@/config'
@@ -9,7 +9,10 @@ import { encodePayload } from '@/utils/crypto'
 import CustomLogger from '@/utils/logger'
 
 export default class CronService {
-  private async _scheduleSinglePortal(workspaceId: string) {
+  private async _scheduleSinglePortal(
+    workspaceId: string,
+    qbConnectionTokens: QBConnectionProperties,
+  ) {
     const payload = {
       workspaceId,
     }
@@ -26,6 +29,7 @@ export default class CronService {
     if (!tokenPayload) throw new APIError(500, 'Encoded token is not valid') // this should trigger p-retry and re-run the function
 
     const user = new User(token, tokenPayload)
+    user.qbConnection = qbConnectionTokens
     const syncService = new SyncService(user)
     return await syncService.syncFailedRecords()
   }
@@ -41,7 +45,11 @@ export default class CronService {
     // synchronously done because creating multiple instance of Copilot SDK simultaneously, is causing an issue.
     for (const connection of portalConnections) {
       if (connection.setting?.syncFlag && connection.setting?.isEnabled) {
-        await this.scheduleSinglePortal(connection.portalId)
+        const qbConnectionTokens = {
+          clientFeeRef: connection.clientFeeRef,
+          serviceItemRef: connection.serviceItemRef,
+        }
+        await this.scheduleSinglePortal(connection.portalId, qbConnectionTokens)
       }
     }
   }
