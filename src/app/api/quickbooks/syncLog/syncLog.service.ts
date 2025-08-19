@@ -11,9 +11,8 @@ import {
 } from '@/db/schema/qbSyncLogs'
 import { WhereClause } from '@/type/common'
 import dayjs from 'dayjs'
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { json2csv } from 'json-2-csv'
-import postgres from 'postgres'
 
 export type CustomSyncLogRecordType = {
   copilotId: string

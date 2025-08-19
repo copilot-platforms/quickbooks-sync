@@ -1,20 +1,14 @@
 import { BaseService } from '@/app/api/core/services/base.service'
-import {
-  CustomSyncLogRecordType,
-  CustomSyncLogType,
-  SyncLogService,
-} from '@/app/api/quickbooks/syncLog/syncLog.service'
+import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
 import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { AuthService } from '@/app/api/quickbooks/auth/auth.service'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import { EntityType, EventType } from '@/app/api/core/types/log'
-import postgres from 'postgres'
 import User from '@/app/api/core/models/User.model'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import dayjs from 'dayjs'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
-import { bottleneck } from '@/utils/bottleneck'
 import CustomLogger from '@/utils/logger'
 import { QBSyncLogSelectSchemaType } from '@/db/schema/qbSyncLogs'
 import { z } from 'zod'
