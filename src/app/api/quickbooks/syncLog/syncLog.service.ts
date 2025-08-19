@@ -110,6 +110,17 @@ export class SyncLogService extends BaseService {
     }
   }
 
+  async deleteQBSyncLog(id: string): Promise<void> {
+    await this.db
+      .delete(QBSyncLog)
+      .where(
+        and(
+          eq(QBSyncLog.portalId, this.user.workspaceId),
+          eq(QBSyncLog.id, id),
+        ),
+      )
+  }
+
   /**
    * Get all failed sync logs
    */

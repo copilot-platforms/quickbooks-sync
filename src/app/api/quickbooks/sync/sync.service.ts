@@ -32,7 +32,10 @@ export class SyncService extends BaseService {
     try {
       // get invoice from Copilot API
       const invoice = await copilotApi.getInvoice(record.copilotId)
-      if (!invoice) return
+      if (!invoice) {
+        await this.syncLogService.deleteQBSyncLog(record.id)
+        return
+      }
 
       // start re-sync process
       await this.invoiceService.webhookInvoiceCreated(
@@ -55,7 +58,10 @@ export class SyncService extends BaseService {
     try {
       // get invoice from Copilot API
       const invoice = await copilotApi.getInvoice(record.copilotId)
-      if (!invoice) return
+      if (!invoice) {
+        await this.syncLogService.deleteQBSyncLog(record.id)
+        return
+      }
 
       // start re-sync process
       await this.invoiceService.webhookInvoicePaid(
@@ -81,6 +87,7 @@ export class SyncService extends BaseService {
         console.warn(
           `SyncService#processInvoiceVoided | No invoice found for number: ${record.invoiceNumber}`,
         )
+        await this.syncLogService.deleteQBSyncLog(record.id)
         return
       }
 
@@ -118,6 +125,7 @@ export class SyncService extends BaseService {
         console.warn(
           `SyncService#processInvoiceVoided | No invoice found for number: ${record.invoiceNumber}`,
         )
+        await this.syncLogService.deleteQBSyncLog(record.id)
         return
       }
 
@@ -182,14 +190,6 @@ export class SyncService extends BaseService {
     qbTokenInfo: IntuitAPITokensType,
   ) {
     try {
-      if (!record.feeAmount) {
-        console.warn(
-          'Fee amount is not present in the sync log with id: ',
-          record.id,
-        )
-        return
-      }
-
       CustomLogger.info({
         message: 'syncService#processPaymentSucceededSync | records: ',
         obj: record,
@@ -205,7 +205,7 @@ export class SyncService extends BaseService {
         Line: [
           {
             DetailType: 'AccountBasedExpenseLineDetail' as const,
-            Amount: parseFloat(record.feeAmount) / 100,
+            Amount: parseFloat(z.string().parse(record.feeAmount)) / 100, // fee amount is required for payment/expense creation
             AccountBasedExpenseLineDetail: {
               AccountRef: {
                 value: qbTokenInfo.expenseAccountRef,
@@ -233,10 +233,13 @@ export class SyncService extends BaseService {
     const productService = new ProductService(this.user)
     const copilotApi = new CopilotAPI(this.user.token)
 
-    if (!record.copilotPriceId) return
-
-    const priceResponse = await copilotApi.getPrice(record.copilotPriceId)
-    if (!priceResponse) return
+    const priceResponse = await copilotApi.getPrice(
+      z.string().parse(record.copilotPriceId),
+    )
+    if (!priceResponse) {
+      await this.syncLogService.deleteQBSyncLog(record.id)
+      return
+    }
 
     try {
       await productService.webhookPriceCreated(
@@ -259,7 +262,10 @@ export class SyncService extends BaseService {
 
     try {
       const product = await copilotApi.getProduct(record.copilotId)
-      if (!product) return
+      if (!product) {
+        await this.syncLogService.deleteQBSyncLog(record.id)
+        return
+      }
 
       await productService.webhookProductUpdated({ data: product }, qbTokenInfo)
     } catch (error: unknown) {

@@ -200,6 +200,10 @@ export class AuthService extends BaseService {
       after(async () => {
         if (existingToken) {
           console.info('Not initial process. Starting the re-sync process')
+          this.user.qbConnection = {
+            serviceItemRef: existingToken.serviceItemRef,
+            clientFeeRef: existingToken.clientFeeRef,
+          }
           const syncService = new SyncService(this.user)
           await syncService.syncFailedRecords()
         }
