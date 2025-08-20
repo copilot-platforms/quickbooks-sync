@@ -130,6 +130,45 @@ export class InvoiceService extends BaseService {
     })
   }
 
+  private async handleItemAmount({
+    unitPrice,
+    copilotUnitPrice,
+    priceId,
+    mappingId,
+    productService,
+  }: {
+    unitPrice: string | null
+    copilotUnitPrice: string | null
+    priceId: string
+    mappingId: string
+    productService: ProductService
+  }) {
+    console.log('Checking if QB item unit price is available and not zero.')
+    // if unitPrice (QB unit price) is null, return copilot unit price.
+    let itemAmount =
+      unitPrice && unitPrice !== '0' ? unitPrice : copilotUnitPrice
+
+    // fetch price amount from copilot if copilotUnitPrice is null
+    if (itemAmount && itemAmount !== '0') return itemAmount
+
+    console.info(
+      'Copilot product price not found in mapping table. Fetching from copilot SDK',
+    )
+    const copilotPriceRes = await this.copilot.getPrice(priceId)
+    if (!copilotPriceRes)
+      throw new APIError(httpStatus.NOT_FOUND, 'Price not found')
+    itemAmount = copilotPriceRes.amount.toFixed()
+
+    // update the price amount in our DB
+    const priceUpdatePayload = {
+      copilotUnitPrice: itemAmount,
+    }
+    const conditions = eq(QBProductSync.id, mappingId) as WhereClause
+    await productService.updateQBProduct(priceUpdatePayload, conditions)
+    console.info('Copilot unit price updated in mapping table')
+    return itemAmount
+  }
+
   /**
    * Returns the invoice item reference (QB) for the given product and price
    */
@@ -151,11 +190,16 @@ export class InvoiceService extends BaseService {
       }
       if (mapping.qbItemId) {
         console.info('InvoiceService#getInvoiceItemRef | Product map found')
+        const itemAmount = await this.handleItemAmount({
+          unitPrice: mapping.unitPrice,
+          copilotUnitPrice: mapping.copilotUnitPrice,
+          priceId,
+          mappingId: mapping.id,
+          productService,
+        })
         return {
           ref: { value: mapping.qbItemId },
-          amount: mapping.unitPrice
-            ? parseFloat(mapping.unitPrice) / 100
-            : undefined,
+          amount: parseFloat(itemAmount) / 100,
           productDescription: mapping.description || '',
         }
       }
@@ -222,7 +266,8 @@ export class InvoiceService extends BaseService {
       copilotName: productInfo.name,
       name: qbItem.Name,
       description: productDescription,
-      unitPrice: Number(priceInfo.amount).toFixed(2), // decimal datatype expects string
+      unitPrice: Number(priceInfo.amount).toFixed(), // decimal datatype expects string
+      copilotUnitPrice: Number(priceInfo.amount).toFixed(), // decimal datatype expects string
     }
     await productService.createQBProduct(productMappingPayload)
     const syncLogPayload = {

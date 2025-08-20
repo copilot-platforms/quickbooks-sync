@@ -232,6 +232,7 @@ export class ProductService extends BaseService {
               unitPrice: item.isExcluded
                 ? null
                 : item.qbItem?.numericPrice.toString(),
+              copilotUnitPrice: item.numericPrice.toFixed(),
               isExcluded: item.isExcluded,
             }
             const conditions = and(
