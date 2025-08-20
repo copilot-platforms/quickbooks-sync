@@ -1,0 +1,1 @@
+ALTER TABLE "qb_product_sync" ADD COLUMN "qb_class_ref_id" varchar(100);

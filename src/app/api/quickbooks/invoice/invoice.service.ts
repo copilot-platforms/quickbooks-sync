@@ -56,6 +56,7 @@ type InvoiceItemRefAndDescriptionType = {
   ref: QBNameValueSchemaType
   amount?: number
   productDescription?: string
+  classRef?: QBNameValueSchemaType
 }
 
 export class InvoiceService extends BaseService {
@@ -201,6 +202,11 @@ export class InvoiceService extends BaseService {
           ref: { value: mapping.qbItemId },
           amount: parseFloat(itemAmount) / 100,
           productDescription: mapping.description || '',
+          ...(mapping.qbClassRefId && {
+            // classRef is optional. A mapped product can have classRef if there was manual mapping of QB item and copilot product.
+            // It is not necessary that existing QB item will have a ClassRef.
+            classRef: { value: mapping.qbClassRefId },
+          }),
         }
       }
     }
@@ -329,6 +335,9 @@ export class InvoiceService extends BaseService {
           // Doc reference: https://developer.intuit.com/app/developer/qbo/docs/workflows/manage-sales-tax-for-us-locales#specifying-sales-tax
           value: 'TAX',
         },
+        // classrRef is optional. ClassRef to reference the associated class of the QB item.
+        // Doc reference: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/class
+        ClassRef: itemRef.classRef,
       },
       Description:
         typeof itemRef.productDescription === 'undefined'
