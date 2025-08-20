@@ -13,6 +13,7 @@ export const QBProductSync = table('qb_product_sync', {
   description: t.text(),
   copilotName: t.varchar('copilot_name', { length: 100 }),
   unitPrice: t.decimal('unit_price'),
+  copilotUnitPrice: t.decimal('copilot_unit_price'),
   qbItemId: t.varchar('qb_item_id'),
   qbSyncToken: t.varchar('qb_sync_token', { length: 100 }),
   isExcluded: t.boolean('is_excluded').default(false),

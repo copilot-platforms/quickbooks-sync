@@ -10,7 +10,7 @@ class DBClient {
   public db: PostgresJsDatabase<typeof schema & typeof relation>
 
   private constructor() {
-    this.client = postgres(databaseUrl!)
+    this.client = postgres(databaseUrl!, { prepare: false })
     this.db = drizzle(this.client, {
       schema: { ...schema, ...relation },
       casing: 'snake_case',

@@ -57,6 +57,13 @@
       "when": 1755168503444,
       "tag": "20250814104823_add_service_item_ref",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1755673699719,
+      "tag": "20250820070819_add_copilot_unit_price",
+      "breakpoints": true
     }
   ]
 }
