@@ -8,6 +8,7 @@ import HomeClient from '@/app/(home)/HomeClient'
 import { AppProvider } from '@/app/context/AppContext'
 import { SilentError } from '@/components/template/SilentError'
 import { apiUrl } from '@/config'
+import { getWorkspaceInfo } from '@/db/service/token.service'
 import { z } from 'zod'
 
 export async function getLatestSuccesLog(token: string) {
@@ -72,6 +73,7 @@ export default async function Main({
         portalConnectionStatus={portalConnectionStatus}
         isEnabled={isEnabled}
         lastSyncTimestamp={successLog?.updatedAt || null}
+        workspace={await getWorkspaceInfo(token)}
       >
         <HomeClient />
       </AppProvider>

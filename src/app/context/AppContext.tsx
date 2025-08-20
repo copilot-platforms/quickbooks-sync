@@ -1,6 +1,6 @@
 'use client'
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
-import { Token } from '@/type/common'
+import { Token, WorkspaceResponse } from '@/type/common'
 import { createContext, useContext, useState, ReactNode } from 'react'
 
 type AppContextType = {
@@ -16,6 +16,7 @@ type AppContextType = {
   enableAppIndicator?: boolean // flag to indicate whether to enable the "Enable App" button
   initialInvoiceSettingMapFlag?: boolean // flag to determine the initial invoice setting flag
   initialProductSettingMapFlag?: boolean // flag to determine the initial product setting flag
+  workspace: WorkspaceResponse
 }
 
 const AppContext = createContext<
@@ -38,9 +39,10 @@ export const AppProvider = ({
   enableAppIndicator = false,
   initialInvoiceSettingMapFlag = false,
   initialProductSettingMapFlag = false,
+  workspace,
   children,
 }: AppContextType & { children: ReactNode }) => {
-  const [authParams, setAppParams] = useState<AppContextType>({
+  const [appParams, setAppParams] = useState<AppContextType>({
     token,
     tokenPayload,
     syncFlag,
@@ -53,11 +55,12 @@ export const AppProvider = ({
     enableAppIndicator,
     initialInvoiceSettingMapFlag,
     initialProductSettingMapFlag,
+    workspace,
   })
   return (
     <AppContext.Provider
       value={{
-        ...authParams,
+        ...appParams,
         setAppParams,
       }}
     >
