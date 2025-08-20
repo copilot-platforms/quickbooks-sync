@@ -16,6 +16,7 @@ export const QBProductSync = table('qb_product_sync', {
   copilotUnitPrice: t.decimal('copilot_unit_price'),
   qbItemId: t.varchar('qb_item_id'),
   qbSyncToken: t.varchar('qb_sync_token', { length: 100 }),
+  qbClassRefId: t.varchar('qb_class_ref_id', { length: 100 }),
   isExcluded: t.boolean('is_excluded').default(false),
   ...timestamps,
 })
@@ -83,6 +84,7 @@ const QBItemSchema = z.object({
   syncToken: z.string(),
   numericPrice: z.number(),
   description: z.string(),
+  classRefId: z.string().optional(),
 })
 
 const ProductChangedItemReferenceSchema = z.object({
