@@ -246,11 +246,13 @@ export default class IntuitAPI {
     return qbCustomers.Customer?.[0]
   }
 
-  async _getAnItem(name: string) {
+  async _getAnItem(name?: string, id?: string) {
+    const queryCondition = name ? `Name = '${name}'` : id ? `Id = '${id}'` : ''
+
     CustomLogger.info({
-      message: `IntuitAPI#getAnItem | Item query start for realmId: ${this.tokens.intuitRealmId}. Name: ${name}`,
+      message: `IntuitAPI#getAnItem | Item query start for realmId: ${this.tokens.intuitRealmId}. Condition: ${queryCondition}`,
     })
-    const customerQuery = `select Id, SyncToken from Item where Name = '${name}' maxresults 1`
+    const customerQuery = `select Id, SyncToken, ClassRef from Item where ${queryCondition} maxresults 1`
     const qbItem = await this.customQuery(customerQuery)
 
     if (!qbItem)

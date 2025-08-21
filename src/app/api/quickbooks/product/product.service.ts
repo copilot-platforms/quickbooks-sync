@@ -204,7 +204,6 @@ export class ProductService extends BaseService {
         const formattedPayload = mappingItems.map((item) => {
           return {
             ...item,
-            copilotName: item.name,
             portalId: this.user.workspaceId,
           }
         })
@@ -218,7 +217,7 @@ export class ProductService extends BaseService {
       }
 
       if (changedItemReference.length > 0) {
-        Promise.all(
+        await Promise.all(
           changedItemReference?.map(async (item) => {
             const payload = {
               portalId: this.user.workspaceId,
@@ -278,7 +277,10 @@ export class ProductService extends BaseService {
     const existingProduct = await this.getOne(conditions)
 
     if (existingProduct) {
-      await this.updateQBProduct(payload, conditions)
+      await this.updateQBProduct(
+        { ...payload, updatedAt: dayjs().toDate() },
+        conditions,
+      )
     } else {
       await this.createQBProduct(payload)
     }

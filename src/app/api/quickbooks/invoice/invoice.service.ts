@@ -56,6 +56,7 @@ type InvoiceItemRefAndDescriptionType = {
   ref: QBNameValueSchemaType
   amount?: number
   productDescription?: string
+  classRef?: QBNameValueSchemaType
 }
 
 export class InvoiceService extends BaseService {
@@ -197,10 +198,17 @@ export class InvoiceService extends BaseService {
           mappingId: mapping.id,
           productService,
         })
+
+        const intuitItem = await intuitApi.getAnItem(
+          undefined,
+          mapping.qbItemId,
+        )
         return {
           ref: { value: mapping.qbItemId },
           amount: parseFloat(itemAmount) / 100,
           productDescription: mapping.description || '',
+          // classRef is optional. A classRef to the mapped QB item is checked every time for each item when creating an invoice.
+          classRef: intuitItem?.ClassRef,
         }
       }
     }
@@ -329,6 +337,9 @@ export class InvoiceService extends BaseService {
           // Doc reference: https://developer.intuit.com/app/developer/qbo/docs/workflows/manage-sales-tax-for-us-locales#specifying-sales-tax
           value: 'TAX',
         },
+        // classrRef is optional. ClassRef to reference the associated class of the QB item.
+        // Doc reference: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/class
+        ClassRef: itemRef.classRef,
       },
       Description:
         typeof itemRef.productDescription === 'undefined'

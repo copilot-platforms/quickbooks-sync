@@ -227,6 +227,7 @@ export const useProductMappingSettings = () => {
           productId: products[index].id,
           unitPrice: item.numericPrice?.toFixed() || null,
           copilotUnitPrice: products[index].numericPrice.toFixed(),
+          copilotName: products[index].name,
           qbItemId: item.id || null,
           qbSyncToken: item.syncToken || null,
           isExcluded: item.id && item.syncToken ? false : true,
@@ -331,6 +332,7 @@ export const useProductTableSetting = (
               priceId: product.priceId,
               productId: product.id,
               copilotUnitPrice: product.amount.toFixed(),
+              copilotName: product.name,
             }
           },
         )
@@ -356,6 +358,7 @@ export const useProductTableSetting = (
                 qbItemId: mappedItem.qbItemId,
                 qbSyncToken: mappedItem.qbSyncToken,
                 copilotUnitPrice: product.amount.toFixed(),
+                copilotName: product.name,
                 isExcluded: false,
               }
             }
@@ -364,6 +367,7 @@ export const useProductTableSetting = (
               priceId: product.priceId,
               productId: product.id,
               copilotUnitPrice: product.amount.toFixed(),
+              copilotName: product.name,
             }
           },
         )
