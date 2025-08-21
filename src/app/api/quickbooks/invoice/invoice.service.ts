@@ -203,6 +203,8 @@ export class InvoiceService extends BaseService {
           undefined,
           mapping.qbItemId,
         )
+        if (!intuitItem) return { ref: InvoiceService.oneOffItem } // if item is not present in Intuit, return one-off item
+
         return {
           ref: { value: mapping.qbItemId },
           amount: parseFloat(itemAmount) / 100,

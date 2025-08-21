@@ -257,7 +257,7 @@ export class ProductService extends BaseService {
     const parsedInsertPayload = QBProductUpdateSchema.parse(payload)
 
     const query = this.db
-      .update(QBProductSync)
+      .update({ ...QBProductSync, updatedAt: dayjs().toDate() })
       .set(parsedInsertPayload)
       .where(conditions)
 
@@ -277,10 +277,7 @@ export class ProductService extends BaseService {
     const existingProduct = await this.getOne(conditions)
 
     if (existingProduct) {
-      await this.updateQBProduct(
-        { ...payload, updatedAt: dayjs().toDate() },
-        conditions,
-      )
+      await this.updateQBProduct(payload, conditions)
     } else {
       await this.createQBProduct(payload)
     }
