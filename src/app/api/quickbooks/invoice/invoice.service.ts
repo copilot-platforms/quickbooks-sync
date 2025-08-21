@@ -198,15 +198,19 @@ export class InvoiceService extends BaseService {
           mappingId: mapping.id,
           productService,
         })
+
+        const intuitItem = await intuitApi.getAnItem(
+          undefined,
+          mapping.qbItemId,
+        )
+        if (!intuitItem) return { ref: InvoiceService.oneOffItem } // if item is not present in Intuit, return one-off item
+
         return {
           ref: { value: mapping.qbItemId },
           amount: parseFloat(itemAmount) / 100,
           productDescription: mapping.description || '',
-          ...(mapping.qbClassRefId && {
-            // classRef is optional. A mapped product can have classRef if there was manual mapping of QB item and copilot product.
-            // It is not necessary that existing QB item will have a ClassRef.
-            classRef: { value: mapping.qbClassRefId },
-          }),
+          // classRef is optional. A classRef to the mapped QB item is checked every time for each item when creating an invoice.
+          classRef: intuitItem?.ClassRef,
         }
       }
     }
