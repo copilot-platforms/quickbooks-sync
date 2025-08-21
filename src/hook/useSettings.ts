@@ -20,7 +20,6 @@ import {
   SettingType,
 } from '@/type/common'
 import { postMessage as postMessageBridge } from '@/bridge/header'
-import { QBNameValueSchemaType } from '@/type/dto/intuitAPI.dto'
 
 export type QuickbooksItemType = {
   Name: string
@@ -28,7 +27,6 @@ export type QuickbooksItemType = {
   UnitPrice: number
   Id: string
   SyncToken: string
-  ClassRef?: QBNameValueSchemaType
 }
 
 export type ProductDataType = {
@@ -47,7 +45,6 @@ export type QBItemDataType = {
   syncToken: string
   id: string
   numericPrice: number
-  classRefId?: string
 }
 
 export const useProductMappingSettings = () => {
@@ -230,10 +227,8 @@ export const useProductMappingSettings = () => {
           productId: products[index].id,
           unitPrice: item.numericPrice?.toFixed() || null,
           copilotUnitPrice: products[index].numericPrice.toFixed(),
-          copilotName: products[index].name,
           qbItemId: item.id || null,
           qbSyncToken: item.syncToken || null,
-          qbClassRefId: item.classRefId,
           isExcluded: item.id && item.syncToken ? false : true,
         }
       }
@@ -336,7 +331,6 @@ export const useProductTableSetting = (
               priceId: product.priceId,
               productId: product.id,
               copilotUnitPrice: product.amount.toFixed(),
-              copilotName: product.name,
             }
           },
         )
@@ -362,8 +356,6 @@ export const useProductTableSetting = (
                 qbItemId: mappedItem.qbItemId,
                 qbSyncToken: mappedItem.qbSyncToken,
                 copilotUnitPrice: product.amount.toFixed(),
-                copilotName: product.name,
-                qbClassRefId: mappedItem.qbClassRefId,
                 isExcluded: false,
               }
             }
@@ -372,7 +364,6 @@ export const useProductTableSetting = (
               priceId: product.priceId,
               productId: product.id,
               copilotUnitPrice: product.amount.toFixed(),
-              copilotName: product.name,
             }
           },
         )
@@ -429,7 +420,6 @@ export const useProductTableSetting = (
             price: price,
             numericPrice: product.UnitPrice * 100,
             syncToken: product.SyncToken,
-            classRefId: product.ClassRef?.value,
           }
         })
       : undefined

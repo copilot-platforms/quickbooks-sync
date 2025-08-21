@@ -1,2 +1,2 @@
-export const MAX_PRODUCT_LIST_LIMIT = 1_000
+export const MAX_PRODUCT_LIST_LIMIT = 100
 export const MAX_INVOICE_LIST_LIMIT = 10_000
