@@ -1,6 +1,8 @@
 import { db } from '@/db'
 import { PortalConnectionWithSettingType } from '@/db/schema/qbPortalConnections'
 import { QBSettingsSelectSchemaType } from '@/db/schema/qbSettings'
+import { WorkspaceResponse } from '@/type/common'
+import { CopilotAPI } from '@/utils/copilotAPI'
 import { and, isNull } from 'drizzle-orm'
 
 export const getPortalConnection = async (
@@ -42,4 +44,10 @@ export const getPortalSettings = async (
   })
 
   return portalSync || null
+}
+
+export const getWorkspaceInfo = async (
+  token: string,
+): Promise<WorkspaceResponse> => {
+  return await new CopilotAPI(token).getWorkspace()
 }

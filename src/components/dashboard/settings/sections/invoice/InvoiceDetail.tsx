@@ -1,4 +1,6 @@
+import { useApp } from '@/app/context/AppContext'
 import { InvoiceSettingType } from '@/type/common'
+import { getWorkspaceLabel } from '@/utils/workspace'
 import { Checkbox, Spinner } from 'copilot-design-system'
 
 type InvoiceDetailProps = {
@@ -12,6 +14,8 @@ export default function InvoiceDetail({
   changeSettings,
   isLoading,
 }: InvoiceDetailProps) {
+  const { workspace } = useApp()
+
   if (isLoading) {
     return <Spinner size={5} />
   }
@@ -31,8 +35,8 @@ export default function InvoiceDetail({
         </div>
         <div className="mb-6">
           <Checkbox
-            label="Use company name when syncing invoices billed to companies"
-            description="Create QuickBooks customers using the company name rather than individual client names when invoices are billed to organizations."
+            label={`Use ${getWorkspaceLabel(workspace).groupTerm} name when syncing invoices billed to ${getWorkspaceLabel(workspace).groupTermPlural}`}
+            description={`Create QuickBooks customers using the ${getWorkspaceLabel(workspace).groupTerm} name rather than individual ${getWorkspaceLabel(workspace).individualTerm} names when invoices are billed to ${getWorkspaceLabel(workspace).groupTermPlural}.`}
             checked={settingState.useCompanyNameFlag}
             onChange={() =>
               changeSettings(
