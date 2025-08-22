@@ -64,7 +64,7 @@ export const WorkspaceResponseSchema = z.object({
   metaTitle: z.string().optional(),
   metaDescription: z.string().optional(),
   portalUrl: z.string().optional(),
-  label: z
+  labels: z
     .object({
       individualTerm: z.string().optional(),
       individualTermPlural: z.string().optional(),
