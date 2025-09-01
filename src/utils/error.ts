@@ -20,7 +20,7 @@ export const getMessageFromError = (error: unknown): string => {
     return error.body.message || message
   } else if (error instanceof APIError) {
     let errorMessage = error.message || message
-    if (error.message === IntuitAPIErrorMessage) {
+    if (error.message.includes(IntuitAPIErrorMessage)) {
       errorMessage = (error.errors?.[0] as IntuitErrorType).Detail
     }
     return errorMessage
