@@ -73,8 +73,7 @@ export const withErrorHandler = (handler: RequestHandler): RequestHandler => {
 
       // if error is from Copilot or Intuit API (API error), then send the error message to Sentry
       if (
-        (error instanceof APIError &&
-          error.message.includes(IntuitAPIErrorMessage)) ||
+        error instanceof APIError ||
         error instanceof CopilotApiError ||
         isAxiosError(error)
       ) {
