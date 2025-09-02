@@ -248,8 +248,7 @@ export class AuthService extends BaseService {
   ): Promise<IntuitAPITokensType> {
     const portalQBToken = await getPortalConnection(portalId)
     if (!portalQBToken) {
-      throw new APIError(
-        httpStatus.NOT_FOUND,
+      throw new Error(
         `Synced connection not found for portal with ID: ${portalId}`,
       )
     }
@@ -294,10 +293,7 @@ export class AuthService extends BaseService {
     }
 
     if (!isEnabled && !manualSyncEnable) {
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        `Sync is not enabled for portal with ID: ${portalId}`,
-      )
+      throw Error(`Sync is not enabled for portal with ID: ${portalId}`)
     }
 
     const expiryTime = dayjs(tokenSetTime).add(expiresIn, 'seconds')

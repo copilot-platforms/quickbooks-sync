@@ -157,7 +157,10 @@ export class InvoiceService extends BaseService {
     )
     const copilotPriceRes = await this.copilot.getPrice(priceId)
     if (!copilotPriceRes)
-      throw new APIError(httpStatus.NOT_FOUND, 'Price not found')
+      throw new APIError(
+        httpStatus.NOT_FOUND,
+        'Price not found. Id: ' + priceId,
+      )
     itemAmount = copilotPriceRes.amount.toFixed()
 
     // update the price amount in our DB
@@ -232,10 +235,13 @@ export class InvoiceService extends BaseService {
     const productInfo = await this.copilot.getProduct(productId)
     const priceInfo = await this.copilot.getPrice(priceId)
     if (!productInfo) {
-      throw new APIError(httpStatus.NOT_FOUND, 'Product not found')
+      throw new APIError(
+        httpStatus.NOT_FOUND,
+        'Product not found. Id: ' + productId,
+      )
     }
     if (!priceInfo) {
-      throw new APIError(httpStatus.NOT_FOUND, 'Price not found')
+      throw new APIError(httpStatus.NOT_FOUND, 'Price not found. Id:' + priceId)
     }
 
     const productDescription = convert(productInfo.description)
@@ -809,7 +815,7 @@ export class InvoiceService extends BaseService {
       console.error('InvoiceService#webhookInvoicePaid | CustomerId not found')
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'CustomerId not found',
+        'CustomerId not found. Invoice number: ' + payload.data.number,
       )
     }
     const customerService = new CustomerService(this.user)
@@ -823,7 +829,7 @@ export class InvoiceService extends BaseService {
       )
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'Customer mapping not found',
+        'Customer mapping not found. Invoice number: ' + payload.data.number,
       )
     }
 
@@ -837,10 +843,7 @@ export class InvoiceService extends BaseService {
       console.error(
         'InvoiceService#webhookInvoicePaid | Invoice sync log not found',
       )
-      throw new APIError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        'Invoice sync log not found',
-      )
+      throw Error('Invoice sync log not found')
     }
 
     const invoiceAmount = Number(z.string().parse(invoiceLog.amount)) / 100
@@ -933,10 +936,7 @@ export class InvoiceService extends BaseService {
       console.error(
         'InvoiceService#webhookInvoicePaid | Invoice sync log not found',
       )
-      throw new APIError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        'Invoice sync log not found',
-      )
+      throw Error('Invoice sync log not found')
     }
 
     // only implement void if invoice has open status
@@ -954,7 +954,8 @@ export class InvoiceService extends BaseService {
       )
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'Could not parse invoice void payload',
+        'Could not parse invoice void payload. Invoice number: ' +
+          payload.number,
       )
     }
 
@@ -1022,10 +1023,7 @@ export class InvoiceService extends BaseService {
       console.error(
         'InvoiceService#webhookInvoicePaid | Invoice sync log not found',
       )
-      throw new APIError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        'Invoice sync log not found',
-      )
+      throw new Error('Invoice sync log not found')
     }
 
     const intuitApi = new IntuitAPI(qbTokenInfo)
@@ -1041,7 +1039,8 @@ export class InvoiceService extends BaseService {
       )
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'Could not parse invoice delete payload',
+        'Could not parse invoice delete payload. Invoice number: ' +
+          payload.number,
       )
     }
 
