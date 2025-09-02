@@ -8,6 +8,8 @@ import httpStatus from 'http-status'
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError, ZodFormattedError } from 'zod'
 import { isAxiosError } from '@/app/api/core/exceptions/custom'
+import * as Sentry from '@sentry/nextjs'
+import { IntuitAPIErrorMessage } from '@/utils/intuitAPI'
 
 type RequestHandler = (req: NextRequest, params: any) => Promise<NextResponse>
 
@@ -67,6 +69,15 @@ export const withErrorHandler = (handler: RequestHandler): RequestHandler => {
       } else if (isAxiosError(error)) {
         message = error.response.data.error
         status = error.response.status
+      }
+
+      // if error is from Copilot or Intuit API (API error), then send the error message to Sentry
+      if (
+        error instanceof APIError ||
+        error instanceof CopilotApiError ||
+        isAxiosError(error)
+      ) {
+        Sentry.captureException(error)
       }
 
       return NextResponse.json({ error: message, errors }, { status })
