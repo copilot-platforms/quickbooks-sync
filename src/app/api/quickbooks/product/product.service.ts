@@ -485,7 +485,10 @@ export class ProductService extends BaseService {
       const copilotProduct = await copilot.getProduct(priceResource.productId)
 
       if (!copilotProduct) {
-        throw new APIError(httpStatus.NOT_FOUND, 'Product not found')
+        throw new APIError(
+          httpStatus.NOT_FOUND,
+          'Product not found. Id: ' + priceResource.productId,
+        )
       }
 
       const qbItemName = replaceSpecialCharsForQB(
