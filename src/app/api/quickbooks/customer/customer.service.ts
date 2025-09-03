@@ -166,7 +166,7 @@ export class CustomerService extends BaseService {
         )
         throw new APIError(
           httpStatus.NOT_FOUND,
-          'Could not find client or company',
+          'Could not find client and company',
         )
       }
 
@@ -189,7 +189,10 @@ export class CustomerService extends BaseService {
         })
 
         if (!clients?.data || clients.data.length === 0) {
-          throw new APIError(httpStatus.NOT_FOUND, 'No clients found')
+          throw new APIError(
+            httpStatus.NOT_FOUND,
+            `No clients found for company with Id: ${company.id}`,
+          )
         }
         client = getLatestActiveClient(clients.data)
         clientCompany = {

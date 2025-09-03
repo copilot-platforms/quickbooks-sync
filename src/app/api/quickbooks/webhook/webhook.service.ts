@@ -376,7 +376,10 @@ export class WebhookService extends BaseService {
           parsedPaymentSucceedResource.data.invoiceId,
         )
         if (!invoice)
-          throw new APIError(httpStatus.NOT_FOUND, 'Invoice not found')
+          throw new APIError(
+            httpStatus.NOT_FOUND,
+            `Invoice not found for invoice id: ${parsedPaymentSucceedResource.data.invoiceId}`,
+          )
         validateAccessToken(qbTokenInfo)
         // only track if the fee amount is paid by platform
         const paymentService = new PaymentService(this.user)
