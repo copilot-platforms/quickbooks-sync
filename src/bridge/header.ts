@@ -66,8 +66,6 @@ export const postMessage = (payload: object) => {
     DASHBOARD_DOMAIN.forEach((domain) => {
       window.parent.postMessage(payload, ensureHttps(domain))
     })
-  } else {
-    window.parent.postMessage(payload, ensureHttps(DASHBOARD_DOMAIN))
   }
 }
 
