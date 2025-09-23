@@ -85,7 +85,7 @@ export default function ProductMappingTable({
           <thead>
             <tr className="border-b border-gray-200">
               <th className="pt-5 pr-3 pl-4 pb-2 text-[11px] uppercase font-normal tracking-[1px] leading-3 w-[46.5%] lg:w-[372px]">
-                Assembly PRODUCTS
+                ASSEMBLY PRODUCTS
               </th>
 
               <th className="pt-4 px-5 pb-2 border-l border-gray-200 w-[7%] lg:w-[56px] text-center">
