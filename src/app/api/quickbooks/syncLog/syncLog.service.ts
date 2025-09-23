@@ -182,7 +182,7 @@ export class SyncLogService extends BaseService {
         event_type: log.eventType,
         status: log.status,
         entity_type: log.entityType,
-        copilot_id: log.copilotId,
+        assembly_id: log.copilotId,
         quickbooks_id: log.quickbooksId,
         invoice_number: log.invoiceNumber,
         customer_name: log.customerName,

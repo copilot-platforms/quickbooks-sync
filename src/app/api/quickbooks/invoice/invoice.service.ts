@@ -358,17 +358,17 @@ export class InvoiceService extends BaseService {
 
   async manageClientFeeRef(): Promise<string> {
     const intuitService = InvoiceService.intuitApiService
-    const productName = 'Copilot Fees paid by Client'
+    const productName = 'Assembly Fees paid by Client'
     const tokenService = new TokenService(this.user)
 
     const existingProduct = await intuitService.getAnItem(productName)
     let clientFeeRef
     if (existingProduct) {
-      console.info("Item with name 'Copilot fee paid by Client' found in QB")
+      console.info("Item with name 'Assembly fee paid by Client' found in QB")
       clientFeeRef = existingProduct.Id
     } else {
       // create client fee as an item in QB
-      console.info("Create 'Copilot fee paid by Client' as an item in QB")
+      console.info("Create 'Assembly fee paid by Client' as an item in QB")
       const productService = new ProductService(this.user)
       const qbItem = await productService.createItemInQB(
         {
@@ -388,7 +388,7 @@ export class InvoiceService extends BaseService {
       updatedAt: dayjs().toDate(),
     }
 
-    console.info("Store the 'Copilot fee paid by Client' item ref in DB")
+    console.info("Store the 'Assembly fee paid by Client' item ref in DB")
     await tokenService.updateQBPortalConnection(
       updatedPayload,
       eq(QBPortalConnection.portalId, this.user.workspaceId),
@@ -428,7 +428,7 @@ export class InvoiceService extends BaseService {
       updatedAt: dayjs().toDate(),
     }
 
-    console.info("Store the 'Copilot fee paid by Client' item ref in DB")
+    console.info("Store the 'Assembly fee paid by Client' item ref in DB")
     await tokenService.updateQBPortalConnection(
       updatedPayload,
       eq(QBPortalConnection.portalId, this.user.workspaceId),

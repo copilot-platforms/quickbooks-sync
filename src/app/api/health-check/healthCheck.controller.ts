@@ -13,7 +13,7 @@ export const healthCheck = async () => {
   }
 
   return NextResponse.json({
-    message: 'Copilot QuickBooks Sync API is rolling 🔥',
+    message: 'Assembly QuickBooks Sync API is rolling 🔥',
     dbConnection,
   })
 }
