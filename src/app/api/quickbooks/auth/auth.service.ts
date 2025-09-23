@@ -56,7 +56,7 @@ export class AuthService extends BaseService {
   }
 
   async manageExpenseAccountRef(intuitApi: IntuitAPI) {
-    const accName = 'Copilot Processing Fees'
+    const accName = 'Assembly Processing Fees'
     const existingAccount = await intuitApi.getAnAccountByName(accName)
     if (existingAccount) {
       return existingAccount.Id
@@ -75,7 +75,7 @@ export class AuthService extends BaseService {
   }
 
   async manageAssetAccountRef(intuitApi: IntuitAPI) {
-    const accName = 'Copilot General Asset'
+    const accName = 'Assembly General Asset'
     const existingAccount = await intuitApi.getAnAccountByName(accName)
     if (existingAccount) {
       return existingAccount.Id
