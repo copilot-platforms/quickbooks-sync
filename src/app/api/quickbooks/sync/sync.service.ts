@@ -194,6 +194,8 @@ export class SyncService extends BaseService {
         message: 'syncService#processPaymentSucceededSync | records: ',
         obj: record,
       })
+      const paymentService = new PaymentService(this.user)
+      qbTokenInfo = await paymentService.checkIfAccountsExist(qbTokenInfo)
 
       const expensePayload = {
         PaymentType: 'Cash' as const,
@@ -214,7 +216,6 @@ export class SyncService extends BaseService {
           },
         ],
       }
-      const paymentService = new PaymentService(this.user)
       const intuitApi = new IntuitAPI(qbTokenInfo)
       await paymentService.createExpenseForAbsorbedFees(
         expensePayload,

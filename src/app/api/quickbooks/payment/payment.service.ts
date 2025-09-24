@@ -2,6 +2,7 @@ import User from '@/app/api/core/models/User.model'
 import { BaseService } from '@/app/api/core/services/base.service'
 import { SyncableEntity } from '@/app/api/core/types/invoice'
 import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
+import { AuthService } from '@/app/api/quickbooks/auth/auth.service'
 import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
 import {
@@ -172,6 +173,8 @@ export class PaymentService extends BaseService {
     invoice: InvoiceResponse | undefined,
   ): Promise<void> {
     const paymentResource = parsedPaymentSucceedResource.data
+    qbTokenInfo = await this.checkIfAccountsExist(qbTokenInfo)
+
     const payload = {
       PaymentType: 'Cash' as const,
       AccountRef: {
@@ -227,5 +230,23 @@ export class PaymentService extends BaseService {
       invoiceNumber: syncedInvoice.invoiceNumber,
       ...opts,
     })
+  }
+
+  async checkIfAccountsExist(qbTokenInfo: IntuitAPITokensType) {
+    // if no account ref found in sync table, create new accounts in QB and use their refs
+    if (!qbTokenInfo.expenseAccountRef) {
+      const authService = new AuthService(this.user)
+      qbTokenInfo.expenseAccountRef = await authService.manageExpenseAccountRef(
+        new IntuitAPI(qbTokenInfo),
+      )
+    }
+
+    if (!qbTokenInfo.assetAccountRef) {
+      const authService = new AuthService(this.user)
+      qbTokenInfo.assetAccountRef = await authService.manageAssetAccountRef(
+        new IntuitAPI(qbTokenInfo),
+      )
+    }
+    return qbTokenInfo
   }
 }
