@@ -400,7 +400,7 @@ export class WebhookService extends BaseService {
               2,
             ),
           remark: 'Absorbed fees',
-          qbItemName: 'Copilot Fees',
+          qbItemName: 'Assembly Fees',
           errorMessage: getMessageFromError(error),
         })
         throw error

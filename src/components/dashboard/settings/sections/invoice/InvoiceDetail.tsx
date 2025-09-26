@@ -26,7 +26,7 @@ export default function InvoiceDetail({
         <div className="mb-5">
           <Checkbox
             label="Add absorbed fees to an Expense Account in QuickBooks"
-            description="Record Copilot processing fees as expenses in the 'Copilot Processing Fees' expense account in QuickBooks."
+            description="Record Assembly processing fees as expenses in the 'Assembly Processing Fees' expense account in QuickBooks."
             checked={settingState.absorbedFeeFlag}
             onChange={() =>
               changeSettings('absorbedFeeFlag', !settingState.absorbedFeeFlag)
