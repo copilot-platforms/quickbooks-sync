@@ -1,0 +1,1 @@
+ALTER TABLE "qb_sync_logs" ALTER COLUMN "error_message" SET DATA TYPE text;
