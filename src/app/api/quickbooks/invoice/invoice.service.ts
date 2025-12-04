@@ -541,6 +541,9 @@ export class InvoiceService extends BaseService {
 
       // 3. if not found, create a new client in the QB
       if (!customer) {
+        console.info(
+          `InvoiceService#WebhookInvoiceCreated | Customer named ${recipientInfo.displayName} not found in QB. Creating new customer...`,
+        )
         // Create a new customer in QB
         let customerPayload: QBCustomerCreatePayloadType = {
           DisplayName: replaceSpecialCharsForQB(recipientInfo.displayName),
@@ -562,7 +565,12 @@ export class InvoiceService extends BaseService {
         const customerRes =
           await InvoiceService.intuitApiService.createCustomer(customerPayload)
         customer = customerRes.Customer
+
+        console.info(
+          `InvoiceService#WebhookInvoiceCreated | Customer created in QB with ID: ${customer.ID}.`,
+        )
       }
+
       // create map for customer into mapping table
       const customerSyncPayload = {
         portalId: this.user.workspaceId,
@@ -583,6 +591,7 @@ export class InvoiceService extends BaseService {
         await customerService.createQBCustomer(customerSyncPayload)
       existingCustomerMapId = customerSync.id
     } else {
+      console.info('InvoiceService#webhookInvoiceCreated. Customer exists.')
       // update the customer in qb
       const sparseUpdatePayload: Omit<
         QBCustomerSparseUpdatePayloadType,
