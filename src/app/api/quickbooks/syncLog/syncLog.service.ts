@@ -11,7 +11,7 @@ import {
 } from '@/db/schema/qbSyncLogs'
 import { WhereClause } from '@/type/common'
 import dayjs from 'dayjs'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { json2csv } from 'json-2-csv'
 
 export type CustomSyncLogRecordType = {
@@ -132,6 +132,7 @@ export class SyncLogService extends BaseService {
         and(
           eq(logs.portalId, this.user.workspaceId),
           eq(logs.status, LogStatus.FAILED),
+          isNull(logs.deletedAt),
         ),
       orderBy: (logs, { asc }) => [asc(logs.createdAt)],
     })
