@@ -6,8 +6,6 @@ import * as t from 'drizzle-orm/pg-core'
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
 import { z } from 'zod'
 
-const { deletedAt, ...newTimestamps } = timestamps
-
 // Drizzle note: need to export these enums for drizzle-zod to generate enum types
 export const EntityTypeEnum = t.pgEnum('entity_types', enumToPgEnum(EntityType))
 export const StatusEnum = t.pgEnum('log_statuses', enumToPgEnum(LogStatus))
@@ -36,7 +34,7 @@ export const QBSyncLog = table('qb_sync_logs', {
   qbItemName: t.varchar('qb_item_name', { length: 100 }),
   copilotPriceId: t.varchar('copilot_price_id', { length: 100 }),
   errorMessage: t.text('error_message'),
-  ...newTimestamps,
+  ...timestamps,
 })
 
 export const QBSyncLogCreateSchema = createInsertSchema(QBSyncLog)
