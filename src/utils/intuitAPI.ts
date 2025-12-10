@@ -221,11 +221,16 @@ export default class IntuitAPI {
     return qbIncomeAccountRefInfo.Account?.[0]
   }
 
-  async _getACustomer(displayName: string) {
+  async _getACustomer(displayName?: string, id?: string) {
+    const queryCondition = displayName
+      ? `DisplayName = '${displayName}'`
+      : id
+        ? `Id = '${id}'`
+        : ''
     CustomLogger.info({
-      message: `IntuitAPI#getACustomer | Customer query start for realmId: ${this.tokens.intuitRealmId}. Name: ${displayName}`,
+      message: `IntuitAPI#getACustomer | Customer query start for realmId: ${this.tokens.intuitRealmId}. Name: ${displayName}, Id: ${id}`,
     })
-    const customerQuery = `SELECT Id, SyncToken FROM Customer WHERE DisplayName = '${displayName}' AND Active = true`
+    const customerQuery = `SELECT Id, SyncToken FROM Customer WHERE ${queryCondition} AND Active = true`
     const qbCustomers = await this.customQuery(customerQuery)
 
     if (!qbCustomers)
