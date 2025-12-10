@@ -12,7 +12,8 @@ import {
 } from '@/db/schema/qbCustomers'
 import { CompanyResponse, WhereClause } from '@/type/common'
 import { CopilotAPI } from '@/utils/copilotAPI'
-import { and, isNull } from 'drizzle-orm'
+import IntuitAPI from '@/utils/intuitAPI'
+import { and, eq, isNull } from 'drizzle-orm'
 import httpStatus from 'http-status'
 
 type ClientCompanyType = {
@@ -230,5 +231,33 @@ export class CustomerService extends BaseService {
       },
       companyInfo: company,
     }
+  }
+
+  async updateCustomerSyncToken(
+    mapId: string,
+    qbCustomerId: string,
+    intuitApi: IntuitAPI,
+  ) {
+    console.info(
+      'CustomerService#updateCustomerSyncToken. Updating sync token ...',
+    )
+
+    // 1. get customer by ID
+    const customer = await intuitApi.getACustomer(undefined, qbCustomerId)
+
+    // 2. update sync token in customer sync table
+    await this.updateQBCustomer(
+      {
+        qbSyncToken: customer.SyncToken,
+      },
+      and(
+        eq(QBCustomers.id, mapId),
+        eq(QBCustomers.portalId, this.user.workspaceId),
+      ) as WhereClause,
+    )
+
+    console.info(
+      'CustomerService#updateCustomerSyncToken. Sync token updated ...',
+    )
   }
 }

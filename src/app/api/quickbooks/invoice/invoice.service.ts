@@ -194,6 +194,10 @@ export class InvoiceService extends BaseService {
       }
       if (mapping.qbItemId) {
         console.info('InvoiceService#getInvoiceItemRef | Product map found')
+
+        // update sync token in product sync table
+        await productService.updateProductSyncToken(mapping.qbItemId, intuitApi)
+
         const itemAmount = await this.handleItemAmount({
           unitPrice: mapping.unitPrice,
           copilotUnitPrice: mapping.copilotUnitPrice,
@@ -592,6 +596,14 @@ export class InvoiceService extends BaseService {
       existingCustomerMapId = customerSync.id
     } else {
       console.info('InvoiceService#webhookInvoiceCreated. Customer exists.')
+
+      // update the customer sync token
+      await customerService.updateCustomerSyncToken(
+        existingCustomer.id,
+        existingCustomer.qbCustomerId,
+        InvoiceService.intuitApiService,
+      )
+
       // update the customer in qb
       const sparseUpdatePayload: Omit<
         QBCustomerSparseUpdatePayloadType,

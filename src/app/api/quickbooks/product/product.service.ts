@@ -611,4 +611,28 @@ export class ProductService extends BaseService {
       and(...conditions),
     )
   }
+
+  async updateProductSyncToken(qbItemId: string, intuitApi: IntuitAPI) {
+    console.info(
+      'ProductService#updateProductSyncToken. Updating sync token ...',
+    )
+
+    // 1. get item by ID
+    const item = await intuitApi.getAnItem(undefined, qbItemId)
+
+    // 2. update sync token in item sync table
+    await this.updateQBProduct(
+      {
+        qbSyncToken: item.SyncToken,
+      },
+      and(
+        eq(QBProductSync.qbItemId, qbItemId),
+        eq(QBProductSync.portalId, this.user.workspaceId),
+      ) as WhereClause,
+    )
+
+    console.info(
+      'ProductService#updateProductSyncToken. Sync token updated ...',
+    )
+  }
 }
