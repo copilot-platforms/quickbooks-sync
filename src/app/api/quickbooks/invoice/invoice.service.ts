@@ -536,7 +536,7 @@ export class InvoiceService extends BaseService {
     if (!existingCustomer) {
       // 2.1. search client in qb using client's given name and family name
       customer = await InvoiceService.intuitApiService.getACustomer(
-        recipientInfo.displayName,
+        replaceSpecialCharsForQB(recipientInfo.displayName),
       )
 
       // 3. if not found, create a new client in the QB
