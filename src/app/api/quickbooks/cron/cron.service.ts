@@ -1,12 +1,17 @@
 import APIError from '@/app/api/core/exceptions/api'
 import User, { QBConnectionProperties } from '@/app/api/core/models/User.model'
+import { LogStatus } from '@/app/api/core/types/log'
 import { withRetry } from '@/app/api/core/utils/withRetry'
 import { SyncService } from '@/app/api/quickbooks/sync/sync.service'
 import { copilotAPIKey } from '@/config'
+import { db } from '@/db'
+import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import { getAllPortalConnections } from '@/db/service/token.service'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import { encodePayload } from '@/utils/crypto'
 import CustomLogger from '@/utils/logger'
+import dayjs from 'dayjs'
+import { and, eq, lt } from 'drizzle-orm'
 
 export default class CronService {
   private async _scheduleSinglePortal(
@@ -41,6 +46,7 @@ export default class CronService {
       console.info('No portal connections found')
       return
     }
+    await this.softDeleteOldFailedLogs()
 
     // synchronously done because creating multiple instance of Copilot SDK simultaneously, is causing an issue.
     for (const connection of portalConnections) {
@@ -52,6 +58,27 @@ export default class CronService {
         await this.scheduleSinglePortal(connection.portalId, qbConnectionTokens)
       }
     }
+  }
+
+  private async softDeleteOldFailedLogs() {
+    console.info(
+      'CronService#softDeleteOldFailedLogs. Implementing soft delete for older failed logs ...',
+    )
+
+    // soft delete records older than a month
+    const dateThreshold = dayjs().subtract(1, 'month').toDate()
+
+    await db
+      .update(QBSyncLog)
+      .set({
+        deletedAt: new Date(),
+      })
+      .where(
+        and(
+          lt(QBSyncLog.createdAt, dateThreshold),
+          eq(QBSyncLog.status, LogStatus.FAILED),
+        ),
+      )
   }
 
   private wrapWithRetry<Args extends unknown[], R>(
