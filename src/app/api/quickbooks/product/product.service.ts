@@ -385,67 +385,89 @@ export class ProductService extends BaseService {
       return
     }
 
-    await Promise.all(
-      mappedProducts.map(async (product) => {
-        // 02. track change and sparse update the each item
-        if (
-          productResource.name !== product.copilotName ||
-          productResource.description !== product.description
-        ) {
-          console.info(
-            `WebhookService#webhookProductUpdated | Update item in QB for QB Id = ${product.qbItemId}`,
-          )
-          const qbItemName = replaceSpecialCharsForQB(
-            product.name
-              ? replaceBeforeParens(product.name, productResource.name)
-              : productResource.name,
-          )
+    const updatedItems: Record<string, string> = {}
 
-          let productDescription = ''
-          if (productResource.description) {
-            productDescription = convert(productResource.description)
-          }
+    let itemCount = 0
+    for (const product of mappedProducts) {
+      const qbItemId = z.string().parse(product.qbItemId)
+      const productId = z.string().parse(product.productId)
 
-          const fullUpdatePayload: QBItemFullUpdatePayloadType = {
-            Id: z.string().parse(product.qbItemId),
-            SyncToken: z.string().parse(product.qbSyncToken),
-            Name: qbItemName,
-            ...(productDescription && { Description: productDescription }),
-            ...(product.unitPrice
-              ? { UnitPrice: parseFloat(product.unitPrice) / 100 }
-              : {}),
-            IncomeAccountRef: {
-              value: qbTokenInfo.incomeAccountRef,
-            },
-            Taxable: true,
-            Type: QBItemType.SERVICE,
-          }
+      if (productId in updatedItems && updatedItems[productId] === qbItemId) {
+        console.info(
+          `WebhookService#webhookProductUpdated | Item already updated in QB with Id = ${qbItemId}`,
+        )
+        continue
+      }
 
-          const intuitApi = new IntuitAPI(qbTokenInfo)
-          const itemRes = await intuitApi.itemFullUpdate(fullUpdatePayload)
+      // 02. track change and sparse update the each item
+      if (
+        productResource.name !== product.copilotName ||
+        productResource.description !== product.description
+      ) {
+        console.info(
+          `WebhookService#webhookProductUpdated | Update item in QB for QB Id = ${qbItemId}`,
+        )
+        let qbItemName = replaceSpecialCharsForQB(
+          product.name
+            ? replaceBeforeParens(product.name, productResource.name)
+            : productResource.name,
+        )
 
-          // update the product map in db
-          const mapUpdatePayload = {
-            qbSyncToken: itemRes.Item.SyncToken,
-            name: qbItemName,
-            copilotName: productResource.name,
-            description: productDescription,
-          }
-          const whereConditions = eq(QBProductSync.id, product.id)
-          await this.updateQBProduct(mapUpdatePayload, whereConditions)
+        if (itemCount > 0) qbItemName += ` (${itemCount})`
 
-          await this.logSync(
-            productResource.id,
-            itemRes.Item.Id,
-            EventType.UPDATED,
-            {
-              productName: productResource.name,
-              qbItemName: itemRes.Item.Name,
-            },
-          )
+        let productDescription = ''
+        if (productResource.description) {
+          productDescription = convert(productResource.description)
         }
-      }),
-    )
+
+        const intuitApi = new IntuitAPI(qbTokenInfo)
+        // update sync token in product sync table
+        const { syncToken } = await this.updateProductSyncToken(
+          qbItemId,
+          intuitApi,
+        )
+
+        const fullUpdatePayload: QBItemFullUpdatePayloadType = {
+          Id: qbItemId,
+          SyncToken: syncToken,
+          Name: qbItemName,
+          ...(productDescription && { Description: productDescription }),
+          ...(product.unitPrice
+            ? { UnitPrice: parseFloat(product.unitPrice) / 100 }
+            : {}),
+          IncomeAccountRef: {
+            value: qbTokenInfo.incomeAccountRef,
+          },
+          Taxable: true,
+          Type: QBItemType.SERVICE,
+        }
+
+        const itemRes = await intuitApi.itemFullUpdate(fullUpdatePayload)
+
+        // update the product map in db
+        const mapUpdatePayload = {
+          qbSyncToken: itemRes.Item.SyncToken,
+          name: qbItemName,
+          copilotName: productResource.name,
+          description: productDescription,
+        }
+        const whereConditions = eq(QBProductSync.qbItemId, qbItemId)
+        await this.updateQBProduct(mapUpdatePayload, whereConditions)
+
+        updatedItems[productId] = qbItemId
+        itemCount++
+
+        await this.logSync(
+          productResource.id,
+          itemRes.Item.Id,
+          EventType.UPDATED,
+          {
+            productName: productResource.name,
+            qbItemName: itemRes.Item.Name,
+          },
+        )
+      }
+    }
   }
 
   // handles product created
@@ -634,5 +656,6 @@ export class ProductService extends BaseService {
     console.info(
       'ProductService#updateProductSyncToken. Sync token updated ...',
     )
+    return { id: item.Id, syncToken: item.SyncToken }
   }
 }
