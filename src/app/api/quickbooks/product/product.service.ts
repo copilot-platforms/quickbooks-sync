@@ -385,13 +385,15 @@ export class ProductService extends BaseService {
       return
     }
 
-    const updatedItems: Record<string, string> = {}
-
+    const updatedItems: Record<string, string> = {} // map to prevent multiple updates of same product map
+    const itemNames: string[] = [] // list to update the item name. If updating item has same Item name, add itemCount to the name
     let itemCount = 0
+
     for (const product of mappedProducts) {
       const qbItemId = z.string().parse(product.qbItemId)
       const productId = z.string().parse(product.productId)
 
+      // check if item is already updated
       if (productId in updatedItems && updatedItems[productId] === qbItemId) {
         console.info(
           `WebhookService#webhookProductUpdated | Item already updated in QB with Id = ${qbItemId}`,
@@ -413,7 +415,8 @@ export class ProductService extends BaseService {
             : productResource.name,
         )
 
-        if (itemCount > 0) qbItemName += ` (${itemCount})`
+        // If item name is same, add itemCount to the name
+        if (itemNames.includes(qbItemName)) qbItemName += ` (${itemCount})`
 
         let productDescription = ''
         if (productResource.description) {
@@ -454,7 +457,9 @@ export class ProductService extends BaseService {
         const whereConditions = eq(QBProductSync.qbItemId, qbItemId)
         await this.updateQBProduct(mapUpdatePayload, whereConditions)
 
+        // update states
         updatedItems[productId] = qbItemId
+        itemNames.push(qbItemName)
         itemCount++
 
         await this.logSync(
