@@ -221,12 +221,21 @@ export default class IntuitAPI {
     return qbIncomeAccountRefInfo.Account?.[0]
   }
 
+  /**
+   * Either displayName or id must be provided
+   */
   async _getACustomer(displayName?: string, id?: string) {
+    if (!displayName && !id) {
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#getACustomer | At least one of display name or id must be provided',
+      )
+    }
+
     const queryCondition = displayName
       ? `DisplayName = '${displayName}'`
-      : id
-        ? `Id = '${id}'`
-        : ''
+      : `Id = '${id}'`
+
     CustomLogger.info({
       message: `IntuitAPI#getACustomer | Customer query start for realmId: ${this.tokens.intuitRealmId}. Name: ${displayName}, Id: ${id}`,
     })
@@ -251,8 +260,18 @@ export default class IntuitAPI {
     return qbCustomers.Customer?.[0]
   }
 
+  /**
+   * Either name or id must be provided
+   */
   async _getAnItem(name?: string, id?: string) {
-    const queryCondition = name ? `Name = '${name}'` : id ? `Id = '${id}'` : ''
+    if (!name && !id) {
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#getAnItem | At least one of name or id must be provided',
+      )
+    }
+
+    const queryCondition = name ? `Name = '${name}'` : `Id = '${id}'`
 
     CustomLogger.info({
       message: `IntuitAPI#getAnItem | Item query start for realmId: ${this.tokens.intuitRealmId}. Condition: ${queryCondition}`,
