@@ -43,9 +43,10 @@ export class SyncService extends BaseService {
         qbTokenInfo,
       )
     } catch (error: unknown) {
-      console.error(
-        `SyncService#processInvoiceCreate | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
-      )
+      CustomLogger.error({
+        message: 'SyncService#processInvoiceCreate',
+        obj: { error, invoiceNumber: record.invoiceNumber },
+      })
     }
   }
 
@@ -69,9 +70,10 @@ export class SyncService extends BaseService {
         qbTokenInfo,
       )
     } catch (error: unknown) {
-      console.error(
-        `SyncService#processInvoicePaid | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
-      )
+      CustomLogger.error({
+        message: 'SyncService#processInvoicePaid',
+        obj: { error, invoiceNumber: record.invoiceNumber },
+      })
     }
   }
 
@@ -84,17 +86,19 @@ export class SyncService extends BaseService {
       const invoiceSync =
         await this.invoiceService.getInvoiceByNumber(invNumber)
       if (!invoiceSync) {
-        console.warn(
-          `SyncService#processInvoiceVoided | No invoice found for number: ${record.invoiceNumber}`,
-        )
+        CustomLogger.info({
+          message: 'SyncService#processInvoiceVoided | No invoice found',
+          obj: { invoiceNumber: record.invoiceNumber },
+        })
         await this.syncLogService.deleteQBSyncLog(record.id)
         return
       }
 
       if (!invoiceSync.customer) {
-        console.warn(
-          `SyncService#processInvoiceVoided | No customer found for number: ${record.invoiceNumber}`,
-        )
+        CustomLogger.info({
+          message: 'SyncService#processInvoiceVoided | No customer found',
+          obj: { invoiceNumber: record.invoiceNumber },
+        })
         return
       }
 
@@ -107,9 +111,10 @@ export class SyncService extends BaseService {
       }
       await this.invoiceService.webhookInvoiceVoided(invoice, qbTokenInfo)
     } catch (error: unknown) {
-      console.error(
-        `SyncService#processInvoiceVoided | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
-      )
+      CustomLogger.error({
+        message: 'SyncService#processInvoiceVoided',
+        obj: { error, invoiceNumber: record.invoiceNumber },
+      })
     }
   }
 
@@ -122,17 +127,19 @@ export class SyncService extends BaseService {
       const invoiceSync =
         await this.invoiceService.getInvoiceByNumber(invNumber)
       if (!invoiceSync) {
-        console.warn(
-          `SyncService#processInvoiceVoided | No invoice found for number: ${record.invoiceNumber}`,
-        )
+        CustomLogger.info({
+          message: 'SyncService#processInvoiceDeleted | No invoice found',
+          obj: { invoiceNumber: record.invoiceNumber },
+        })
         await this.syncLogService.deleteQBSyncLog(record.id)
         return
       }
 
       if (!invoiceSync.customer) {
-        console.warn(
-          `SyncService#processInvoiceVoided | No customer found for number: ${record.invoiceNumber}`,
-        )
+        CustomLogger.info({
+          message: 'SyncService#processInvoiceDeleted | No customer found',
+          obj: { invoiceNumber: record.invoiceNumber },
+        })
         return
       }
 
@@ -146,9 +153,10 @@ export class SyncService extends BaseService {
 
       await this.invoiceService.handleInvoiceDeleted(invoice, qbTokenInfo)
     } catch (error: unknown) {
-      console.error(
-        `SyncService#processInvoiceDeleted | Error = ${error} | Invoice Number: ${record.invoiceNumber}`,
-      )
+      CustomLogger.error({
+        message: 'SyncService#processInvoiceDeleted',
+        obj: { error, invoiceNumber: record.invoiceNumber },
+      })
     }
   }
 
@@ -157,7 +165,10 @@ export class SyncService extends BaseService {
     qbTokenInfo: IntuitAPITokensType,
     eventType: EventType,
   ) {
-    console.info(`syncService#processInvoiceSync | eventType: ${eventType}`)
+    CustomLogger.info({
+      message: 'SyncService#processInvoiceSync',
+      obj: { eventType },
+    })
 
     switch (eventType) {
       case EventType.CREATED:
@@ -177,10 +188,10 @@ export class SyncService extends BaseService {
         break
 
       default:
-        console.error(
-          'SyncLogService#processInvoiceSync | Unknown event type: ',
-          eventType,
-        )
+        CustomLogger.error({
+          message: 'SyncLogService#processInvoiceSync | Unknown event type',
+          obj: { eventType },
+        })
         break
     }
   }
@@ -222,7 +233,10 @@ export class SyncService extends BaseService {
         record.copilotId,
       )
     } catch (error: unknown) {
-      console.error('SyncService#processPaymentSucceededSync | Error =', error)
+      CustomLogger.error({
+        message: 'SyncService#processPaymentSucceededSync',
+        obj: { error },
+      })
     }
   }
 
@@ -247,9 +261,11 @@ export class SyncService extends BaseService {
         qbTokenInfo,
       )
     } catch (error: unknown) {
-      console.error(
-        `SyncService#processProductCreate | Error for product with ID: ${record.copilotId}. Error: ${error}`,
-      )
+      CustomLogger.error({
+        message:
+          'SyncService#processProductCreate | Error while creating product',
+        obj: { error, copilotId: record.copilotId },
+      })
     }
   }
 
@@ -269,7 +285,11 @@ export class SyncService extends BaseService {
 
       await productService.webhookProductUpdated({ data: product }, qbTokenInfo)
     } catch (error: unknown) {
-      console.error('SyncService#processProductUpdate | Error =', error)
+      CustomLogger.error({
+        message:
+          'SyncService#processProductUpdate | Error while updating product',
+        obj: { error },
+      })
     }
   }
 
@@ -278,7 +298,10 @@ export class SyncService extends BaseService {
     qbTokenInfo: IntuitAPITokensType,
     eventType: EventType,
   ) {
-    console.info(`syncService#processProductSync | eventType: ${eventType}`)
+    CustomLogger.info({
+      message: 'SyncService#processProductSync | Processing product sync',
+      obj: { eventType },
+    })
 
     switch (eventType) {
       case EventType.CREATED:
@@ -288,16 +311,18 @@ export class SyncService extends BaseService {
         return await this.processProductUpdate(record, qbTokenInfo)
 
       default:
-        console.error(
-          'SyncLogService#processProductSync | Unknown product type: ',
-          eventType,
-        )
+        CustomLogger.error({
+          message: 'SyncService#processProductSync | Unknown product type',
+          obj: { eventType },
+        })
         return
     }
   }
 
   async intiateSync(logs: QBSyncLogSelectSchemaType[]) {
-    console.info('\n###### Initiating re-sync ######')
+    CustomLogger.info({
+      message: 'SyncService#intiateSync | Initiating re-sync',
+    })
     const authService = new AuthService(this.user)
     const qbTokenInfo = await authService.getQBPortalConnection(
       this.user.workspaceId,
@@ -310,27 +335,33 @@ export class SyncService extends BaseService {
     for (const log of logs) {
       switch (log.entityType) {
         case EntityType.INVOICE:
-          console.info('Invoice re-sync started')
+          CustomLogger.info({
+            message: 'SyncService#intiateSync | Invoice re-sync started',
+          })
           await this.processInvoiceSync(log, qbTokenInfo, log.eventType)
           break
 
         case EntityType.PAYMENT:
           if (log.eventType === EventType.SUCCEEDED) {
-            console.info('Payment re-sync started')
+            CustomLogger.info({
+              message: 'SyncService#intiateSync | Payment re-sync started',
+            })
             await this.processPaymentSucceededSync(log, qbTokenInfo)
           }
           break
 
         case EntityType.PRODUCT:
-          console.info('product re-sync started')
+          CustomLogger.info({
+            message: 'SyncService#intiateSync | Product re-sync started',
+          })
           await this.processProductSync(log, qbTokenInfo, log.eventType)
           break
 
         default:
-          console.error(
-            'SyncLogService#processSync | Unknown entity type: ',
-            log.entityType,
-          )
+          CustomLogger.error({
+            message: 'SyncService#intiateSync | Unknown entity type',
+            obj: { entityType: log.entityType },
+          })
           break
       }
     }
@@ -338,17 +369,20 @@ export class SyncService extends BaseService {
 
   async syncFailedRecords() {
     try {
-      console.info(
-        `\n##### Start the re-sync process for Portal: ${this.user.workspaceId} #####`,
-      )
+      CustomLogger.info({
+        message: 'SyncService#syncFailedRecords | Start re-sync process',
+        obj: { workspaceId: this.user.workspaceId },
+      })
       // 1. get all failed sync logs group by the entity type
       const failedSyncLogs =
         await this.syncLogService.getFailedSyncLogsByEntityType()
 
       if (failedSyncLogs.length === 0) {
-        console.info(
-          `No failed sync logs found for portal ${this.user.workspaceId}`,
-        )
+        CustomLogger.info({
+          message:
+            'SyncService#syncFailedRecords | No failed sync logs found for portal',
+          obj: { workspaceId: this.user.workspaceId },
+        })
         return
       }
 
@@ -359,11 +393,15 @@ export class SyncService extends BaseService {
 
       // 2. for each log, perform the sync based on the event type and also update the sync log status to success after successful sync
       await this.intiateSync(failedSyncLogs)
-      console.info(
-        `##### Re-sync process completed for Portal: ${this.user.workspaceId} #####\n`,
-      )
+      CustomLogger.info({
+        message: 'SyncService#syncFailedRecords | Re-sync process completed',
+        obj: { workspaceId: this.user.workspaceId },
+      })
     } catch (error: unknown) {
-      console.error('SyncService#syncFailedRecords | Error =', error)
+      CustomLogger.error({
+        message: 'SyncService#syncFailedRecords',
+        obj: { error },
+      })
       throw error
     }
   }
