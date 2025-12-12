@@ -15,6 +15,7 @@ import {
   QBPurchaseCreatePayloadType,
   QBDeletePayloadType,
   QBDestructiveInvoicePayloadSchema,
+  QBNameValueSchemaType,
 } from '@/type/dto/intuitAPI.dto'
 import CustomLogger from '@/utils/logger'
 import httpStatus from 'http-status'
@@ -30,6 +31,18 @@ export type IntuitAPITokensType = Pick<
   | 'serviceItemRef'
   | 'clientFeeRef'
 >
+
+export type CustomerResponseType = {
+  Id: string
+  SyncToken: string
+}
+
+export type ItemResponseType = {
+  Id: string
+  SyncToken: string
+  Name: string
+  ClassRef?: QBNameValueSchemaType
+}
 
 export const IntuitAPIErrorMessage = '#IntuitAPIErrorMessage#'
 
@@ -224,6 +237,18 @@ export default class IntuitAPI {
   /**
    * Either displayName or id must be provided
    */
+  async _getACustomer(
+    displayName: string,
+    id?: undefined,
+  ): Promise<CustomerResponseType>
+  async _getACustomer(
+    displayName: undefined,
+    id: string,
+  ): Promise<CustomerResponseType>
+  async _getACustomer(
+    displayName: string,
+    id: string,
+  ): Promise<CustomerResponseType>
   async _getACustomer(displayName?: string, id?: string) {
     if (!displayName && !id) {
       throw new APIError(
@@ -263,6 +288,9 @@ export default class IntuitAPI {
   /**
    * Either name or id must be provided
    */
+  async _getAnItem(name: string, id?: undefined): Promise<ItemResponseType>
+  async _getAnItem(name: undefined, id: string): Promise<ItemResponseType>
+  async _getAnItem(name: string, id: string): Promise<ItemResponseType>
   async _getAnItem(name?: string, id?: string) {
     if (!name && !id) {
       throw new APIError(
@@ -666,8 +694,16 @@ export default class IntuitAPI {
   createCustomer = this.wrapWithRetry(this._createCustomer)
   createItem = this.wrapWithRetry(this._createItem)
   getSingleIncomeAccount = this.wrapWithRetry(this._getSingleIncomeAccount)
-  getACustomer = this.wrapWithRetry(this._getACustomer)
-  getAnItem = this.wrapWithRetry(this._getAnItem)
+  getACustomer: {
+    (displayName: string, id?: undefined): Promise<CustomerResponseType>
+    (displayName: undefined, id: string): Promise<CustomerResponseType>
+    (displayName: string, id: string): Promise<CustomerResponseType>
+  } = this.wrapWithRetry(this._getACustomer) as any
+  getAnItem: {
+    (name: string, id?: undefined): Promise<ItemResponseType>
+    (name: undefined, id: string): Promise<ItemResponseType>
+    (name: string, id: string): Promise<ItemResponseType>
+  } = this.wrapWithRetry(this._getAnItem) as any
   getAllItems = this.wrapWithRetry(this._getAllItems)
   invoiceSparseUpdate = this.wrapWithRetry(this._invoiceSparseUpdate)
   customerSparseUpdate = this.wrapWithRetry(this._customerSparseUpdate)
