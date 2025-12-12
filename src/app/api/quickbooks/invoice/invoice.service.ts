@@ -571,7 +571,7 @@ export class InvoiceService extends BaseService {
         customer = customerRes.Customer
 
         console.info(
-          `InvoiceService#WebhookInvoiceCreated | Customer created in QB with ID: ${customer.ID}.`,
+          `InvoiceService#WebhookInvoiceCreated | Customer created in QB with ID: ${customer.Id}.`,
         )
       }
 
