@@ -336,14 +336,14 @@ export class SyncService extends BaseService {
     }
   }
 
-  async syncFailedRecords() {
+  async syncFailedRecords(includeDeleted = false) {
     try {
       console.info(
         `\n##### Start the re-sync process for Portal: ${this.user.workspaceId} #####`,
       )
       // 1. get all failed sync logs group by the entity type
       const failedSyncLogs =
-        await this.syncLogService.getFailedSyncLogsByEntityType()
+        await this.syncLogService.getFailedSyncLogsByEntityType(includeDeleted)
 
       if (failedSyncLogs.length === 0) {
         console.info(

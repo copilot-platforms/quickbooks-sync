@@ -19,7 +19,7 @@ import {
   WebhookEventResponseSchema,
   WebhookEventResponseType,
 } from '@/type/dto/webhook.dto'
-import { validateAccessToken } from '@/utils/auth'
+import { refreshTokenExpireMessage, validateAccessToken } from '@/utils/auth'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import { getMessageFromError } from '@/utils/error'
 import { IntuitAPITokensType } from '@/utils/intuitAPI'
@@ -105,6 +105,7 @@ export class WebhookService extends BaseService {
       amount: total?.toFixed(2),
       invoiceNumber,
       errorMessage,
+      deletedAt: errorMessage === refreshTokenExpireMessage ? new Date() : null,
     })
   }
 
@@ -233,6 +234,7 @@ export class WebhookService extends BaseService {
       )
     } catch (error: unknown) {
       const syncLogService = new SyncLogService(this.user)
+      const errorMessage = getMessageFromError(error)
 
       await syncLogService.updateOrCreateQBSyncLog({
         portalId: this.user.workspaceId,
@@ -242,7 +244,9 @@ export class WebhookService extends BaseService {
         copilotId: parsedPaidInvoiceResource.data.id,
         invoiceNumber: parsedPaidInvoiceResource.data.number,
         amount: parsedPaidInvoiceResource.data.total.toFixed(2),
-        errorMessage: getMessageFromError(error),
+        errorMessage,
+        deletedAt:
+          errorMessage === refreshTokenExpireMessage ? new Date() : null,
       })
       throw error
     }
@@ -270,6 +274,8 @@ export class WebhookService extends BaseService {
         qbTokenInfo,
       )
     } catch (error: unknown) {
+      const errorMessage = getMessageFromError(error)
+
       const syncLogService = new SyncLogService(this.user)
       await syncLogService.updateOrCreateQBSyncLog({
         portalId: this.user.workspaceId,
@@ -278,7 +284,9 @@ export class WebhookService extends BaseService {
         status: LogStatus.FAILED,
         copilotId: parsedProductResource.data.id,
         productName: parsedProductResource.data.name,
-        errorMessage: getMessageFromError(error),
+        errorMessage,
+        deletedAt:
+          errorMessage === refreshTokenExpireMessage ? new Date() : null,
       })
       throw error
     }
@@ -314,6 +322,8 @@ export class WebhookService extends BaseService {
         eq(QBSyncLog.copilotPriceId, priceResource.id),
         eq(QBSyncLog.eventType, EventType.CREATED),
       )
+
+      const errorMessage = getMessageFromError(error)
       await syncLogService.updateOrCreateQBSyncLog(
         {
           portalId: this.user.workspaceId,
@@ -323,7 +333,9 @@ export class WebhookService extends BaseService {
           copilotId: priceResource.productId,
           productPrice: priceResource.amount?.toFixed(2),
           copilotPriceId: priceResource.id,
-          errorMessage: getMessageFromError(error),
+          errorMessage,
+          deletedAt:
+            errorMessage === refreshTokenExpireMessage ? new Date() : null,
         },
         conditions,
       )
@@ -389,6 +401,7 @@ export class WebhookService extends BaseService {
           invoice,
         )
       } catch (error: unknown) {
+        const errorMessage = getMessageFromError(error)
         await syncLogService.updateOrCreateQBSyncLog({
           portalId: this.user.workspaceId,
           entityType: EntityType.PAYMENT,
@@ -401,7 +414,9 @@ export class WebhookService extends BaseService {
             ),
           remark: 'Absorbed fees',
           qbItemName: 'Assembly Fees',
-          errorMessage: getMessageFromError(error),
+          errorMessage,
+          deletedAt:
+            errorMessage === refreshTokenExpireMessage ? new Date() : null,
         })
         throw error
       }

@@ -124,15 +124,15 @@ export class SyncLogService extends BaseService {
   /**
    * Get all failed sync logs
    */
-  async getFailedSyncLogsByEntityType(): Promise<
-    QBSyncLogSelectSchemaType[] | []
-  > {
+  async getFailedSyncLogsByEntityType(
+    includeDeleted: boolean,
+  ): Promise<QBSyncLogSelectSchemaType[] | []> {
     return await this.db.query.QBSyncLog.findMany({
       where: (logs, { eq, and }) =>
         and(
           eq(logs.portalId, this.user.workspaceId),
           eq(logs.status, LogStatus.FAILED),
-          isNull(logs.deletedAt),
+          !includeDeleted ? isNull(logs.deletedAt) : undefined,
         ),
       orderBy: (logs, { asc }) => [asc(logs.createdAt)],
     })
