@@ -69,6 +69,7 @@ export const QBCustomerSparseUpdatePayloadSchema =
     Id: z.string(),
     SyncToken: z.string(),
     sparse: z.literal(true).default(true),
+    Active: z.boolean().optional(),
   })
 export type QBCustomerSparseUpdatePayloadType = z.infer<
   typeof QBCustomerSparseUpdatePayloadSchema
@@ -88,10 +89,24 @@ export const QBItemFullUpdatePayloadSchema =
   QBItemCreatePayloadSchema.partial().extend({
     Id: z.string(),
     SyncToken: z.string(),
+    sparse: z.boolean().optional(),
+    Active: z.boolean().optional(),
   })
 export type QBItemFullUpdatePayloadType = z.infer<
   typeof QBItemFullUpdatePayloadSchema
 >
+
+export const QBItemResponseSchema = z.object({
+  Item: z.object({
+    Id: z.string(),
+    SyncToken: z.string(),
+    Name: z.string(),
+    ClassRef: QBNameValueSchema.optional(),
+    Active: z.boolean(),
+    UnitPrice: z.number(),
+  }),
+})
+export type QBItemResponseType = z.infer<typeof QBItemResponseSchema>
 
 export const QBPaymentCreatePayloadSchema = z.object({
   TotalAmt: z.number(),
