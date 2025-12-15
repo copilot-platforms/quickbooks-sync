@@ -5,7 +5,10 @@ import { InvoiceStatus, SyncableEntity } from '@/app/api/core/types/invoice'
 import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 import { CustomerService } from '@/app/api/quickbooks/customer/customer.service'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
-import { ProductService } from '@/app/api/quickbooks/product/product.service'
+import {
+  ProductService,
+  ProductSyncTokenResponse,
+} from '@/app/api/quickbooks/product/product.service'
 import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
 import { TokenService } from '@/app/api/quickbooks/token/token.service'
@@ -477,9 +480,19 @@ export class InvoiceService extends BaseService {
     }
   }
 
-  async handleServiceItem() {
+  async handleServiceItem(intuitAPI: IntuitAPI) {
     let serviceItemRef = this.user.qbConnection?.serviceItemRef
-    if (!serviceItemRef) {
+    let serviceItem: ProductSyncTokenResponse | undefined
+    if (serviceItemRef) {
+      // check if the service item is active or not. If not, make it active
+      const productService = new ProductService(this.user)
+      serviceItem = await productService.updateProductSyncToken(
+        serviceItemRef,
+        intuitAPI,
+      )
+    }
+
+    if (!serviceItemRef || !serviceItem?.id) {
       serviceItemRef = await this.manageServiceItemRef()
     }
     InvoiceService.oneOffItem = { value: serviceItemRef }
@@ -652,7 +665,7 @@ export class InvoiceService extends BaseService {
 
     // Check if service item ref ID is present in our DB. If not create new
     // in QB and store the id in our DB
-    await this.handleServiceItem()
+    await this.handleServiceItem(InvoiceService.intuitApiService)
 
     // bottleneck implementation (rate limiting)
     const lineItemPromises = []

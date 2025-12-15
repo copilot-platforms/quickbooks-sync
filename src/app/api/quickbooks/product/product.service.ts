@@ -35,6 +35,11 @@ import User from '@/app/api/core/models/User.model'
 import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { replaceBeforeParens, replaceSpecialCharsForQB } from '@/utils/string'
 
+export type ProductSyncTokenResponse = {
+  id: string
+  syncToken: string
+}
+
 export class ProductService extends BaseService {
   private syncLogService: SyncLogService
   constructor(user: User) {
@@ -257,7 +262,7 @@ export class ProductService extends BaseService {
     const parsedInsertPayload = QBProductUpdateSchema.parse(payload)
 
     const query = this.db
-      .update({ ...QBProductSync, updatedAt: dayjs().toDate() })
+      .update(QBProductSync)
       .set(parsedInsertPayload)
       .where(conditions)
 
@@ -645,7 +650,10 @@ export class ProductService extends BaseService {
     )
   }
 
-  async updateProductSyncToken(qbItemId: string, intuitApi: IntuitAPI) {
+  async updateProductSyncToken(
+    qbItemId: string,
+    intuitApi: IntuitAPI,
+  ): Promise<ProductSyncTokenResponse | undefined> {
     console.info(
       'ProductService#updateProductSyncToken. Updating sync token ...',
     )
