@@ -182,9 +182,10 @@ export class InvoiceService extends BaseService {
     intuitApi: IntuitAPI,
   ): Promise<InvoiceItemRefAndDescriptionType> {
     const productService = new ProductService(this.user)
-    const mapping = await productService.getMappingByProductPriceId(
+    const mapping = await productService.ensureProductExistsAndSyncToken(
       productId,
       priceId,
+      intuitApi,
     )
     if (mapping) {
       if (mapping.isExcluded) {
@@ -194,9 +195,6 @@ export class InvoiceService extends BaseService {
       }
       if (mapping.qbItemId) {
         console.info('InvoiceService#getInvoiceItemRef | Product map found')
-
-        // update sync token in product sync table
-        await productService.updateProductSyncToken(mapping.qbItemId, intuitApi)
 
         const itemAmount = await this.handleItemAmount({
           unitPrice: mapping.unitPrice,
@@ -519,22 +517,14 @@ export class InvoiceService extends BaseService {
         companyId: invoiceResource.companyId,
       })
 
-    // 2. search client in our mapping table
-    const existingCustomer = await customerService.getByClientCompanyId(
-      recipientInfo.clientCompanyId,
-      [
-        'id',
-        'qbCustomerId',
-        'qbSyncToken',
-        'familyName',
-        'givenName',
-        'email',
-        'companyName',
-        'displayName',
-      ],
-    )
-
     InvoiceService.intuitApiService = new IntuitAPI(qbTokenInfo)
+    // 2. search client in our mapping table
+    const existingCustomer =
+      await customerService.ensureCustomerExistsAndSyncToken(
+        recipientInfo.clientCompanyId,
+        InvoiceService.intuitApiService,
+      )
+
     let customer,
       existingCustomerMapId = existingCustomer?.id
     if (!existingCustomer) {
@@ -596,13 +586,6 @@ export class InvoiceService extends BaseService {
       existingCustomerMapId = customerSync.id
     } else {
       console.info('InvoiceService#webhookInvoiceCreated. Customer exists.')
-
-      // update the customer sync token
-      await customerService.updateCustomerSyncToken(
-        existingCustomer.id,
-        existingCustomer.qbCustomerId,
-        InvoiceService.intuitApiService,
-      )
 
       // update the customer in qb
       const sparseUpdatePayload: Omit<

@@ -425,10 +425,16 @@ export class ProductService extends BaseService {
 
         const intuitApi = new IntuitAPI(qbTokenInfo)
         // update sync token in product sync table
-        const { syncToken } = await this.updateProductSyncToken(
-          qbItemId,
-          intuitApi,
-        )
+        const updateRes = await this.updateProductSyncToken(qbItemId, intuitApi)
+
+        if (!updateRes) {
+          console.info(
+            `ProductService#webhookProductUpdated. Returning early as product not found for Id ${qbItemId} in QuickBooks.`,
+          )
+          return
+        }
+
+        const { syncToken } = updateRes
 
         const fullUpdatePayload: QBItemFullUpdatePayloadType = {
           Id: qbItemId,
@@ -645,7 +651,28 @@ export class ProductService extends BaseService {
     )
 
     // 1. get item by ID
-    const item = await intuitApi.getAnItem(undefined, qbItemId)
+    let item = await intuitApi.getAnItem(undefined, qbItemId, true)
+
+    // if no item found, remove mapping
+    if (!item) {
+      console.info(
+        `ProductService#updateProductSyncToken. Item not found for Id ${qbItemId} in QuickBooks. Unmapping the product...`,
+      )
+      await this.unmapProducts(qbItemId)
+      return
+    } else if (!item.Active) {
+      console.info(
+        `ProductService#updateProductSyncToken. Item with Id ${qbItemId} is inactive. Making it active...`,
+      )
+      // if item is inactive, make it active
+      const updateRes = await intuitApi.itemFullUpdate({
+        Id: item.Id,
+        SyncToken: item.SyncToken,
+        Active: true,
+        sparse: true,
+      })
+      item = updateRes.Item
+    }
 
     // 2. update sync token in item sync table
     await this.updateQBProduct(
@@ -662,5 +689,29 @@ export class ProductService extends BaseService {
       'ProductService#updateProductSyncToken. Sync token updated ...',
     )
     return { id: item.Id, syncToken: item.SyncToken }
+  }
+
+  async unmapProducts(qbItemId: string): Promise<void> {
+    await this.db
+      .update(QBProductSync)
+      .set({ qbItemId: null, qbSyncToken: null, name: null, unitPrice: null })
+      .where(
+        and(
+          eq(QBProductSync.qbItemId, qbItemId),
+          eq(QBProductSync.portalId, this.user.workspaceId),
+        ),
+      )
+  }
+
+  async ensureProductExistsAndSyncToken(
+    productId: string,
+    priceId: string,
+    intuitAPI: IntuitAPI,
+  ) {
+    const map = await this.getMappingByProductPriceId(productId, priceId)
+    if (!map || !map.qbItemId) return
+
+    await this.updateProductSyncToken(map.qbItemId, intuitAPI)
+    return await this.getMappingByProductPriceId(productId, priceId)
   }
 }

@@ -243,10 +243,30 @@ export class CustomerService extends BaseService {
     )
 
     // 1. get customer by ID
-    const customer = await intuitApi.getACustomer(undefined, qbCustomerId)
+    let customer = await intuitApi.getACustomer(undefined, qbCustomerId, true)
+
+    if (!customer) {
+      console.info(
+        `CustomerService#updateCustomerSyncToken. Customer not found for Id ${qbCustomerId} in QuickBooks. Unmapping the customer...`,
+      )
+      await this.removeCustomerMapping(mapId)
+      return
+    } else if (!customer.Active) {
+      console.info(
+        `CustomerService#updateCustomerSyncToken. Customer with Id ${qbCustomerId} is inactive. Making it active...`,
+      )
+      // if customer is inactive, make it active
+      const updateRes = await intuitApi.customerSparseUpdate({
+        Id: customer.Id,
+        SyncToken: customer.SyncToken,
+        Active: true,
+        sparse: true,
+      })
+      customer = updateRes.Customer
+    }
 
     // 2. update sync token in customer sync table
-    await this.updateQBCustomer(
+    const updateCustomer = await this.updateQBCustomer(
       {
         qbSyncToken: customer.SyncToken,
       },
@@ -259,5 +279,39 @@ export class CustomerService extends BaseService {
     console.info(
       'CustomerService#updateCustomerSyncToken. Sync token updated ...',
     )
+
+    return updateCustomer
+  }
+
+  async removeCustomerMapping(id: string) {
+    await this.db.delete(QBCustomers).where(eq(QBCustomers.id, id))
+  }
+
+  async ensureCustomerExistsAndSyncToken(
+    clientCompanyId: string,
+    intuitApi: IntuitAPI,
+  ) {
+    const existingCustomer = await this.getExistingCustomer(clientCompanyId)
+
+    if (!existingCustomer) return
+
+    return await this.updateCustomerSyncToken(
+      existingCustomer.id,
+      existingCustomer.qbCustomerId,
+      intuitApi,
+    )
+  }
+
+  async getExistingCustomer(clientCompanyId: string) {
+    return await this.getByClientCompanyId(clientCompanyId, [
+      'id',
+      'qbCustomerId',
+      'qbSyncToken',
+      'familyName',
+      'givenName',
+      'email',
+      'companyName',
+      'displayName',
+    ])
   }
 }

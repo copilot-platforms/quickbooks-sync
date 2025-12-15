@@ -16,6 +16,8 @@ import {
   QBDeletePayloadType,
   QBDestructiveInvoicePayloadSchema,
   QBNameValueSchemaType,
+  QBItemResponseType,
+  QBItemResponseSchema,
 } from '@/type/dto/intuitAPI.dto'
 import CustomLogger from '@/utils/logger'
 import httpStatus from 'http-status'
@@ -35,6 +37,7 @@ export type IntuitAPITokensType = Pick<
 export type CustomerResponseType = {
   Id: string
   SyncToken: string
+  Active: boolean
 }
 
 export type ItemResponseType = {
@@ -42,6 +45,8 @@ export type ItemResponseType = {
   SyncToken: string
   Name: string
   ClassRef?: QBNameValueSchemaType
+  Active: boolean
+  UnitPrice: number
 }
 
 export const IntuitAPIErrorMessage = '#IntuitAPIErrorMessage#'
@@ -240,16 +245,23 @@ export default class IntuitAPI {
   async _getACustomer(
     displayName: string,
     id?: undefined,
+    includeInactive?: boolean,
   ): Promise<CustomerResponseType>
   async _getACustomer(
     displayName: undefined,
     id: string,
+    includeInactive?: boolean,
   ): Promise<CustomerResponseType>
   async _getACustomer(
     displayName: string,
     id: string,
+    includeInactive?: boolean,
   ): Promise<CustomerResponseType>
-  async _getACustomer(displayName?: string, id?: string) {
+  async _getACustomer(
+    displayName?: string,
+    id?: string,
+    includeInactive?: boolean,
+  ) {
     if (!displayName && !id) {
       throw new APIError(
         httpStatus.BAD_REQUEST,
@@ -257,14 +269,17 @@ export default class IntuitAPI {
       )
     }
 
-    const queryCondition = displayName
+    let queryCondition = displayName
       ? `DisplayName = '${displayName}'`
       : `Id = '${id}'`
+
+    if (includeInactive)
+      queryCondition = `${queryCondition} AND Active IN (true, false)`
 
     CustomLogger.info({
       message: `IntuitAPI#getACustomer | Customer query start for realmId: ${this.tokens.intuitRealmId}. Name: ${displayName}, Id: ${id}`,
     })
-    const customerQuery = `SELECT Id, SyncToken FROM Customer WHERE ${queryCondition} AND Active = true`
+    const customerQuery = `SELECT Id, SyncToken, Active FROM Customer WHERE ${queryCondition} AND Active = true`
     const qbCustomers = await this.customQuery(customerQuery)
 
     if (!qbCustomers)
@@ -288,10 +303,22 @@ export default class IntuitAPI {
   /**
    * Either name or id must be provided
    */
-  async _getAnItem(name: string, id?: undefined): Promise<ItemResponseType>
-  async _getAnItem(name: undefined, id: string): Promise<ItemResponseType>
-  async _getAnItem(name: string, id: string): Promise<ItemResponseType>
-  async _getAnItem(name?: string, id?: string) {
+  async _getAnItem(
+    name: string,
+    id?: undefined,
+    includeInactive?: boolean,
+  ): Promise<ItemResponseType>
+  async _getAnItem(
+    name: undefined,
+    id: string,
+    includeInactive?: boolean,
+  ): Promise<ItemResponseType>
+  async _getAnItem(
+    name: string,
+    id: string,
+    includeInactive?: boolean,
+  ): Promise<ItemResponseType>
+  async _getAnItem(name?: string, id?: string, includeInactive?: boolean) {
     if (!name && !id) {
       throw new APIError(
         httpStatus.BAD_REQUEST,
@@ -299,12 +326,15 @@ export default class IntuitAPI {
       )
     }
 
-    const queryCondition = name ? `Name = '${name}'` : `Id = '${id}'`
+    let queryCondition = name ? `Name = '${name}'` : `Id = '${id}'`
+
+    if (includeInactive)
+      queryCondition = `${queryCondition} AND Active IN (true, false)`
 
     CustomLogger.info({
       message: `IntuitAPI#getAnItem | Item query start for realmId: ${this.tokens.intuitRealmId}. Condition: ${queryCondition}`,
     })
-    const customerQuery = `select Id, SyncToken, ClassRef from Item where ${queryCondition} maxresults 1`
+    const customerQuery = `select Id, SyncToken, ClassRef, Active, Name, UnitPrice from Item where ${queryCondition} maxresults 1`
     const qbItem = await this.customQuery(customerQuery)
 
     if (!qbItem)
@@ -415,7 +445,9 @@ export default class IntuitAPI {
     return customer
   }
 
-  async _itemFullUpdate(payload: QBItemFullUpdatePayloadType) {
+  async _itemFullUpdate(
+    payload: QBItemFullUpdatePayloadType,
+  ): Promise<QBItemResponseType> {
     CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#itemFullUpdate | item full update start for realmId: ${this.tokens.intuitRealmId}. `,
@@ -438,11 +470,13 @@ export default class IntuitAPI {
       )
     }
 
+    const parsedItem = QBItemResponseSchema.parse(item)
+
     CustomLogger.info({
       obj: { response: item.Item },
       message: `IntuitAPI#itemFullUpdate | item full updated with Id = ${item.Item?.Id}.`,
     })
-    return item
+    return parsedItem
   }
 
   async _createPayment(payload: QBPaymentCreatePayloadType) {
@@ -695,14 +729,38 @@ export default class IntuitAPI {
   createItem = this.wrapWithRetry(this._createItem)
   getSingleIncomeAccount = this.wrapWithRetry(this._getSingleIncomeAccount)
   getACustomer: {
-    (displayName: string, id?: undefined): Promise<CustomerResponseType>
-    (displayName: undefined, id: string): Promise<CustomerResponseType>
-    (displayName: string, id: string): Promise<CustomerResponseType>
+    (
+      displayName: string,
+      id?: undefined,
+      includeInactive?: boolean,
+    ): Promise<CustomerResponseType>
+    (
+      displayName: undefined,
+      id: string,
+      includeInactive?: boolean,
+    ): Promise<CustomerResponseType>
+    (
+      displayName: string,
+      id: string,
+      includeInactive?: boolean,
+    ): Promise<CustomerResponseType>
   } = this.wrapWithRetry(this._getACustomer) as any
   getAnItem: {
-    (name: string, id?: undefined): Promise<ItemResponseType>
-    (name: undefined, id: string): Promise<ItemResponseType>
-    (name: string, id: string): Promise<ItemResponseType>
+    (
+      name: string,
+      id?: undefined,
+      includeInactive?: boolean,
+    ): Promise<ItemResponseType>
+    (
+      name: undefined,
+      id: string,
+      includeInactive?: boolean,
+    ): Promise<ItemResponseType>
+    (
+      name: string,
+      id: string,
+      includeInactive?: boolean,
+    ): Promise<ItemResponseType>
   } = this.wrapWithRetry(this._getAnItem) as any
   getAllItems = this.wrapWithRetry(this._getAllItems)
   invoiceSparseUpdate = this.wrapWithRetry(this._invoiceSparseUpdate)
