@@ -367,7 +367,9 @@ export class SyncService extends BaseService {
     }
   }
 
-  async syncFailedRecords(includeDeleted = false) {
+  async syncFailedRecords({
+    includeDeleted = false,
+  }: { includeDeleted?: boolean } = {}) {
     try {
       CustomLogger.info({
         message: 'SyncService#syncFailedRecords | Start re-sync process',
