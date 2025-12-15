@@ -336,7 +336,9 @@ export class SyncService extends BaseService {
     }
   }
 
-  async syncFailedRecords(includeDeleted = false) {
+  async syncFailedRecords({
+    includeDeleted = false,
+  }: { includeDeleted?: boolean } = {}) {
     try {
       console.info(
         `\n##### Start the re-sync process for Portal: ${this.user.workspaceId} #####`,
