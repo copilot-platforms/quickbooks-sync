@@ -367,7 +367,7 @@ export class SyncService extends BaseService {
     }
   }
 
-  async syncFailedRecords() {
+  async syncFailedRecords(includeDeleted = false) {
     try {
       CustomLogger.info({
         message: 'SyncService#syncFailedRecords | Start re-sync process',
@@ -375,7 +375,7 @@ export class SyncService extends BaseService {
       })
       // 1. get all failed sync logs group by the entity type
       const failedSyncLogs =
-        await this.syncLogService.getFailedSyncLogsByEntityType()
+        await this.syncLogService.getFailedSyncLogsByEntityType(includeDeleted)
 
       if (failedSyncLogs.length === 0) {
         CustomLogger.info({

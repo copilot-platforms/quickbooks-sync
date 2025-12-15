@@ -205,7 +205,7 @@ export class AuthService extends BaseService {
             clientFeeRef: existingToken.clientFeeRef,
           }
           const syncService = new SyncService(this.user)
-          await syncService.syncFailedRecords()
+          await syncService.syncFailedRecords(true) // 'true' param to also include soft deleted logs
         }
       })
 
