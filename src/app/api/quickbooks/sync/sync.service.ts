@@ -4,14 +4,18 @@ import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { AuthService } from '@/app/api/quickbooks/auth/auth.service'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import { CopilotAPI } from '@/utils/copilotAPI'
-import { EntityType, EventType } from '@/app/api/core/types/log'
+import { CategoryType, EntityType, EventType } from '@/app/api/core/types/log'
 import User from '@/app/api/core/models/User.model'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import dayjs from 'dayjs'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
 import CustomLogger from '@/utils/logger'
-import { QBSyncLogSelectSchemaType } from '@/db/schema/qbSyncLogs'
+import { QBSyncLog, QBSyncLogSelectSchemaType } from '@/db/schema/qbSyncLogs'
 import { z } from 'zod'
+import { and, eq, inArray } from 'drizzle-orm'
+import { WhereClause } from '@/type/common'
+import { TokenService } from '@/app/api/quickbooks/token/token.service'
+import { QBPortalConnection } from '@/db/schema/qbPortalConnections'
 
 export class SyncService extends BaseService {
   private invoiceService: InvoiceService
@@ -406,5 +410,57 @@ export class SyncService extends BaseService {
       })
       throw error
     }
+  }
+
+  async checkAndSuspendAccount() {
+    CustomLogger.info({
+      message: 'SyncService#syncFailedRecords | Start re-sync process',
+      obj: { workspaceId: this.user.workspaceId },
+    })
+
+    const record = await this.syncLogService.getOne(
+      and(
+        eq(QBSyncLog.portalId, this.user.workspaceId),
+        inArray(QBSyncLog.category, [CategoryType.ACCOUNT, CategoryType.AUTH]),
+      ) as WhereClause,
+      'asc',
+    )
+    if (!record) return { suspended: false }
+
+    const sumDate = dayjs(record.createdAt).add(2, 'weeks')
+    if (dayjs().isAfter(sumDate)) {
+      CustomLogger.info({
+        message:
+          'SyncService#checkAndSuspendAccount | Date is over 2 weeks. Suspending the account...',
+        obj: { workspaceId: this.user.workspaceId },
+      })
+
+      await this.db.transaction(async (tx) => {
+        this.setTransaction(tx)
+        const tokenService = new TokenService(this.user)
+        const suspendAccount = tokenService.updateQBPortalConnection(
+          {
+            isSuspended: true,
+          },
+          eq(QBPortalConnection.portalId, this.user.workspaceId),
+          ['id'],
+        )
+        const deleteLogs = this.syncLogService.updateQBSyncLog(
+          {
+            deletedAt: new Date(),
+          },
+          eq(QBSyncLog.portalId, this.user.workspaceId),
+        )
+        await Promise.all([suspendAccount, deleteLogs])
+        this.unsetTransaction()
+      })
+
+      CustomLogger.info({
+        message: `SyncService#checkAndSuspendAccount | Suspended the account. Portal Id: ${this.user.workspaceId}`,
+        obj: { workspaceId: this.user.workspaceId },
+      })
+      return { suspended: true }
+    }
+    return { suspended: false }
   }
 }

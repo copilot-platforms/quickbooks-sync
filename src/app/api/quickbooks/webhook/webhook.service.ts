@@ -1,13 +1,19 @@
 import APIError from '@/app/api/core/exceptions/api'
 import { BaseService } from '@/app/api/core/services/base.service'
 import { InvoiceStatus } from '@/app/api/core/types/invoice'
-import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
+import {
+  CategoryType,
+  EntityType,
+  EventType,
+  LogStatus,
+} from '@/app/api/core/types/log'
 import { WebhookEvents } from '@/app/api/core/types/webhook'
 import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
 import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
+import { AccountErrorCodes } from '@/constant/intuitErrorCode'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import {
   InvoiceCreatedResponseSchema,
@@ -21,7 +27,7 @@ import {
 } from '@/type/dto/webhook.dto'
 import { refreshTokenExpireMessage, validateAccessToken } from '@/utils/auth'
 import { CopilotAPI } from '@/utils/copilotAPI'
-import { getMessageFromError } from '@/utils/error'
+import { ErrorMessageAndCode, getMessageAndCodeFromError } from '@/utils/error'
 import { IntuitAPITokensType } from '@/utils/intuitAPI'
 import CustomLogger from '@/utils/logger'
 import { and, eq } from 'drizzle-orm'
@@ -93,8 +99,10 @@ export class WebhookService extends BaseService {
     copilotId: string,
     invoiceNumber: string,
     total?: number,
-    errorMessage?: string,
+    error?: ErrorMessageAndCode,
   ) {
+    const errorMessage = error?.message
+
     const syncLogService = new SyncLogService(this.user)
     await syncLogService.createQBSyncLog({
       portalId: this.user.workspaceId,
@@ -106,6 +114,7 @@ export class WebhookService extends BaseService {
       invoiceNumber,
       errorMessage,
       deletedAt: errorMessage === refreshTokenExpireMessage ? new Date() : null,
+      category: this.getCategory(error),
     })
   }
 
@@ -144,7 +153,7 @@ export class WebhookService extends BaseService {
         parsedInvoiceResource.data.id,
         parsedInvoiceResource.data.number,
         parsedInvoiceResource.data.total,
-        getMessageFromError(error),
+        getMessageAndCodeFromError(error),
       )
       throw error
     }
@@ -177,7 +186,7 @@ export class WebhookService extends BaseService {
         parsedVoidedInvoiceResource.data.id,
         parsedVoidedInvoiceResource.data.number,
         parsedVoidedInvoiceResource.data.total,
-        getMessageFromError(error),
+        getMessageAndCodeFromError(error),
       )
       throw error
     }
@@ -206,7 +215,7 @@ export class WebhookService extends BaseService {
         deletePayload.id,
         deletePayload.number,
         deletePayload.total,
-        getMessageFromError(error),
+        getMessageAndCodeFromError(error),
       )
       throw error
     }
@@ -234,7 +243,8 @@ export class WebhookService extends BaseService {
       )
     } catch (error: unknown) {
       const syncLogService = new SyncLogService(this.user)
-      const errorMessage = getMessageFromError(error)
+      const errorWithCode = getMessageAndCodeFromError(error)
+      const errorMessage = errorWithCode.message
 
       await syncLogService.updateOrCreateQBSyncLog({
         portalId: this.user.workspaceId,
@@ -247,6 +257,7 @@ export class WebhookService extends BaseService {
         errorMessage,
         deletedAt:
           errorMessage === refreshTokenExpireMessage ? new Date() : null,
+        category: this.getCategory(errorWithCode),
       })
       throw error
     }
@@ -274,7 +285,8 @@ export class WebhookService extends BaseService {
         qbTokenInfo,
       )
     } catch (error: unknown) {
-      const errorMessage = getMessageFromError(error)
+      const errorWithcode = getMessageAndCodeFromError(error)
+      const errorMessage = errorWithcode.message
 
       const syncLogService = new SyncLogService(this.user)
       await syncLogService.updateOrCreateQBSyncLog({
@@ -287,6 +299,7 @@ export class WebhookService extends BaseService {
         errorMessage,
         deletedAt:
           errorMessage === refreshTokenExpireMessage ? new Date() : null,
+        category: this.getCategory(errorWithcode),
       })
       throw error
     }
@@ -323,7 +336,9 @@ export class WebhookService extends BaseService {
         eq(QBSyncLog.eventType, EventType.CREATED),
       )
 
-      const errorMessage = getMessageFromError(error)
+      const errorWithCode = getMessageAndCodeFromError(error)
+      const errorMessage = errorWithCode.message
+
       await syncLogService.updateOrCreateQBSyncLog(
         {
           portalId: this.user.workspaceId,
@@ -336,6 +351,7 @@ export class WebhookService extends BaseService {
           errorMessage,
           deletedAt:
             errorMessage === refreshTokenExpireMessage ? new Date() : null,
+          category: this.getCategory(errorWithCode),
         },
         conditions,
       )
@@ -401,7 +417,9 @@ export class WebhookService extends BaseService {
           invoice,
         )
       } catch (error: unknown) {
-        const errorMessage = getMessageFromError(error)
+        const errorWithCode = getMessageAndCodeFromError(error)
+        const errorMessage = errorWithCode.message
+
         await syncLogService.updateOrCreateQBSyncLog({
           portalId: this.user.workspaceId,
           entityType: EntityType.PAYMENT,
@@ -417,9 +435,21 @@ export class WebhookService extends BaseService {
           errorMessage,
           deletedAt:
             errorMessage === refreshTokenExpireMessage ? new Date() : null,
+          category: this.getCategory(errorWithCode),
         })
         throw error
       }
     }
+  }
+
+  private getCategory(errorWithCode?: ErrorMessageAndCode) {
+    if (!errorWithCode) return CategoryType.OTHERS
+    if (errorWithCode.code && AccountErrorCodes.includes(errorWithCode.code)) {
+      return CategoryType.ACCOUNT
+    }
+    if (errorWithCode.message === refreshTokenExpireMessage) {
+      return CategoryType.AUTH
+    }
+    return CategoryType.OTHERS
   }
 }

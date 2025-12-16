@@ -28,6 +28,7 @@ export const QBPortalConnection = table(
       .notNull(),
     clientFeeRef: t.varchar('client_fee_ref', { length: 100 }),
     serviceItemRef: t.varchar('service_item_ref', { length: 100 }),
+    isSuspended: t.boolean('is_suspended').notNull().default(false),
     ...timestamps,
   },
   (table) => [

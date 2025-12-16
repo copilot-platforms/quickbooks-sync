@@ -19,7 +19,7 @@ import {
   QBPurchaseCreatePayloadType,
 } from '@/type/dto/intuitAPI.dto'
 import { PaymentSucceededResponseType } from '@/type/dto/webhook.dto'
-import { getMessageFromError } from '@/utils/error'
+import { getMessageAndCodeFromError } from '@/utils/error'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import dayjs from 'dayjs'
 
@@ -117,7 +117,7 @@ export class PaymentService extends BaseService {
           taxAmount: invoiceInfo.taxAmount,
           customerName: recipientInfo.displayName,
           customerEmail: recipientInfo.email,
-          errorMessage: getMessageFromError(err),
+          errorMessage: getMessageAndCodeFromError(err).message,
         },
         LogStatus.FAILED,
       )
