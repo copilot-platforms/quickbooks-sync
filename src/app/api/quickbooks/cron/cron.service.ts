@@ -36,6 +36,10 @@ export default class CronService {
     const user = new User(token, tokenPayload)
     user.qbConnection = qbConnectionTokens
     const syncService = new SyncService(user)
+
+    // TODO: add max_attempts
+    const { suspended } = await syncService.checkAndSuspendAccount()
+    if (suspended) return
     return await syncService.syncFailedRecords()
   }
 
@@ -46,7 +50,7 @@ export default class CronService {
       console.info('No portal connections found')
       return
     }
-    await this.softDeleteOldFailedLogs()
+    // await this.softDeleteOldFailedLogs()
 
     // synchronously done because creating multiple instance of Copilot SDK simultaneously, is causing an issue.
     for (const connection of portalConnections) {

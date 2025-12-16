@@ -32,7 +32,7 @@ export type IntuitAPITokensType = Pick<
   | 'assetAccountRef'
   | 'serviceItemRef'
   | 'clientFeeRef'
->
+> & { isSuspended?: boolean }
 
 export type CustomerResponseType = {
   Id: string
@@ -113,7 +113,7 @@ export default class IntuitAPI {
     if (res?.Fault) {
       CustomLogger.error({ obj: res.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        res.Fault.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}customQuery`,
         res.Fault?.Error,
       )
@@ -138,7 +138,7 @@ export default class IntuitAPI {
     if (invoice?.Fault) {
       CustomLogger.error({ obj: invoice.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        invoice.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}createInvoice`,
         invoice.Fault?.Error,
       )
@@ -168,7 +168,7 @@ export default class IntuitAPI {
     if (customer?.Fault) {
       CustomLogger.error({ obj: customer.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        customer.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}createCustomer`,
         customer.Fault?.Error,
       )
@@ -198,7 +198,7 @@ export default class IntuitAPI {
     if (item?.Fault) {
       CustomLogger.error({ obj: item.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        item.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}createItem`,
         item.Fault?.Error,
       )
@@ -230,7 +230,7 @@ export default class IntuitAPI {
         message: 'Error: ',
       })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        qbIncomeAccountRefInfo.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}getSingleIncomeAccount`,
         qbIncomeAccountRefInfo.Fault?.Error,
       )
@@ -286,7 +286,7 @@ export default class IntuitAPI {
     if (qbCustomers?.Fault) {
       CustomLogger.error({ obj: qbCustomers.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        qbCustomers.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}getACustomer`,
         qbCustomers.Fault?.Error,
       )
@@ -335,7 +335,7 @@ export default class IntuitAPI {
     if (qbItem?.Fault) {
       CustomLogger.error({ obj: qbItem.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        qbItem.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}getAnItem`,
         qbItem.Fault?.Error,
       )
@@ -361,7 +361,7 @@ export default class IntuitAPI {
     if (qbItems?.Fault) {
       CustomLogger.error({ obj: qbItems.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        qbItems.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}getAllItems`,
         qbItems.Fault?.Error,
       )
@@ -387,7 +387,7 @@ export default class IntuitAPI {
     if (invoice?.Fault) {
       CustomLogger.error({ obj: invoice.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        invoice.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}invoiceSparseUpdate`,
         invoice.Fault?.Error,
       )
@@ -417,7 +417,7 @@ export default class IntuitAPI {
     if (customer?.Fault) {
       CustomLogger.error({ obj: customer.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        customer.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}customerSparseUpdate`,
         customer.Fault?.Error,
       )
@@ -449,7 +449,7 @@ export default class IntuitAPI {
     if (item?.Fault) {
       CustomLogger.error({ obj: item.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        item.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}itemFullUpdate`,
         item.Fault?.Error,
       )
@@ -481,7 +481,7 @@ export default class IntuitAPI {
     if (payment?.Fault) {
       CustomLogger.error({ obj: payment.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        payment.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}createPayment`,
         payment.Fault?.Error,
       )
@@ -511,7 +511,7 @@ export default class IntuitAPI {
     if (invoice?.Fault) {
       CustomLogger.error({ obj: invoice.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        invoice.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}voidInvoice`,
         invoice.Fault?.Error,
       )
@@ -539,10 +539,10 @@ export default class IntuitAPI {
       )
     }
 
-    if (invoice.Fault) {
-      CustomLogger.error({ obj: invoice.Fault.Error, message: 'Error: ' })
+    if (invoice?.Fault) {
+      CustomLogger.error({ obj: invoice.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        invoice.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}deleteInvoice`,
         invoice.Fault?.Error,
       )
@@ -572,7 +572,7 @@ export default class IntuitAPI {
     if (payment?.Fault) {
       CustomLogger.error({ obj: payment.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        payment.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}deletePayment`,
         payment.Fault?.Error,
       )
@@ -599,7 +599,7 @@ export default class IntuitAPI {
     if (customQuery?.Fault) {
       CustomLogger.error({ obj: customQuery.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        customQuery.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}getAnAccountByName`,
         customQuery.Fault?.Error,
       )
@@ -625,7 +625,7 @@ export default class IntuitAPI {
     if (account?.Fault) {
       CustomLogger.error({ obj: account.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        account.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}createAccount`,
         account.Fault?.Error,
       )
@@ -655,7 +655,7 @@ export default class IntuitAPI {
     if (purchase?.Fault) {
       CustomLogger.error({ obj: purchase.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        purchase.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}createPurchase`,
         purchase.Fault?.Error,
       )
@@ -685,7 +685,7 @@ export default class IntuitAPI {
     if (purchase?.Fault) {
       CustomLogger.error({ obj: purchase.Fault?.Error, message: 'Error: ' })
       throw new APIError(
-        httpStatus.BAD_REQUEST,
+        purchase.Fault?.Error?.code || httpStatus.BAD_REQUEST,
         `${IntuitAPIErrorMessage}deletePurchase`,
         purchase.Fault?.Error,
       )

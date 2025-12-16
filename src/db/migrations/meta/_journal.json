@@ -78,6 +78,13 @@
       "when": 1765273949394,
       "tag": "20251209095229_add_deleted_at_column_in_sync_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1765877944782,
+      "tag": "20251216093904_add_max_attempts_category_logs_table",
+      "breakpoints": true
     }
   ]
 }

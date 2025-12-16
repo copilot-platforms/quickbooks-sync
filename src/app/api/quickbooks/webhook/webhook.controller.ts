@@ -10,6 +10,16 @@ export async function captureWebhookEvent(req: NextRequest) {
   const payload = await req.json()
 
   const qbTokenInfo = await authService.getQBPortalConnection(user.workspaceId)
+
+  if (qbTokenInfo?.isSuspended) {
+    console.info(
+      `WebhookController#captureWebhookEvent | Portal with ID: ${user.workspaceId} is suspended.`,
+    )
+    return NextResponse.json({
+      error: `Portal with ID: ${user.workspaceId} is suspended`,
+    })
+  }
+
   user.qbConnection = {
     serviceItemRef: qbTokenInfo.serviceItemRef,
     clientFeeRef: qbTokenInfo.clientFeeRef,

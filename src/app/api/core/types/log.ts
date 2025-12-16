@@ -20,3 +20,9 @@ export enum EventType {
   MAPPED = 'mapped',
   UNMAPPED = 'unmapped',
 }
+
+export enum CategoryType {
+  AUTH = 'auth',
+  ACCOUNT = 'account',
+  OTHERS = 'others',
+}
