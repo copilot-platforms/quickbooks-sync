@@ -30,6 +30,10 @@ import { CopilotAPI } from '@/utils/copilotAPI'
 import { ErrorMessageAndCode, getMessageAndCodeFromError } from '@/utils/error'
 import { IntuitAPITokensType } from '@/utils/intuitAPI'
 import CustomLogger from '@/utils/logger'
+import {
+  getDeletedAtForAuthAccountCategoryLog,
+  getCategory,
+} from '@/utils/synclog'
 import { and, eq } from 'drizzle-orm'
 import httpStatus from 'http-status'
 
@@ -113,8 +117,8 @@ export class WebhookService extends BaseService {
       amount: total?.toFixed(2),
       invoiceNumber,
       errorMessage,
-      deletedAt: errorMessage === refreshTokenExpireMessage ? new Date() : null,
-      category: this.getCategory(error),
+      deletedAt: getDeletedAtForAuthAccountCategoryLog(error),
+      category: getCategory(error),
     })
   }
 
@@ -255,9 +259,8 @@ export class WebhookService extends BaseService {
         invoiceNumber: parsedPaidInvoiceResource.data.number,
         amount: parsedPaidInvoiceResource.data.total.toFixed(2),
         errorMessage,
-        deletedAt:
-          errorMessage === refreshTokenExpireMessage ? new Date() : null,
-        category: this.getCategory(errorWithCode),
+        deletedAt: getDeletedAtForAuthAccountCategoryLog(errorWithCode),
+        category: getCategory(errorWithCode),
       })
       throw error
     }
@@ -285,8 +288,8 @@ export class WebhookService extends BaseService {
         qbTokenInfo,
       )
     } catch (error: unknown) {
-      const errorWithcode = getMessageAndCodeFromError(error)
-      const errorMessage = errorWithcode.message
+      const errorWithCode = getMessageAndCodeFromError(error)
+      const errorMessage = errorWithCode.message
 
       const syncLogService = new SyncLogService(this.user)
       await syncLogService.updateOrCreateQBSyncLog({
@@ -297,9 +300,8 @@ export class WebhookService extends BaseService {
         copilotId: parsedProductResource.data.id,
         productName: parsedProductResource.data.name,
         errorMessage,
-        deletedAt:
-          errorMessage === refreshTokenExpireMessage ? new Date() : null,
-        category: this.getCategory(errorWithcode),
+        deletedAt: getDeletedAtForAuthAccountCategoryLog(errorWithCode),
+        category: getCategory(errorWithCode),
       })
       throw error
     }
@@ -349,9 +351,8 @@ export class WebhookService extends BaseService {
           productPrice: priceResource.amount?.toFixed(2),
           copilotPriceId: priceResource.id,
           errorMessage,
-          deletedAt:
-            errorMessage === refreshTokenExpireMessage ? new Date() : null,
-          category: this.getCategory(errorWithCode),
+          deletedAt: getDeletedAtForAuthAccountCategoryLog(errorWithCode),
+          category: getCategory(errorWithCode),
         },
         conditions,
       )
@@ -433,23 +434,11 @@ export class WebhookService extends BaseService {
           remark: 'Absorbed fees',
           qbItemName: 'Assembly Fees',
           errorMessage,
-          deletedAt:
-            errorMessage === refreshTokenExpireMessage ? new Date() : null,
-          category: this.getCategory(errorWithCode),
+          deletedAt: getDeletedAtForAuthAccountCategoryLog(errorWithCode),
+          category: getCategory(errorWithCode),
         })
         throw error
       }
     }
-  }
-
-  private getCategory(errorWithCode?: ErrorMessageAndCode) {
-    if (!errorWithCode) return CategoryType.OTHERS
-    if (errorWithCode.code && AccountErrorCodes.includes(errorWithCode.code)) {
-      return CategoryType.ACCOUNT
-    }
-    if (errorWithCode.message === refreshTokenExpireMessage) {
-      return CategoryType.AUTH
-    }
-    return CategoryType.OTHERS
   }
 }

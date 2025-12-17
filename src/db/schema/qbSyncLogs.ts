@@ -44,6 +44,7 @@ export const QBSyncLog = table('qb_sync_logs', {
   copilotPriceId: t.varchar('copilot_price_id', { length: 100 }),
   errorMessage: t.text('error_message'),
   category: CategoryEnum('category').default(CategoryType.OTHERS).notNull(),
+  attempt: t.integer('attempt').default(0).notNull(),
   ...timestamps,
 })
 

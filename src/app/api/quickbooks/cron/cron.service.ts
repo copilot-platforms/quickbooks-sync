@@ -37,7 +37,6 @@ export default class CronService {
     user.qbConnection = qbConnectionTokens
     const syncService = new SyncService(user)
 
-    // TODO: add max_attempts
     const { suspended } = await syncService.checkAndSuspendAccount()
     if (suspended) return
     return await syncService.syncFailedRecords()

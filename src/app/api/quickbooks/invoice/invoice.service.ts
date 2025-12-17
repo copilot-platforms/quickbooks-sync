@@ -290,7 +290,15 @@ export class InvoiceService extends BaseService {
       unitPrice: Number(priceInfo.amount).toFixed(), // decimal datatype expects string
       copilotUnitPrice: Number(priceInfo.amount).toFixed(), // decimal datatype expects string
     }
-    await productService.createQBProduct(productMappingPayload)
+    const conditions = and(
+      eq(QBProductSync.portalId, this.user.workspaceId),
+      eq(QBProductSync.productId, productId),
+      eq(QBProductSync.priceId, priceId),
+    ) as WhereClause
+    await productService.updateOrCreateQBProduct(
+      productMappingPayload,
+      conditions,
+    )
     const syncLogPayload = {
       portalId: this.user.workspaceId,
       entityType: EntityType.PRODUCT,

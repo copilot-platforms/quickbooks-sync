@@ -717,6 +717,7 @@ export class ProductService extends BaseService {
     intuitAPI: IntuitAPI,
   ) {
     const map = await this.getMappingByProductPriceId(productId, priceId)
+
     if (!map) return
     if (!map.qbItemId || map.isExcluded) return map
 
