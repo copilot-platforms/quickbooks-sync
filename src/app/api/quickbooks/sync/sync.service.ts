@@ -390,7 +390,7 @@ export class SyncService extends BaseService {
     // report to sentry if any records has exceeded max retry count
     if (maxAttemptsIds.length > 0) {
       captureMessage(
-        `Test: SyncService#intiateSync | Records exceeded max retry count. Portal Id: ${this.user.workspaceId}.`,
+        `SyncService#intiateSync | Records exceeded max retry count. Portal Id: ${this.user.workspaceId}.`,
         {
           tags: {
             key: 'exceedMaxAttempts', // can be used to search like "key:exceedMaxAttempts"
