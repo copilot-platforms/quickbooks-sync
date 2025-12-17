@@ -8,6 +8,7 @@ import {
   FailedRecordCategoryType,
   EntityType,
   EventType,
+  LogStatus,
 } from '@/app/api/core/types/log'
 import User from '@/app/api/core/models/User.model'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
@@ -16,10 +17,14 @@ import { ProductService } from '@/app/api/quickbooks/product/product.service'
 import CustomLogger from '@/utils/logger'
 import { QBSyncLog, QBSyncLogSelectSchemaType } from '@/db/schema/qbSyncLogs'
 import { z } from 'zod'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, max } from 'drizzle-orm'
 import { WhereClause } from '@/type/common'
 import { TokenService } from '@/app/api/quickbooks/token/token.service'
 import { QBPortalConnection } from '@/db/schema/qbPortalConnections'
+import { MAX_ATTEMPTS } from '@/constant/sync'
+import { captureMessage } from '@sentry/nextjs'
+
+export const runtime = 'nodejs'
 
 export class SyncService extends BaseService {
   private invoiceService: InvoiceService
@@ -340,7 +345,15 @@ export class SyncService extends BaseService {
       message: 'SyncService#intiateSync | QB Token Info and User',
     })
 
+    const maxAttemptsIds: string[] = []
     for (const log of logs) {
+      // check and update attempt for failed logs
+      const resyncAttemtps = await this.checkAndUpdateAttempt(log)
+      if (resyncAttemtps.maxAttempts) {
+        maxAttemptsIds.push(log.id)
+        continue
+      }
+
       switch (log.entityType) {
         case EntityType.INVOICE:
           CustomLogger.info({
@@ -372,6 +385,22 @@ export class SyncService extends BaseService {
           })
           break
       }
+    }
+
+    // report to sentry if any records has exceeded max retry count
+    if (maxAttemptsIds.length > 0) {
+      captureMessage(
+        `Test: SyncService#intiateSync | Records exceeded max retry count. Portal Id: ${this.user.workspaceId}.`,
+        {
+          tags: {
+            key: 'exceedMaxAttempts', // can be used to search like "key:exceedMaxAttempts"
+          },
+          extra: {
+            maxAttemptsIds, // shown in "Additional Data" section in Sentry
+          },
+          level: 'error',
+        },
+      )
     }
   }
 
@@ -418,7 +447,7 @@ export class SyncService extends BaseService {
 
   async checkAndSuspendAccount() {
     CustomLogger.info({
-      message: 'SyncService#syncFailedRecords | Start re-sync process',
+      message: `SyncService#checkAndSuspendAccount`,
       obj: { workspaceId: this.user.workspaceId },
     })
 
@@ -442,6 +471,8 @@ export class SyncService extends BaseService {
         obj: { workspaceId: this.user.workspaceId },
       })
 
+      // TODO: notify IU about the account suspension
+
       await this.db.transaction(async (tx) => {
         this.setTransaction(tx)
         const tokenService = new TokenService(this.user)
@@ -456,7 +487,10 @@ export class SyncService extends BaseService {
           {
             deletedAt: new Date(),
           },
-          eq(QBSyncLog.portalId, this.user.workspaceId),
+          and(
+            eq(QBSyncLog.portalId, this.user.workspaceId),
+            eq(QBSyncLog.status, LogStatus.FAILED),
+          ) as WhereClause,
         )
         await Promise.all([suspendAccount, deleteLogs])
         this.unsetTransaction()
@@ -469,5 +503,30 @@ export class SyncService extends BaseService {
       return { suspended: true }
     }
     return { suspended: false }
+  }
+
+  async checkAndUpdateAttempt(log: QBSyncLogSelectSchemaType) {
+    if (log.attempt >= MAX_ATTEMPTS) {
+      CustomLogger.info({
+        message: `SyncService#checkAndUpdateAttempt | Reached max attempts. Not syncing the record with assembly id: ${log.copilotId}`,
+        obj: { workspaceId: this.user.workspaceId },
+      })
+      return { maxAttempts: true }
+    }
+
+    const attempt = log.attempt + 1
+    await this.syncLogService.updateQBSyncLog(
+      {
+        attempt,
+      },
+      eq(QBSyncLog.id, log.id),
+    )
+
+    CustomLogger.info({
+      message: `SyncService#checkAndUpdateAttempt | Attempt: ${attempt}`,
+      obj: { workspaceId: this.user.workspaceId },
+    })
+
+    return { maxAttempts: false }
   }
 }
