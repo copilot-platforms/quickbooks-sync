@@ -717,7 +717,8 @@ export class ProductService extends BaseService {
     intuitAPI: IntuitAPI,
   ) {
     const map = await this.getMappingByProductPriceId(productId, priceId)
-    if (!map || !map.qbItemId) return
+    if (!map) return
+    if (!map.qbItemId || map.isExcluded) return map
 
     await this.updateProductSyncToken(map.qbItemId, intuitAPI)
     return await this.getMappingByProductPriceId(productId, priceId)
