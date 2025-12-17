@@ -278,11 +278,7 @@ export class AuthService extends BaseService {
         `Sync setting is not found for portal with ID: ${portalId}`,
       )
 
-    if (isSuspended)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        `Portal is supended. Id: ${portalId}`,
-      )
+    if (isSuspended) throw new Error(`Portal is supended. Id: ${portalId}`)
 
     const { isEnabled, syncFlag } = setting
 
