@@ -1,7 +1,12 @@
 import User from '@/app/api/core/models/User.model'
 import { BaseService } from '@/app/api/core/services/base.service'
 import { SyncableEntity } from '@/app/api/core/types/invoice'
-import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
+import {
+  CategoryType,
+  EntityType,
+  EventType,
+  LogStatus,
+} from '@/app/api/core/types/log'
 import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
 import {
@@ -21,6 +26,10 @@ import {
 import { PaymentSucceededResponseType } from '@/type/dto/webhook.dto'
 import { getMessageAndCodeFromError } from '@/utils/error'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
+import {
+  getDeletedAtForAuthAccountCategoryLog,
+  getCategory,
+} from '@/utils/synclog'
 import dayjs from 'dayjs'
 
 export class PaymentService extends BaseService {
@@ -104,6 +113,9 @@ export class PaymentService extends BaseService {
 
       return true
     } catch (err: unknown) {
+      const errorWithCode = getMessageAndCodeFromError(err)
+      const errorMessage = errorWithCode.message
+
       await this.logSync(
         invoiceInfo.invoiceId,
         {
@@ -117,7 +129,9 @@ export class PaymentService extends BaseService {
           taxAmount: invoiceInfo.taxAmount,
           customerName: recipientInfo.displayName,
           customerEmail: recipientInfo.email,
-          errorMessage: getMessageAndCodeFromError(err).message,
+          errorMessage,
+          category: getCategory(errorWithCode),
+          deletedAt: getDeletedAtForAuthAccountCategoryLog(errorWithCode),
         },
         LogStatus.FAILED,
       )
@@ -213,6 +227,8 @@ export class PaymentService extends BaseService {
       remark?: string
       qbItemName?: string
       errorMessage?: string
+      category?: CategoryType
+      deletedAt?: Date
     },
     status: LogStatus = LogStatus.SUCCESS,
   ) {

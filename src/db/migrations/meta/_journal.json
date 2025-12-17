@@ -82,8 +82,8 @@
     {
       "idx": 11,
       "version": "7",
-      "when": 1765877944782,
-      "tag": "20251216093904_add_max_attempts_category_logs_table",
+      "when": 1765960255830,
+      "tag": "20251217083055_add_attempt_category_logs_table",
       "breakpoints": true
     }
   ]

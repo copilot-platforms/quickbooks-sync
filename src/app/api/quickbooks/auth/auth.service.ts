@@ -269,12 +269,19 @@ export class AuthService extends BaseService {
       setting,
       serviceItemRef,
       clientFeeRef,
+      isSuspended,
     } = portalQBToken
 
     if (!setting)
       throw new APIError(
         httpStatus.BAD_REQUEST,
         `Sync setting is not found for portal with ID: ${portalId}`,
+      )
+
+    if (isSuspended)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        `Portal is supended. Id: ${portalId}`,
       )
 
     const { isEnabled, syncFlag } = setting
