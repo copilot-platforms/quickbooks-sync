@@ -6,7 +6,7 @@ import { SyncService } from '@/app/api/quickbooks/sync/sync.service'
 import { copilotAPIKey } from '@/config'
 import { db } from '@/db'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
-import { getAllPortalConnections } from '@/db/service/token.service'
+import { getAllActivePortalConnections } from '@/db/service/token.service'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import { encodePayload } from '@/utils/crypto'
 import CustomLogger from '@/utils/logger'
@@ -43,7 +43,7 @@ export default class CronService {
   }
 
   async rerunFailedSync() {
-    const portalConnections = await getAllPortalConnections()
+    const portalConnections = await getAllActivePortalConnections()
 
     if (portalConnections?.length === 0) {
       console.info('No portal connections found')
