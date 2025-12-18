@@ -1,5 +1,5 @@
 {
-  "id": "5030579d-b402-4356-ab40-50c19b385ef7",
+  "id": "0bf08d18-1252-400a-8467-3522ccb6bfb1",
   "prevId": "3841be74-f79e-4c58-808c-8767fc0e3a19",
   "version": "7",
   "dialect": "postgresql",
@@ -827,7 +827,7 @@
         },
         "category": {
           "name": "category",
-          "type": "category_types",
+          "type": "failed_record_category_types",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
@@ -891,15 +891,6 @@
         "deleted"
       ]
     },
-    "public.category_types": {
-      "name": "category_types",
-      "schema": "public",
-      "values": [
-        "auth",
-        "account",
-        "others"
-      ]
-    },
     "public.entity_types": {
       "name": "entity_types",
       "schema": "public",
@@ -921,6 +912,15 @@
         "succeeded",
         "mapped",
         "unmapped"
+      ]
+    },
+    "public.failed_record_category_types": {
+      "name": "failed_record_category_types",
+      "schema": "public",
+      "values": [
+        "auth",
+        "account",
+        "others"
       ]
     },
     "public.log_statuses": {

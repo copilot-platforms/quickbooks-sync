@@ -82,8 +82,8 @@
     {
       "idx": 11,
       "version": "7",
-      "when": 1765960255830,
-      "tag": "20251217083055_add_attempt_category_logs_table",
+      "when": 1766066307157,
+      "tag": "20251218135827_add_attempts_is_suspended_category_columns",
       "breakpoints": true
     }
   ]

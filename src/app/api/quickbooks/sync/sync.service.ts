@@ -4,7 +4,11 @@ import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { AuthService } from '@/app/api/quickbooks/auth/auth.service'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import { CopilotAPI } from '@/utils/copilotAPI'
-import { CategoryType, EntityType, EventType } from '@/app/api/core/types/log'
+import {
+  FailedRecordCategoryType,
+  EntityType,
+  EventType,
+} from '@/app/api/core/types/log'
 import User from '@/app/api/core/models/User.model'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import dayjs from 'dayjs'
@@ -421,7 +425,10 @@ export class SyncService extends BaseService {
     const record = await this.syncLogService.getOne(
       and(
         eq(QBSyncLog.portalId, this.user.workspaceId),
-        inArray(QBSyncLog.category, [CategoryType.ACCOUNT, CategoryType.AUTH]),
+        inArray(QBSyncLog.category, [
+          FailedRecordCategoryType.ACCOUNT,
+          FailedRecordCategoryType.AUTH,
+        ]),
       ) as WhereClause,
       'asc',
     )

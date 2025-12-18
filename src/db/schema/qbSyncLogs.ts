@@ -1,5 +1,5 @@
 import {
-  CategoryType,
+  FailedRecordCategoryType,
   EntityType,
   EventType,
   LogStatus,
@@ -15,9 +15,9 @@ import { z } from 'zod'
 export const EntityTypeEnum = t.pgEnum('entity_types', enumToPgEnum(EntityType))
 export const StatusEnum = t.pgEnum('log_statuses', enumToPgEnum(LogStatus))
 export const EventTypeEnum = t.pgEnum('event_types', enumToPgEnum(EventType))
-export const CategoryEnum = t.pgEnum(
-  'category_types',
-  enumToPgEnum(CategoryType),
+export const FailedCategoryEnum = t.pgEnum(
+  'failed_record_category_types',
+  enumToPgEnum(FailedRecordCategoryType),
 )
 
 export const QBSyncLog = table('qb_sync_logs', {
@@ -43,7 +43,9 @@ export const QBSyncLog = table('qb_sync_logs', {
   qbItemName: t.varchar('qb_item_name', { length: 100 }),
   copilotPriceId: t.varchar('copilot_price_id', { length: 100 }),
   errorMessage: t.text('error_message'),
-  category: CategoryEnum('category').default(CategoryType.OTHERS).notNull(),
+  category: FailedCategoryEnum('category')
+    .default(FailedRecordCategoryType.OTHERS)
+    .notNull(),
   attempt: t.integer('attempt').default(0).notNull(),
   ...timestamps,
 })
