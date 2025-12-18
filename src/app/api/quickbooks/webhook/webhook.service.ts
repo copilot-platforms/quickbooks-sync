@@ -1,12 +1,7 @@
 import APIError from '@/app/api/core/exceptions/api'
 import { BaseService } from '@/app/api/core/services/base.service'
 import { InvoiceStatus } from '@/app/api/core/types/invoice'
-import {
-  CategoryType,
-  EntityType,
-  EventType,
-  LogStatus,
-} from '@/app/api/core/types/log'
+import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 import { WebhookEvents } from '@/app/api/core/types/webhook'
 import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'

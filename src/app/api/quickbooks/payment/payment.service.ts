@@ -2,7 +2,7 @@ import User from '@/app/api/core/models/User.model'
 import { BaseService } from '@/app/api/core/services/base.service'
 import { SyncableEntity } from '@/app/api/core/types/invoice'
 import {
-  CategoryType,
+  FailedRecordCategoryType,
   EntityType,
   EventType,
   LogStatus,
@@ -227,7 +227,7 @@ export class PaymentService extends BaseService {
       remark?: string
       qbItemName?: string
       errorMessage?: string
-      category?: CategoryType
+      category?: FailedRecordCategoryType
       deletedAt?: Date
     },
     status: LogStatus = LogStatus.SUCCESS,
