@@ -3,7 +3,7 @@ import { PortalConnectionWithSettingType } from '@/db/schema/qbPortalConnections
 import { QBSettingsSelectSchemaType } from '@/db/schema/qbSettings'
 import { WorkspaceResponse } from '@/type/common'
 import { CopilotAPI } from '@/utils/copilotAPI'
-import { and, isNull } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 
 export const getPortalConnection = async (
   portalId: string,
@@ -22,11 +22,15 @@ export const getPortalConnection = async (
   return portalSync || null
 }
 
-export const getAllPortalConnections = async (): Promise<
+export const getAllActivePortalConnections = async (): Promise<
   PortalConnectionWithSettingType[]
 > => {
   const portals = await db.query.QBPortalConnection.findMany({
-    where: (QBPortalConnection) => isNull(QBPortalConnection.deletedAt),
+    where: (QBPortalConnection) =>
+      and(
+        isNull(QBPortalConnection.deletedAt),
+        eq(QBPortalConnection.isSuspended, false), // ignore suspended portals
+      ),
     with: {
       setting: true,
     },
