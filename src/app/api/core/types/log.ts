@@ -21,7 +21,13 @@ export enum EventType {
   UNMAPPED = 'unmapped',
 }
 
-export enum CategoryType {
+/**
+ * Category Type
+ * auth: related to authentication like refresh token expiry
+ * account: related to QBO account subscription expiry
+ * others: other category that can include genuine errors
+ */
+export enum FailedRecordCategoryType {
   AUTH = 'auth',
   ACCOUNT = 'account',
   OTHERS = 'others',
