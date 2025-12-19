@@ -18,6 +18,7 @@ import {
   QBNameValueSchemaType,
   QBItemResponseType,
   QBItemResponseSchema,
+  QBAccountUpdatePayloadType,
 } from '@/type/dto/intuitAPI.dto'
 import CustomLogger from '@/utils/logger'
 import httpStatus from 'http-status'
@@ -585,13 +586,13 @@ export default class IntuitAPI {
     return payment
   }
 
-  async _getAnAccountByName(accountName: string) {
+  async _getAnAccountByName(accountName: string, includeInactive?: boolean) {
     CustomLogger.info({
       obj: { realmId: this.tokens.intuitRealmId },
       message:
         'IntuitAPI#getAnAccountByName | Account query start for realmId: ',
     })
-    const query = `SELECT Id FROM Account where Name = '${accountName}' AND Active = true`
+    const query = `SELECT Id, SyncToken FROM Account where Name = '${accountName}' AND Active IN (true${includeInactive ? ', false' : ''})`
     const customQuery = await this.customQuery(query)
 
     if (!customQuery) return null
@@ -608,10 +609,10 @@ export default class IntuitAPI {
     return customQuery.Account?.[0]
   }
 
-  async _createAccount(payload: QBAccountCreatePayloadType) {
+  async _updateAccount(payload: QBAccountUpdatePayloadType) {
     CustomLogger.info({
       obj: { payload },
-      message: `IntuitAPI#createAssetAccount | Account create start for realmId: ${this.tokens.intuitRealmId}. `,
+      message: `IntuitAPI#updateAccount | Account update start for realmId: ${this.tokens.intuitRealmId}. `,
     })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/account?minorversion=${intuitApiMinorVersion}`
     const account = await this.postFetchWithHeaders(url, payload)
@@ -619,7 +620,37 @@ export default class IntuitAPI {
     if (!account)
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#createAssetAccount | message = no response',
+        'IntuitAPI#updateAccount | message = no response',
+      )
+
+    if (account?.Fault) {
+      CustomLogger.error({ obj: account.Fault?.Error, message: 'Error: ' })
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        `${IntuitAPIErrorMessage}updateAccount`,
+        account.Fault?.Error,
+      )
+    }
+
+    CustomLogger.info({
+      obj: { response: account.Account },
+      message: `IntuitAPI#updateAccount | Account updated with Id = ${account.Account?.Id}. `,
+    })
+    return account.Account
+  }
+
+  async _createAccount(payload: QBAccountCreatePayloadType) {
+    CustomLogger.info({
+      obj: { payload },
+      message: `IntuitAPI#createAccount | Account create start for realmId: ${this.tokens.intuitRealmId}. `,
+    })
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/account?minorversion=${intuitApiMinorVersion}`
+    const account = await this.postFetchWithHeaders(url, payload)
+
+    if (!account)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createAccount | message = no response',
       )
 
     if (account?.Fault) {
@@ -633,7 +664,7 @@ export default class IntuitAPI {
 
     CustomLogger.info({
       obj: { response: account.Account },
-      message: `IntuitAPI#createAssetAccount | Account created with Id = ${account.Account?.Id}. `,
+      message: `IntuitAPI#createAccount | Account created with Id = ${account.Account?.Id}. `,
     })
     return account.Account
   }
@@ -752,6 +783,7 @@ export default class IntuitAPI {
   deleteInvoice = this.wrapWithRetry(this._deleteInvoice)
   getAnAccountByName = this.wrapWithRetry(this._getAnAccountByName)
   createAccount = this.wrapWithRetry(this._createAccount)
+  updateAccount = this.wrapWithRetry(this._updateAccount)
   createPurchase = this.wrapWithRetry(this._createPurchase)
   deletePayment = this.wrapWithRetry(this._deletePayment)
   deletePurchase = this.wrapWithRetry(this._deletePurchase)
