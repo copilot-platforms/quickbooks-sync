@@ -221,7 +221,7 @@ export default class IntuitAPI {
     if (!qbIncomeAccountRefInfo)
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#getSingleIncomeAccount | message = no response',
+        'IntuitAPI#getSingleIncomeAccount | Income account not found',
       )
 
     if (qbIncomeAccountRefInfo?.Fault) {
@@ -281,11 +281,7 @@ export default class IntuitAPI {
     const customerQuery = `SELECT Id, SyncToken, Active FROM Customer WHERE ${queryCondition}`
     const qbCustomers = await this.customQuery(customerQuery)
 
-    if (!qbCustomers)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#getACustomer | message = no response',
-      )
+    if (!qbCustomers) return null
 
     if (qbCustomers?.Fault) {
       CustomLogger.error({ obj: qbCustomers.Fault?.Error, message: 'Error: ' })
@@ -334,11 +330,7 @@ export default class IntuitAPI {
     const customerQuery = `select Id, SyncToken, ClassRef, Active, Name, UnitPrice from Item where ${queryCondition} maxresults 1`
     const qbItem = await this.customQuery(customerQuery)
 
-    if (!qbItem)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#getAnItem | message = no response',
-      )
+    if (!qbItem) return null
 
     if (qbItem?.Fault) {
       CustomLogger.error({ obj: qbItem.Fault?.Error, message: 'Error: ' })
@@ -364,11 +356,7 @@ export default class IntuitAPI {
     })
     const qbItems = await this.customQuery(customerQuery)
 
-    if (!qbItems)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#getAllItems | message = no response',
-      )
+    if (!qbItems) return null
 
     if (qbItems?.Fault) {
       CustomLogger.error({ obj: qbItems.Fault?.Error, message: 'Error: ' })
@@ -606,11 +594,7 @@ export default class IntuitAPI {
     const query = `SELECT Id FROM Account where Name = '${accountName}' AND Active = true`
     const customQuery = await this.customQuery(query)
 
-    if (!customQuery)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#getAnAccountByName | message = no response',
-      )
+    if (!customQuery) return null
 
     if (customQuery?.Fault) {
       CustomLogger.error({ obj: customQuery.Fault?.Error, message: 'Error: ' })
