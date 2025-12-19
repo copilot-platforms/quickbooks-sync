@@ -473,7 +473,7 @@ export default class IntuitAPI {
   ): Promise<QBAccountResponseType> {
     CustomLogger.info({
       obj: { payload },
-      message: `IntuitAPI#accountUpdate | account update start for realmId: ${this.tokens.intuitRealmId}. `,
+      message: `IntuitAPI#updateAccount | Account update start for realmId: ${this.tokens.intuitRealmId}. `,
     })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/account?minorversion=${intuitApiMinorVersion}`
     const account = await this.postFetchWithHeaders(url, payload)
@@ -481,14 +481,14 @@ export default class IntuitAPI {
     if (!account)
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#accountUpdate | message = no response',
+        'IntuitAPI#updateAccount | message = no response',
       )
 
     if (account?.Fault) {
       CustomLogger.error({ obj: account.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}accountUpdate`,
+        `${IntuitAPIErrorMessage}updateAccount`,
         account.Fault?.Error,
       )
     }
@@ -497,7 +497,7 @@ export default class IntuitAPI {
 
     CustomLogger.info({
       obj: { response: parsedAccount.Account },
-      message: `IntuitAPI#accountUpdate | account updated with Id = ${parsedAccount.Account?.Id}.`,
+      message: `IntuitAPI#updateAccount | Account updated with Id = ${parsedAccount.Account?.Id}.`,
     })
     return parsedAccount
   }
@@ -675,7 +675,7 @@ export default class IntuitAPI {
   async _createAccount(payload: QBAccountCreatePayloadType) {
     CustomLogger.info({
       obj: { payload },
-      message: `IntuitAPI#createAssetAccount | Account create start for realmId: ${this.tokens.intuitRealmId}. `,
+      message: `IntuitAPI#createAccount | Account create start for realmId: ${this.tokens.intuitRealmId}. `,
     })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/account?minorversion=${intuitApiMinorVersion}`
     const account = await this.postFetchWithHeaders(url, payload)
@@ -683,7 +683,7 @@ export default class IntuitAPI {
     if (!account)
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        'IntuitAPI#createAssetAccount | message = no response',
+        'IntuitAPI#createAccount | message = no response',
       )
 
     if (account?.Fault) {
@@ -697,7 +697,7 @@ export default class IntuitAPI {
 
     CustomLogger.info({
       obj: { response: account.Account },
-      message: `IntuitAPI#createAssetAccount | Account created with Id = ${account.Account?.Id}. `,
+      message: `IntuitAPI#createAccount | Account created with Id = ${account.Account?.Id}. `,
     })
     return account.Account
   }
