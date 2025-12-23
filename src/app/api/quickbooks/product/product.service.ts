@@ -34,6 +34,8 @@ import { QBSyncLog, QBSyncLogCreateSchemaType } from '@/db/schema/qbSyncLogs'
 import User from '@/app/api/core/models/User.model'
 import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { replaceBeforeParens, replaceSpecialCharsForQB } from '@/utils/string'
+import { AccountTypeObj } from '@/constant/qbConnection'
+import { TokenService } from '@/app/api/quickbooks/token/token.service'
 
 export type ProductSyncTokenResponse = {
   id: string
@@ -430,7 +432,10 @@ export class ProductService extends BaseService {
 
         const intuitApi = new IntuitAPI(qbTokenInfo)
         // update sync token in product sync table
-        const updateRes = await this.updateProductSyncToken(qbItemId, intuitApi)
+        const updateRes = await this.updateProductSyncToken({
+          qbItemId,
+          intuitApi,
+        })
 
         if (!updateRes) {
           console.info(
@@ -440,6 +445,13 @@ export class ProductService extends BaseService {
         }
 
         const { syncToken } = updateRes
+        const tokenService = new TokenService(this.user)
+        const incomeAccountRef = await tokenService.checkAndUpdateAccountStatus(
+          AccountTypeObj.Income,
+          qbTokenInfo.intuitRealmId,
+          intuitApi,
+          qbTokenInfo.incomeAccountRef,
+        )
 
         const fullUpdatePayload: QBItemFullUpdatePayloadType = {
           Id: qbItemId,
@@ -450,7 +462,7 @@ export class ProductService extends BaseService {
             ? { UnitPrice: parseFloat(product.unitPrice) / 100 }
             : {}),
           IncomeAccountRef: {
-            value: qbTokenInfo.incomeAccountRef,
+            value: z.string().parse(incomeAccountRef),
           },
           Taxable: true,
           Type: QBItemType.SERVICE,
@@ -536,12 +548,19 @@ export class ProductService extends BaseService {
       )
       const productDescription = convert(copilotProduct.description)
 
+      const tokenService = new TokenService(this.user)
+      const incomeAccountRef = await tokenService.checkAndUpdateAccountStatus(
+        AccountTypeObj.Income,
+        qbTokenInfo.intuitRealmId,
+        intuitApi,
+        qbTokenInfo.incomeAccountRef,
+      )
       // create item in QB
       const item = await this.createItemInQB(
         {
           productName: z.string().parse(qbItemName),
           unitPrice: priceResource.amount,
-          incomeAccRefVal: qbTokenInfo.incomeAccountRef,
+          incomeAccRefVal: z.string().parse(incomeAccountRef),
           productDescription,
         },
         intuitApi,
@@ -650,10 +669,15 @@ export class ProductService extends BaseService {
     )
   }
 
-  async updateProductSyncToken(
-    qbItemId: string,
-    intuitApi: IntuitAPI,
-  ): Promise<ProductSyncTokenResponse | undefined> {
+  async updateProductSyncToken({
+    qbItemId,
+    intuitApi,
+    updateMappingTable = true,
+  }: {
+    qbItemId: string
+    intuitApi: IntuitAPI
+    updateMappingTable?: boolean
+  }): Promise<ProductSyncTokenResponse | undefined> {
     console.info(
       'ProductService#updateProductSyncToken. Updating sync token ...',
     )
@@ -682,16 +706,18 @@ export class ProductService extends BaseService {
       item = updateRes.Item
     }
 
-    // 2. update sync token in item sync table
-    await this.updateQBProduct(
-      {
-        qbSyncToken: item.SyncToken,
-      },
-      and(
-        eq(QBProductSync.qbItemId, qbItemId),
-        eq(QBProductSync.portalId, this.user.workspaceId),
-      ) as WhereClause,
-    )
+    if (updateMappingTable) {
+      // 2. update sync token in item sync table
+      await this.updateQBProduct(
+        {
+          qbSyncToken: item.SyncToken,
+        },
+        and(
+          eq(QBProductSync.qbItemId, qbItemId),
+          eq(QBProductSync.portalId, this.user.workspaceId),
+        ) as WhereClause,
+      )
+    }
 
     console.info(
       'ProductService#updateProductSyncToken. Sync token updated ...',
@@ -721,7 +747,10 @@ export class ProductService extends BaseService {
     if (!map) return
     if (!map.qbItemId || map.isExcluded) return map
 
-    await this.updateProductSyncToken(map.qbItemId, intuitAPI)
+    await this.updateProductSyncToken({
+      qbItemId: map.qbItemId,
+      intuitApi: intuitAPI,
+    })
     return await this.getMappingByProductPriceId(productId, priceId)
   }
 }

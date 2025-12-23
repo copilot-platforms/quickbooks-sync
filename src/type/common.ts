@@ -1,5 +1,6 @@
 import { InvoiceStatus, PaymentStatus } from '@/app/api/core/types/invoice'
 import { ProductStatus } from '@/app/api/core/types/product'
+import { AccountTypeObj } from '@/constant/qbConnection'
 import { InvoiceLineItemSchema } from '@/type/dto/webhook.dto'
 import { SQL } from 'drizzle-orm'
 import { z } from 'zod'
@@ -355,3 +356,5 @@ export const PaymentsResponseSchema = z.object({
   data: z.array(PaymentResponseSchema).optional(),
 })
 export type PaymentsResponse = z.infer<typeof PaymentsResponseSchema>
+
+export type AccountType = (typeof AccountTypeObj)[keyof typeof AccountTypeObj]

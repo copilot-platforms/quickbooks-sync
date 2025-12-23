@@ -152,6 +152,28 @@ export type QBAccountCreatePayloadType = z.infer<
   typeof QBAccountCreatePayloadSchema
 >
 
+export const QBAccountUpdatePayloadSchema =
+  QBAccountCreatePayloadSchema.partial().extend({
+    Id: z.string(),
+    Name: z.string(),
+    SyncToken: z.string(),
+    sparse: z.boolean().optional(),
+    Active: z.boolean().optional(),
+  })
+export type QBAccountUpdatePayloadType = z.infer<
+  typeof QBAccountUpdatePayloadSchema
+>
+
+export const QBAccountResponseSchema = z.object({
+  Account: z.object({
+    Id: z.string(),
+    Name: z.string(),
+    SyncToken: z.string(),
+    Active: z.boolean(),
+  }),
+})
+export type QBAccountResponseType = z.infer<typeof QBAccountResponseSchema>
+
 export const QBPurchaseCreatePayloadSchema = z.object({
   PaymentType: z.literal('Cash'),
   AccountRef: QBNameValueSchema,

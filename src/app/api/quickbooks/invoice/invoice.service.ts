@@ -49,6 +49,7 @@ import { convert } from 'html-to-text'
 import httpStatus from 'http-status'
 import { z } from 'zod'
 import { replaceSpecialCharsForQB } from '@/utils/string'
+import { AccountTypeObj } from '@/constant/qbConnection'
 
 type OneOffItemType = {
   name?: string
@@ -67,6 +68,7 @@ export class InvoiceService extends BaseService {
   private syncLogService: SyncLogService
   private static intuitApiService: IntuitAPI
   private static oneOffItem: OneOffItemType
+  private static incomeAccountRef: string
 
   constructor(user: User) {
     super(user)
@@ -250,7 +252,7 @@ export class InvoiceService extends BaseService {
     }
 
     const productDescription = convert(productInfo.description)
-    const incomeAccRefVal = intuitApi.tokens.incomeAccountRef
+    const incomeAccRefVal = InvoiceService.incomeAccountRef
 
     // total products with the same product id
     const itemsCount = await productService.getProductCount(
@@ -387,7 +389,7 @@ export class InvoiceService extends BaseService {
         {
           productName,
           unitPrice: 0,
-          incomeAccRefVal: intuitService.tokens.incomeAccountRef,
+          incomeAccRefVal: InvoiceService.incomeAccountRef,
         },
         intuitService,
         false, // flag that this item is non-taxable
@@ -428,7 +430,7 @@ export class InvoiceService extends BaseService {
         {
           productName,
           unitPrice: 0,
-          incomeAccRefVal: intuitService.tokens.incomeAccountRef,
+          incomeAccRefVal: InvoiceService.incomeAccountRef,
         },
         intuitService,
       )
@@ -452,6 +454,7 @@ export class InvoiceService extends BaseService {
 
   async handleFeePaidByClient(
     invoiceResource: InvoiceCreatedResponseType,
+    intuitAPI: IntuitAPI,
   ): Promise<QBInvoiceLineItemSchemaType | undefined> {
     const invoice = invoiceResource.data
     // check invoice fee is paid by client
@@ -464,7 +467,15 @@ export class InvoiceService extends BaseService {
       )
       const currentPortal = await getPortalConnection(this.user.workspaceId)
       let clientFeeRef = currentPortal?.clientFeeRef
-      if (!clientFeeRef) clientFeeRef = await this.manageClientFeeRef() // manage client fee ref (create new item in QB and store it into our DB)
+      if (clientFeeRef) {
+        const productService = new ProductService(this.user)
+        await productService.updateProductSyncToken({
+          qbItemId: clientFeeRef,
+          intuitApi: intuitAPI,
+          updateMappingTable: false,
+        })
+      } else clientFeeRef = await this.manageClientFeeRef() // manage client fee ref (create new item in QB and store it into our DB)
+
       // get payment via invoice id
       const payments = await this.copilot.getPayments(invoice.id)
       if (!payments || !payments.data) return
@@ -494,10 +505,10 @@ export class InvoiceService extends BaseService {
     if (serviceItemRef) {
       // check if the service item is active or not. If not, make it active
       const productService = new ProductService(this.user)
-      serviceItem = await productService.updateProductSyncToken(
-        serviceItemRef,
-        intuitAPI,
-      )
+      serviceItem = await productService.updateProductSyncToken({
+        qbItemId: serviceItemRef,
+        intuitApi: intuitAPI,
+      })
     }
 
     if (!serviceItemRef || !serviceItem?.id) {
@@ -530,6 +541,9 @@ export class InvoiceService extends BaseService {
       return
     }
 
+    InvoiceService.intuitApiService = new IntuitAPI(qbTokenInfo)
+    await this.handleIncomeAccountRef(qbTokenInfo)
+
     const customerService = new CustomerService(this.user)
     // 1. get client (retrieve receipentId from invoice resource). Copilot: Retrieve client. If not found, retrieve company and get first client from the company
     const { recipientInfo, companyInfo } =
@@ -538,7 +552,6 @@ export class InvoiceService extends BaseService {
         companyId: invoiceResource.companyId,
       })
 
-    InvoiceService.intuitApiService = new IntuitAPI(qbTokenInfo)
     // 2. search client in our mapping table
     const existingCustomer =
       await customerService.ensureCustomerExistsAndSyncToken(
@@ -702,7 +715,10 @@ export class InvoiceService extends BaseService {
 
     // check if invoice is paid. This needs to be done after actualTotalAmount and totalTax calculation to avoid miscalculation
     if (invoiceResource.status === InvoiceStatus.PAID) {
-      const clientFeeLineItem = await this.handleFeePaidByClient(payload)
+      const clientFeeLineItem = await this.handleFeePaidByClient(
+        payload,
+        InvoiceService.intuitApiService,
+      )
       if (clientFeeLineItem) {
         lineItems.push(clientFeeLineItem)
         actualTotalAmount += clientFeeLineItem.Amount
@@ -1117,5 +1133,16 @@ export class InvoiceService extends BaseService {
       invoiceNumber: syncedInvoice.invoiceNumber,
       ...{ ...opts, errorMessage: opts?.errorMessage || null },
     })
+  }
+
+  private async handleIncomeAccountRef(qbTokenInfo: IntuitAPITokensType) {
+    const tokenService = new TokenService(this.user)
+    const incomeAccountRef = await tokenService.checkAndUpdateAccountStatus(
+      AccountTypeObj.Income,
+      qbTokenInfo.intuitRealmId,
+      InvoiceService.intuitApiService,
+      qbTokenInfo.incomeAccountRef,
+    )
+    InvoiceService.incomeAccountRef = z.string().parse(incomeAccountRef)
   }
 }

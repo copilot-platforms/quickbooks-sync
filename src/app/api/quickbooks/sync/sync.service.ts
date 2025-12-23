@@ -23,6 +23,7 @@ import { TokenService } from '@/app/api/quickbooks/token/token.service'
 import { QBPortalConnection } from '@/db/schema/qbPortalConnections'
 import { MAX_ATTEMPTS } from '@/constant/sync'
 import { captureMessage } from '@sentry/nextjs'
+import { AccountTypeObj } from '@/constant/qbConnection'
 
 export const runtime = 'nodejs'
 
@@ -218,11 +219,25 @@ export class SyncService extends BaseService {
         message: 'syncService#processPaymentSucceededSync | records: ',
         obj: record,
       })
+      const intuitApi = new IntuitAPI(qbTokenInfo)
+      const tokenService = new TokenService(this.user)
+      const assetAccountRef = await tokenService.checkAndUpdateAccountStatus(
+        AccountTypeObj.Asset,
+        qbTokenInfo.intuitRealmId,
+        intuitApi,
+        qbTokenInfo.assetAccountRef,
+      )
+      const expenseAccountRef = await tokenService.checkAndUpdateAccountStatus(
+        AccountTypeObj.Expense,
+        qbTokenInfo.intuitRealmId,
+        intuitApi,
+        qbTokenInfo.expenseAccountRef,
+      )
 
       const expensePayload = {
         PaymentType: 'Cash' as const,
         AccountRef: {
-          value: qbTokenInfo.assetAccountRef,
+          value: z.string().parse(assetAccountRef),
         },
         DocNumber: record.invoiceNumber || '',
         TxnDate: dayjs(record.createdAt).format('YYYY-MM-DD'), // the date format for due date follows XML Schema standard (YYYY-MM-DD). For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase#the-purchase-object
@@ -232,14 +247,13 @@ export class SyncService extends BaseService {
             Amount: parseFloat(z.string().parse(record.feeAmount)) / 100, // fee amount is required for payment/expense creation
             AccountBasedExpenseLineDetail: {
               AccountRef: {
-                value: qbTokenInfo.expenseAccountRef,
+                value: z.string().parse(expenseAccountRef),
               },
             },
           },
         ],
       }
       const paymentService = new PaymentService(this.user)
-      const intuitApi = new IntuitAPI(qbTokenInfo)
       await paymentService.createExpenseForAbsorbedFees(
         expensePayload,
         intuitApi,
