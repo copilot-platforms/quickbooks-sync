@@ -1,6 +1,7 @@
 import APIError from '@/app/api/core/exceptions/api'
 import { BaseService } from '@/app/api/core/services/base.service'
 import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
+import { AccountTypeObj } from '@/constant/qbConnection'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
 import {
   QBPortalConnectionCreateSchema,
@@ -12,7 +13,9 @@ import {
 } from '@/db/schema/qbPortalConnections'
 import { QBSetting, QBSettingsUpdateSchemaType } from '@/db/schema/qbSettings'
 import { getPortalConnection } from '@/db/service/token.service'
-import { ChangeEnableStatusRequestType } from '@/type/common'
+import { AccountType, ChangeEnableStatusRequestType } from '@/type/common'
+import IntuitAPI from '@/utils/intuitAPI'
+import CustomLogger from '@/utils/logger'
 import dayjs from 'dayjs'
 import { and, eq, SQL } from 'drizzle-orm'
 import httpStatus from 'http-status'
@@ -135,5 +138,93 @@ export class TokenService extends BaseService {
       )
     }
     return portal
+  }
+
+  private async removeAccountMapping(
+    accountType: AccountType,
+    realmId: string,
+  ) {
+    let payload = {}
+    switch (accountType) {
+      case AccountTypeObj.Income:
+        payload = {
+          incomeAccountRef: '',
+        }
+        break
+      case AccountTypeObj.Expense:
+        payload = {
+          expenseAccountRef: '',
+        }
+        break
+      case AccountTypeObj.Asset:
+        payload = {
+          assetAccountRef: '',
+        }
+        break
+      default:
+        throw new APIError(
+          httpStatus.BAD_REQUEST,
+          `Cannot remove account mapping for account type ${accountType}`,
+        )
+    }
+    await this.updateQBPortalConnection(
+      payload,
+      and(
+        eq(QBPortalConnection.portalId, this.user.workspaceId),
+        eq(QBPortalConnection.intuitRealmId, realmId),
+      ) as WhereClause,
+    )
+  }
+
+  async checkAndUpdateAccountStatus(
+    accountType: AccountType,
+    realmId: string,
+    intuitApi: IntuitAPI,
+    accountId?: string,
+  ) {
+    if (!accountId) return
+
+    console.info(
+      'TokenService#checkAndUpdateAccountStatus. Updating account status ...',
+    )
+
+    // 1. get account by ID
+    let account = await intuitApi.getAnAccount(undefined, accountId, true)
+
+    CustomLogger.info({
+      obj: { account },
+      message:
+        'TokenService#checkAndUpdateAccountStatus. Account query response',
+    })
+
+    // if no account found, remove mapping
+    if (!account) {
+      console.info(
+        `TokenService#checkAndUpdateAccountStatus. Account not found for Id ${accountId} in QuickBooks. Unmapping the account...`,
+      )
+      await this.removeAccountMapping(accountType, realmId)
+      return
+    } else if (!account.Active) {
+      console.info(
+        `TokenService#checkAndUpdateAccountStatus. Account with Id ${accountId} is inactive. Making it active...`,
+      )
+      // if item is inactive, make it active
+      const updateRes = await intuitApi.updateAccount({
+        Id: account.Id,
+        Name: account.Name,
+        SyncToken: account.SyncToken,
+        Active: true,
+        sparse: true,
+      })
+      account = updateRes.Account
+
+      CustomLogger.info({
+        obj: { account },
+        message:
+          'TokenService#checkAndUpdateAccountStatus. Account made active.',
+      })
+    }
+
+    return account.Id
   }
 }
