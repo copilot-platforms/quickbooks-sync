@@ -18,6 +18,9 @@ import {
   QBNameValueSchemaType,
   QBItemResponseType,
   QBItemResponseSchema,
+  QBAccountUpdatePayloadType,
+  QBAccountResponseType,
+  QBAccountResponseSchema,
 } from '@/type/dto/intuitAPI.dto'
 import CustomLogger from '@/utils/logger'
 import httpStatus from 'http-status'
@@ -34,18 +37,19 @@ export type IntuitAPITokensType = Pick<
   | 'clientFeeRef'
 > & { isSuspended?: boolean }
 
-export type CustomerResponseType = {
+export type BaseResponseType = {
   Id: string
   SyncToken: string
   Active: boolean
 }
 
-export type ItemResponseType = {
-  Id: string
-  SyncToken: string
+export type AccountResponseType = BaseResponseType & {
+  Name: string
+}
+
+export type ItemResponseType = BaseResponseType & {
   Name: string
   ClassRef?: QBNameValueSchemaType
-  Active: boolean
   UnitPrice: number
 }
 
@@ -246,17 +250,17 @@ export default class IntuitAPI {
     displayName: string,
     id?: undefined,
     includeInactive?: boolean,
-  ): Promise<CustomerResponseType>
+  ): Promise<BaseResponseType>
   async _getACustomer(
     displayName: undefined,
     id: string,
     includeInactive?: boolean,
-  ): Promise<CustomerResponseType>
+  ): Promise<BaseResponseType>
   async _getACustomer(
     displayName: string,
     id: string,
     includeInactive?: boolean,
-  ): Promise<CustomerResponseType>
+  ): Promise<BaseResponseType>
   async _getACustomer(
     displayName?: string,
     id?: string,
@@ -464,6 +468,40 @@ export default class IntuitAPI {
     return parsedItem
   }
 
+  async _updateAccount(
+    payload: QBAccountUpdatePayloadType,
+  ): Promise<QBAccountResponseType> {
+    CustomLogger.info({
+      obj: { payload },
+      message: `IntuitAPI#accountUpdate | account update start for realmId: ${this.tokens.intuitRealmId}. `,
+    })
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/account?minorversion=${intuitApiMinorVersion}`
+    const account = await this.postFetchWithHeaders(url, payload)
+
+    if (!account)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#accountUpdate | message = no response',
+      )
+
+    if (account?.Fault) {
+      CustomLogger.error({ obj: account.Fault?.Error, message: 'Error: ' })
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        `${IntuitAPIErrorMessage}accountUpdate`,
+        account.Fault?.Error,
+      )
+    }
+
+    const parsedAccount = QBAccountResponseSchema.parse(account)
+
+    CustomLogger.info({
+      obj: { response: parsedAccount.Account },
+      message: `IntuitAPI#accountUpdate | account updated with Id = ${parsedAccount.Account?.Id}.`,
+    })
+    return parsedAccount
+  }
+
   async _createPayment(payload: QBPaymentCreatePayloadType) {
     CustomLogger.info({
       obj: { payload },
@@ -585,13 +623,39 @@ export default class IntuitAPI {
     return payment
   }
 
-  async _getAnAccountByName(accountName: string) {
+  /**
+   * Either name or id must be provided
+   */
+  async _getAnAccount(
+    accountName: string,
+    id?: undefined,
+    includeInactive?: boolean,
+  ): Promise<AccountResponseType>
+  async _getAnAccount(
+    accountName: undefined,
+    id: string,
+    includeInactive?: boolean,
+  ): Promise<AccountResponseType>
+  async _getAnAccount(
+    accountName: string,
+    id: string,
+    includeInactive?: boolean,
+  ): Promise<AccountResponseType>
+  async _getAnAccount(
+    accountName?: string,
+    id?: string,
+    includeInactive?: boolean,
+  ) {
     CustomLogger.info({
       obj: { realmId: this.tokens.intuitRealmId },
-      message:
-        'IntuitAPI#getAnAccountByName | Account query start for realmId: ',
+      message: 'IntuitAPI#getAnAccount | Account query start for realmId: ',
     })
-    const query = `SELECT Id FROM Account where Name = '${accountName}' AND Active = true`
+    let queryCondition = accountName
+      ? `Name = '${accountName}'`
+      : `Id = '${id}'`
+    queryCondition = `${queryCondition} AND Active IN (true${includeInactive ? ', false' : ''})` // By default, QB returns only active items.
+
+    const query = `SELECT Id, SyncToken, Active, Name FROM Account where ${queryCondition}`
     const customQuery = await this.customQuery(query)
 
     if (!customQuery) return null
@@ -600,7 +664,7 @@ export default class IntuitAPI {
       CustomLogger.error({ obj: customQuery.Fault?.Error, message: 'Error: ' })
       throw new APIError(
         customQuery.Fault?.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}getAnAccountByName`,
+        `${IntuitAPIErrorMessage}getAnAccount`,
         customQuery.Fault?.Error,
       )
     }
@@ -714,17 +778,17 @@ export default class IntuitAPI {
       displayName: string,
       id?: undefined,
       includeInactive?: boolean,
-    ): Promise<CustomerResponseType>
+    ): Promise<BaseResponseType>
     (
       displayName: undefined,
       id: string,
       includeInactive?: boolean,
-    ): Promise<CustomerResponseType>
+    ): Promise<BaseResponseType>
     (
       displayName: string,
       id: string,
       includeInactive?: boolean,
-    ): Promise<CustomerResponseType>
+    ): Promise<BaseResponseType>
   } = this.wrapWithRetry(this._getACustomer) as any
   getAnItem: {
     (
@@ -750,8 +814,25 @@ export default class IntuitAPI {
   createPayment = this.wrapWithRetry(this._createPayment)
   voidInvoice = this.wrapWithRetry(this._voidInvoice)
   deleteInvoice = this.wrapWithRetry(this._deleteInvoice)
-  getAnAccountByName = this.wrapWithRetry(this._getAnAccountByName)
+  getAnAccount: {
+    (
+      accountName: string,
+      id?: undefined,
+      includeInactive?: boolean,
+    ): Promise<AccountResponseType>
+    (
+      accountName: undefined,
+      id: string,
+      includeInactive?: boolean,
+    ): Promise<AccountResponseType>
+    (
+      accountName: string,
+      id: string,
+      includeInactive?: boolean,
+    ): Promise<AccountResponseType>
+  } = this.wrapWithRetry(this._getAnAccount) as any
   createAccount = this.wrapWithRetry(this._createAccount)
+  updateAccount = this.wrapWithRetry(this._updateAccount)
   createPurchase = this.wrapWithRetry(this._createPurchase)
   deletePayment = this.wrapWithRetry(this._deletePayment)
   deletePurchase = this.wrapWithRetry(this._deletePurchase)

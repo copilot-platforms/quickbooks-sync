@@ -9,6 +9,7 @@ import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { SyncService } from '@/app/api/quickbooks/sync/sync.service'
 import { TokenService } from '@/app/api/quickbooks/token/token.service'
 import { intuitRedirectUri } from '@/config'
+import { AccountTypeObj } from '@/constant/qbConnection'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
 import {
   QBPortalConnection,
@@ -50,14 +51,14 @@ export class AuthService extends BaseService {
     return await Intuit.getInstance().authorizeUri(state)
   }
 
-  async manageIncomeAccountRef(intuitApi: IntuitAPI) {
+  async manageIncomeAccountRef(intuitApi: IntuitAPI): Promise<string> {
     const incomeAccRef = await intuitApi.getSingleIncomeAccount()
     return incomeAccRef.Id
   }
 
-  async manageExpenseAccountRef(intuitApi: IntuitAPI) {
+  async manageExpenseAccountRef(intuitApi: IntuitAPI): Promise<string> {
     const accName = 'Assembly Processing Fees'
-    const existingAccount = await intuitApi.getAnAccountByName(accName)
+    const existingAccount = await intuitApi.getAnAccount(accName)
     if (existingAccount) {
       return existingAccount.Id
     }
@@ -74,9 +75,9 @@ export class AuthService extends BaseService {
     return expenseAccRef.Id
   }
 
-  async manageAssetAccountRef(intuitApi: IntuitAPI) {
+  async manageAssetAccountRef(intuitApi: IntuitAPI): Promise<string> {
     const accName = 'Assembly General Asset'
-    const existingAccount = await intuitApi.getAnAccountByName(accName)
+    const existingAccount = await intuitApi.getAnAccount(accName)
     if (existingAccount) {
       return existingAccount.Id
     }
@@ -95,6 +96,43 @@ export class AuthService extends BaseService {
     }
     const assetAccRef = await intuitApi.createAccount(payload)
     return assetAccRef.Id
+  }
+
+  async handleAccountReferences(
+    intuitApi: IntuitAPI,
+    payload: QBPortalConnectionCreateSchemaType,
+    tokenService: TokenService,
+  ) {
+    // manage acc ref from intuit and store in qbPortalConnections table
+    let incomeAccountRef = await tokenService.checkAndUpdateAccountStatus(
+        AccountTypeObj.Income,
+        payload.intuitRealmId,
+        intuitApi,
+        payload.incomeAccountRef,
+      ),
+      expenseAccountRef = await tokenService.checkAndUpdateAccountStatus(
+        AccountTypeObj.Expense,
+        payload.intuitRealmId,
+        intuitApi,
+        payload.expenseAccountRef,
+      ),
+      assetAccountRef = await tokenService.checkAndUpdateAccountStatus(
+        AccountTypeObj.Asset,
+        payload.intuitRealmId,
+        intuitApi,
+        payload.assetAccountRef,
+      )
+    if (!incomeAccountRef) {
+      incomeAccountRef = await this.manageIncomeAccountRef(intuitApi)
+    }
+
+    if (!expenseAccountRef) {
+      expenseAccountRef = await this.manageExpenseAccountRef(intuitApi)
+    }
+    if (!assetAccountRef) {
+      assetAccountRef = await this.manageAssetAccountRef(intuitApi)
+    }
+    return { ...payload, incomeAccountRef, expenseAccountRef, assetAccountRef }
   }
 
   async storeSettings({
@@ -163,22 +201,14 @@ export class AuthService extends BaseService {
         serviceItemRef: existingToken?.serviceItemRef || null,
         clientFeeRef: existingToken?.clientFeeRef || null,
       })
-      // manage acc ref from intuit and store in qbPortalConnections table
-      if (!insertPayload.incomeAccountRef) {
-        insertPayload.incomeAccountRef =
-          await this.manageIncomeAccountRef(intuitApi)
-      }
-      if (!insertPayload.expenseAccountRef) {
-        insertPayload.expenseAccountRef =
-          await this.manageExpenseAccountRef(intuitApi)
-      }
-      if (!insertPayload.assetAccountRef) {
-        insertPayload.assetAccountRef =
-          await this.manageAssetAccountRef(intuitApi)
-      }
-
-      const qbTokens = await tokenService.upsertQBPortalConnection(
+      // handle accounts
+      const createPayload = await this.handleAccountReferences(
+        intuitApi,
         insertPayload,
+        tokenService,
+      )
+      const qbTokens = await tokenService.upsertQBPortalConnection(
+        createPayload,
         ['id'],
       )
 

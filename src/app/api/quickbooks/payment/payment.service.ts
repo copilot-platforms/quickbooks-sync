@@ -8,6 +8,8 @@ import {
   LogStatus,
 } from '@/app/api/core/types/log'
 import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
+import { TokenService } from '@/app/api/quickbooks/token/token.service'
+import { AccountTypeObj } from '@/constant/qbConnection'
 import { buildReturningFields } from '@/db/helper/drizzle.helper'
 import {
   QBPaymentCreateSchema,
@@ -31,6 +33,7 @@ import {
   getCategory,
 } from '@/utils/synclog'
 import dayjs from 'dayjs'
+import { z } from 'zod'
 
 export class PaymentService extends BaseService {
   private syncLogService: SyncLogService
@@ -186,10 +189,24 @@ export class PaymentService extends BaseService {
     invoice: InvoiceResponse | undefined,
   ): Promise<void> {
     const paymentResource = parsedPaymentSucceedResource.data
+    const intuitApi = new IntuitAPI(qbTokenInfo)
+    const tokenService = new TokenService(this.user)
+    const assetAccountRef = await tokenService.checkAndUpdateAccountStatus(
+      AccountTypeObj.Asset,
+      qbTokenInfo.intuitRealmId,
+      intuitApi,
+      qbTokenInfo.assetAccountRef,
+    )
+    const expenseAccountRef = await tokenService.checkAndUpdateAccountStatus(
+      AccountTypeObj.Expense,
+      qbTokenInfo.intuitRealmId,
+      intuitApi,
+      qbTokenInfo.expenseAccountRef,
+    )
     const payload = {
       PaymentType: 'Cash' as const,
       AccountRef: {
-        value: qbTokenInfo.assetAccountRef,
+        value: z.string().parse(assetAccountRef),
       },
       DocNumber: invoice?.number || '',
       TxnDate: dayjs(paymentResource.createdAt).format('YYYY-MM-DD'), // the date format for due date follows XML Schema standard (YYYY-MM-DD). For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase#the-purchase-object
@@ -199,13 +216,12 @@ export class PaymentService extends BaseService {
           Amount: paymentResource.feeAmount.paidByPlatform / 100,
           AccountBasedExpenseLineDetail: {
             AccountRef: {
-              value: qbTokenInfo.expenseAccountRef,
+              value: z.string().parse(expenseAccountRef),
             },
           },
         },
       ],
     }
-    const intuitApi = new IntuitAPI(qbTokenInfo)
     await this.createExpenseForAbsorbedFees(
       payload,
       intuitApi,
