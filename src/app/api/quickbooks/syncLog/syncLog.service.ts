@@ -10,8 +10,9 @@ import {
   QBSyncLogUpdateSchemaType,
 } from '@/db/schema/qbSyncLogs'
 import { WhereClause } from '@/type/common'
+import { orderMap } from '@/utils/drizzle'
 import dayjs from 'dayjs'
-import { and, asc, desc, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { json2csv } from 'json-2-csv'
 
 export type CustomSyncLogRecordType = {
@@ -87,11 +88,7 @@ export class SyncLogService extends BaseService {
   ) {
     const query = this.db.query.QBSyncLog.findFirst({
       where: conditions,
-      orderBy: [
-        orderByDirection === 'asc'
-          ? asc(QBSyncLog.createdAt)
-          : desc(QBSyncLog.createdAt),
-      ],
+      orderBy: [orderMap[orderByDirection](QBSyncLog.createdAt)],
     })
     return await query
   }
