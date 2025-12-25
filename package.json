@@ -14,7 +14,8 @@
     "prettier:fix": "prettier --write .",
     "lint-staged": "npx lint-staged",
     "prepare": "husky",
-    "supabase:dev": "supabase start --ignore-health-check"
+    "supabase:dev": "supabase start --ignore-health-check",
+    "cmd:rename-qb-accounts": "tsx src/cmd/renameQbAccount/index.ts"
   },
   "dependencies": {
     "@sentry/nextjs": "^9.13.0",
@@ -69,6 +70,7 @@
     "postcss": "^8.5.3",
     "prettier": "^3.5.3",
     "tailwindcss": "^4.1.5",
+    "tsx": "^4.21.0",
     "typescript": "^5.8.3"
   },
   "packageManager": "yarn@4.9.1",
