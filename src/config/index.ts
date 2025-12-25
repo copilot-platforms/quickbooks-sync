@@ -1,5 +1,8 @@
 // TODO: parse env vars
 import { EnvironmentType } from 'intuit-oauth'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 export const copilotDashboardUrl =
   process.env.NEXT_PUBLIC_COPILOT_DASHBOARD_URL || ''
