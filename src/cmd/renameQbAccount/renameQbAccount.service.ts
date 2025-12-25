@@ -5,7 +5,7 @@ import {
   QBPortalConnection,
   QBPortalConnectionUpdateSchemaType,
 } from '@/db/schema/qbPortalConnections'
-import { getAllPortalConnections } from '@/db/service/token.service'
+import { getAllActivePortalConnections } from '@/db/service/token.service'
 import Intuit from '@/utils/intuit'
 import IntuitAPI from '@/utils/intuitAPI'
 import CustomLogger from '@/utils/logger'
@@ -26,7 +26,7 @@ export class RenameQbAccountService extends BaseService {
 
   async renameQbAccountName() {
     // 1. get all the active portals
-    const portals = await getAllPortalConnections()
+    const portals = await getAllActivePortalConnections()
 
     // 2. refresh the token for the active portal and store in db
     for (const portal of portals) {
