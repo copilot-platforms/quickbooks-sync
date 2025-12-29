@@ -108,7 +108,6 @@ export const CompanyResponseSchema = z.object({
   name: z.string(),
   iconImageUrl: z.string().nullable(),
   fallbackColor: z.string().nullish(),
-  isPlaceholder: z.boolean(),
   createdAt: z.string().datetime(),
 })
 export type CompanyResponse = z.infer<typeof CompanyResponseSchema>
