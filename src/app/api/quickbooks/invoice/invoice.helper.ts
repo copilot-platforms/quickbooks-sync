@@ -7,7 +7,9 @@ export function getLatestActiveClient(clients: ClientResponse[]) {
   })
 
   const sortedClients = sortClientsByDate(filteredClients)
-  return sortedClients[0]
+
+  if (sortedClients.length) return sortedClients[0]
+  return clients[0]
 }
 
 function sortClientsByDate(
