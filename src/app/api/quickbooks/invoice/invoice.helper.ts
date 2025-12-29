@@ -6,10 +6,11 @@ export function getLatestActiveClient(clients: ClientResponse[]) {
     return client.status === ClientStatus.ACTIVE
   })
 
-  const sortedClients = sortClientsByDate(filteredClients)
+  // check if there are any active clients. If not, return the first client
+  if (!filteredClients.length) return clients[0]
 
-  if (sortedClients.length) return sortedClients[0]
-  return clients[0]
+  const sortedClients = sortClientsByDate(filteredClients)
+  return sortedClients[0]
 }
 
 function sortClientsByDate(
