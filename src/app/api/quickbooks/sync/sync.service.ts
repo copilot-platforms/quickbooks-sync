@@ -359,12 +359,10 @@ export class SyncService extends BaseService {
       message: 'SyncService#intiateSync | QB Token Info and User',
     })
 
-    const maxAttemptsIds: string[] = []
     for (const log of logs) {
       // check and update attempt for failed logs
       const resyncAttemtps = await this.checkAndUpdateAttempt(log)
       if (resyncAttemtps.maxAttempts) {
-        maxAttemptsIds.push(log.id)
         continue
       }
 
@@ -399,22 +397,6 @@ export class SyncService extends BaseService {
           })
           break
       }
-    }
-
-    // report to sentry if any records has exceeded max retry count
-    if (maxAttemptsIds.length > 0) {
-      captureMessage(
-        `SyncService#intiateSync | Records exceeded max retry count. Portal Id: ${this.user.workspaceId}.`,
-        {
-          tags: {
-            key: 'exceedMaxAttempts', // can be used to search like "key:exceedMaxAttempts"
-          },
-          extra: {
-            maxAttemptsIds, // shown in "Additional Data" section in Sentry
-          },
-          level: 'error',
-        },
-      )
     }
   }
 
@@ -535,6 +517,22 @@ export class SyncService extends BaseService {
       },
       eq(QBSyncLog.id, log.id),
     )
+
+    // report to sentry if any records has exceeded max retry count
+    if (attempt == MAX_ATTEMPTS) {
+      captureMessage(
+        `SyncService#intiateSync | Records exceeded max retry count. Portal Id: ${this.user.workspaceId}.`,
+        {
+          tags: {
+            key: 'exceedMaxAttempts', // can be used to search like "key:exceedMaxAttempts"
+          },
+          extra: {
+            LogId: log.id, // shown in "Additional Data" section in Sentry
+          },
+          level: 'error',
+        },
+      )
+    }
 
     CustomLogger.info({
       message: `SyncService#checkAndUpdateAttempt | Attempt: ${attempt}`,
