@@ -37,6 +37,7 @@ export function replaceSpecialCharsForQB(input: string) {
     '@',
     '&',
     '!',
+    // "'", even though included as allowed list in above docs, single quote is not allowed as this throws error.
     '*',
     '(',
     ')',
