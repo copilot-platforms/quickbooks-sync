@@ -95,7 +95,11 @@ export class RenameQbAccountService extends BaseService {
   ) {
     try {
       const portal = RenameQbAccountService.connection
-      const existingAccount = await intuitApi.getAnAccountByName(oldName, true)
+      const existingAccount = await intuitApi.getAnAccount(
+        oldName,
+        undefined,
+        true,
+      )
       if (!existingAccount) {
         CustomLogger.info({
           message: `RenameQbAccountService#renameAssetAccount | No existing account found with name ${oldName}`,
