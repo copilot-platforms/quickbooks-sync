@@ -284,7 +284,12 @@ export class CustomerService extends BaseService {
   }
 
   async removeCustomerMapping(id: string) {
-    await this.db.delete(QBCustomers).where(eq(QBCustomers.id, id))
+    await this.db
+      .update(QBCustomers)
+      .set({
+        deletedAt: new Date(),
+      })
+      .where(eq(QBCustomers.id, id))
   }
 
   async ensureCustomerExistsAndSyncToken(

@@ -104,7 +104,7 @@ export default class IntuitAPI {
   }
 
   async _customQuery(query: string) {
-    CustomLogger.info({ message: 'IntuitAPI#customQuery' })
+    CustomLogger.info({ message: 'IntuitAPI#customQuery', obj: { query } })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/query?query=${encodeURIComponent(query)}&minorversion=${intuitApiMinorVersion}`
     const res = await this.getFetchWithHeader(url)
 
