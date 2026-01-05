@@ -1,9 +1,11 @@
 'use client'
+import { checkForNonUsCompany } from '@/action/quickbooks.action'
 import { AuthStatus } from '@/app/api/core/types/auth'
 import { useApp } from '@/app/context/AppContext'
 import { CalloutVariant } from '@/components/type/callout'
+import { getPortalTokens } from '@/db/service/token.service'
 import { useQuickbooks } from '@/hook/useQuickbooks'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 export const useDashboardMain = () => {
   const {
@@ -14,6 +16,8 @@ export const useDashboardMain = () => {
     lastSyncTimestamp,
     isEnabled,
     portalConnectionStatus,
+    qbTokens,
+    setAppParams,
   } = useApp()
 
   const {
@@ -33,6 +37,29 @@ export const useDashboardMain = () => {
   const [buttonAction, setButtonAction] = useState<
     (() => Promise<NodeJS.Timeout>) | undefined
   >(undefined)
+  const [nonUsCompanyChecking, setNonUsCompanyChecking] = useState(false)
+
+  const checkCompanyCountry = useCallback(async () => {
+    setNonUsCompanyChecking(true)
+    let tempTokenInfo = qbTokens
+    if (!tempTokenInfo) {
+      tempTokenInfo = await getPortalTokens(tokenPayload.workspaceId)
+    }
+
+    const nonUsCompany = await checkForNonUsCompany(tempTokenInfo)
+    setAppParams((prev) => ({
+      ...prev,
+      qbTokens: tempTokenInfo,
+      nonUsCompany,
+    }))
+    setNonUsCompanyChecking(false)
+  }, [syncFlag])
+
+  useEffect(() => {
+    if (syncFlag) {
+      checkCompanyCountry()
+    }
+  }, [syncFlag])
 
   useEffect(() => {
     let timeout: NodeJS.Timeout
@@ -73,5 +100,6 @@ export const useDashboardMain = () => {
     syncFlag,
     isConnecting,
     handleConnect,
+    nonUsCompanyChecking,
   }
 }

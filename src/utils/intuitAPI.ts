@@ -768,6 +768,27 @@ export default class IntuitAPI {
     return purchase
   }
 
+  async _getCompanyInfo() {
+    CustomLogger.info({
+      message: `IntuitAPI#getCompanyInfo | Company Info query start for realmId: ${this.tokens.intuitRealmId}.`,
+    })
+    const query = `SELECT * FROM CompanyInfo maxresults 1`
+    const companyInfo = await this.customQuery(query)
+
+    if (!companyInfo) return null
+
+    if (companyInfo?.Fault) {
+      CustomLogger.error({ obj: companyInfo.Fault?.Error, message: 'Error: ' })
+      throw new APIError(
+        companyInfo.Fault?.Error?.code || httpStatus.BAD_REQUEST,
+        `${IntuitAPIErrorMessage}getCompanyInfo`,
+        companyInfo.Fault?.Error,
+      )
+    }
+
+    return companyInfo.CompanyInfo?.[0]
+  }
+
   private wrapWithRetry<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
   ): (...args: Args) => Promise<R> {
@@ -842,4 +863,5 @@ export default class IntuitAPI {
   createPurchase = this.wrapWithRetry(this._createPurchase)
   deletePayment = this.wrapWithRetry(this._deletePayment)
   deletePurchase = this.wrapWithRetry(this._deletePurchase)
+  getCompanyInfo = this.wrapWithRetry(this._getCompanyInfo)
 }

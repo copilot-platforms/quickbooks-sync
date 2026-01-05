@@ -1,8 +1,10 @@
+'use server'
 import { db } from '@/db'
 import { PortalConnectionWithSettingType } from '@/db/schema/qbPortalConnections'
 import { QBSettingsSelectSchemaType } from '@/db/schema/qbSettings'
 import { WorkspaceResponse } from '@/type/common'
 import { CopilotAPI } from '@/utils/copilotAPI'
+import { IntuitAPITokensType } from '@/utils/intuitAPI'
 import { and, eq, isNull } from 'drizzle-orm'
 
 export const getPortalConnection = async (
@@ -54,4 +56,22 @@ export const getWorkspaceInfo = async (
   token: string,
 ): Promise<WorkspaceResponse> => {
   return await new CopilotAPI(token).getWorkspace()
+}
+
+export const getPortalTokens = async (
+  portalId: string,
+): Promise<IntuitAPITokensType> => {
+  const portalConnection = await getPortalConnection(portalId)
+  if (!portalConnection) throw new Error('Portal connection not found')
+
+  return {
+    accessToken: portalConnection.accessToken,
+    refreshToken: portalConnection.refreshToken,
+    intuitRealmId: portalConnection.intuitRealmId,
+    incomeAccountRef: portalConnection.incomeAccountRef,
+    expenseAccountRef: portalConnection.expenseAccountRef,
+    assetAccountRef: portalConnection.assetAccountRef,
+    serviceItemRef: portalConnection.serviceItemRef,
+    clientFeeRef: portalConnection.clientFeeRef,
+  }
 }
