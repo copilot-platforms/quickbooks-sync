@@ -65,9 +65,10 @@ export const Main = () => {
     syncFlag,
     handleConnect,
     isConnecting,
+    nonUsCompanyChecking,
   } = useDashboardMain()
 
-  const { enableAppIndicator } = useApp()
+  const { enableAppIndicator, nonUsCompany } = useApp()
 
   if (portalConnectionStatus === null) {
     return (
@@ -89,6 +90,16 @@ export const Main = () => {
         </div>
       ) : (
         <main className="main-section px-8 sm:px-[100px] lg:px-[220px] pb-[54px] pt-6">
+          {nonUsCompany && (
+            <div className="mb-4">
+              <Callout
+                title="Support Limited to U.S. QuickBooks Online Accounts"
+                description="At this time, we support only U.S.-based QuickBooks Online accounts. Please disconnect your current account and reconnect using a U.S. QuickBooks Online account."
+                variant={CalloutVariant.ERROR}
+              />
+            </div>
+          )}
+
           <Callout
             title={dashboardCallout.title}
             description={dashboardCallout.description}
@@ -101,6 +112,8 @@ export const Main = () => {
                     : dashboardCallout.actionLabel,
                 onClick: buttonAction,
                 disabled:
+                  nonUsCompanyChecking ||
+                  nonUsCompany || // disable the button if non-us company
                   isReconnecting ||
                   isConnecting ||
                   (status === CalloutVariant.WARNING && !enableAppIndicator),

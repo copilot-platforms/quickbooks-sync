@@ -1,6 +1,7 @@
 'use client'
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
 import { Token, WorkspaceResponse } from '@/type/common'
+import { IntuitAPITokensType } from '@/utils/intuitAPI'
 import { createContext, useContext, useState, ReactNode } from 'react'
 
 type AppContextType = {
@@ -17,6 +18,8 @@ type AppContextType = {
   initialInvoiceSettingMapFlag?: boolean // flag to determine the initial invoice setting flag
   initialProductSettingMapFlag?: boolean // flag to determine the initial product setting flag
   workspace: WorkspaceResponse
+  nonUsCompany?: boolean
+  qbTokens?: IntuitAPITokensType
 }
 
 const AppContext = createContext<
