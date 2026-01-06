@@ -57,15 +57,11 @@ export const IntuitAPIErrorMessage = '#IntuitAPIErrorMessage#'
 
 export default class IntuitAPI {
   tokens: IntuitAPITokensType
-  private static headers: Record<string, string>
+  private headers: Record<string, string>
 
   constructor(tokens: IntuitAPITokensType) {
     this.tokens = tokens
-    this.setHeaders()
-  }
-
-  private setHeaders() {
-    IntuitAPI.headers = {
+    this.headers = {
       Authorization: `Bearer ${this.tokens.accessToken}`,
       Accept: 'application/json',
       'content-type': 'application/json',
@@ -81,7 +77,7 @@ export default class IntuitAPI {
     customHeaders?: Record<string, string>,
   ) {
     const headers = {
-      ...IntuitAPI.headers,
+      ...this.headers,
       ...customHeaders,
     }
     const response = await postFetcher(url, headers, body)
@@ -96,7 +92,7 @@ export default class IntuitAPI {
     customHeaders?: Record<string, string>,
   ) {
     const headers = {
-      ...IntuitAPI.headers,
+      ...this.headers,
       ...customHeaders,
     }
     const response = await getFetcher(url, headers)
