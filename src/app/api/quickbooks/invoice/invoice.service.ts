@@ -66,9 +66,6 @@ type InvoiceItemRefAndDescriptionType = {
 export class InvoiceService extends BaseService {
   private copilot: CopilotAPI
   private syncLogService: SyncLogService
-  private intuitApiService!: IntuitAPI
-  private oneOffItem!: OneOffItemType
-  private incomeAccountRef!: string
 
   constructor(user: User) {
     super(user)
@@ -185,6 +182,8 @@ export class InvoiceService extends BaseService {
     productId: string,
     priceId: string,
     intuitApi: IntuitAPI,
+    oneOffItem: OneOffItemType,
+    incomeAccRef: string,
   ): Promise<InvoiceItemRefAndDescriptionType> {
     const productService = new ProductService(this.user)
     const mapping = await productService.ensureProductExistsAndSyncToken(
@@ -196,7 +195,7 @@ export class InvoiceService extends BaseService {
       if (mapping.isExcluded) {
         // if excluded, do not include in invoice and send as one-off item
         console.info('InvoiceService#getInvoiceItemRef | Product is excluded')
-        return { ref: this.oneOffItem }
+        return { ref: oneOffItem }
       }
       if (mapping.qbItemId) {
         console.info('InvoiceService#getInvoiceItemRef | Product map found')
@@ -213,7 +212,7 @@ export class InvoiceService extends BaseService {
           undefined,
           mapping.qbItemId,
         )
-        if (!intuitItem) return { ref: this.oneOffItem } // if item is not present in Intuit, return one-off item
+        if (!intuitItem) return { ref: oneOffItem } // if item is not present in Intuit, return one-off item
 
         return {
           ref: { value: mapping.qbItemId },
@@ -235,7 +234,7 @@ export class InvoiceService extends BaseService {
       console.info(
         'InvoiceService#getInvoiceItemRef | Create new product flag is false',
       )
-      return { ref: this.oneOffItem }
+      return { ref: oneOffItem }
     }
 
     // 2. create a new product in QB company
@@ -252,7 +251,7 @@ export class InvoiceService extends BaseService {
     }
 
     const productDescription = convert(productInfo.description)
-    const incomeAccRefVal = this.incomeAccountRef
+    const incomeAccRefVal = incomeAccRef
 
     // total products with the same product id
     const itemsCount = await productService.getProductCount(
@@ -333,11 +332,13 @@ export class InvoiceService extends BaseService {
   private async prepareLineItemPayload(
     lineItem: InvoiceLineItemSchemaType,
     intuitApi: IntuitAPI,
+    oneOffItem: OneOffItemType,
+    incomeAccRef: string,
   ) {
     const actualAmount = lineItem.amount / 100 // Convert to dollar. amount received in cents.
 
     let itemRef: InvoiceItemRefAndDescriptionType = {
-      ref: this.oneOffItem,
+      ref: oneOffItem,
       productDescription: lineItem.description,
     }
 
@@ -346,6 +347,8 @@ export class InvoiceService extends BaseService {
         lineItem.productId,
         lineItem.priceId,
         intuitApi,
+        oneOffItem,
+        incomeAccRef,
       )
     }
     return {
@@ -371,8 +374,10 @@ export class InvoiceService extends BaseService {
     }
   }
 
-  async manageClientFeeRef(): Promise<string> {
-    const intuitService = this.intuitApiService
+  async manageClientFeeRef(
+    intuitService: IntuitAPI,
+    incomeAccRefVal: string,
+  ): Promise<string> {
     const productName = 'Assembly Fees paid by Client'
     const tokenService = new TokenService(this.user)
 
@@ -389,7 +394,7 @@ export class InvoiceService extends BaseService {
         {
           productName,
           unitPrice: 0,
-          incomeAccRefVal: this.incomeAccountRef,
+          incomeAccRefVal,
         },
         intuitService,
         false, // flag that this item is non-taxable
@@ -412,8 +417,10 @@ export class InvoiceService extends BaseService {
     return clientFeeRef
   }
 
-  async manageServiceItemRef(): Promise<string> {
-    const intuitService = this.intuitApiService
+  async manageServiceItemRef(
+    intuitService: IntuitAPI,
+    incomeAccRefVal: string,
+  ): Promise<string> {
     const productName = 'Services'
     const tokenService = new TokenService(this.user)
 
@@ -430,7 +437,7 @@ export class InvoiceService extends BaseService {
         {
           productName,
           unitPrice: 0,
-          incomeAccRefVal: this.incomeAccountRef,
+          incomeAccRefVal,
         },
         intuitService,
       )
@@ -455,6 +462,7 @@ export class InvoiceService extends BaseService {
   async handleFeePaidByClient(
     invoiceResource: InvoiceCreatedResponseType,
     intuitAPI: IntuitAPI,
+    incomeAccRef: string,
   ): Promise<QBInvoiceLineItemSchemaType | undefined> {
     const invoice = invoiceResource.data
     // check invoice fee is paid by client
@@ -474,7 +482,8 @@ export class InvoiceService extends BaseService {
           intuitApi: intuitAPI,
           updateMappingTable: false,
         })
-      } else clientFeeRef = await this.manageClientFeeRef() // manage client fee ref (create new item in QB and store it into our DB)
+      } else
+        clientFeeRef = await this.manageClientFeeRef(intuitAPI, incomeAccRef) // manage client fee ref (create new item in QB and store it into our DB)
 
       // get payment via invoice id
       const payments = await this.copilot.getPayments(invoice.id)
@@ -499,7 +508,7 @@ export class InvoiceService extends BaseService {
     }
   }
 
-  async handleServiceItem(intuitAPI: IntuitAPI) {
+  async handleServiceItem(intuitAPI: IntuitAPI, incomeAccRef: string) {
     let serviceItemRef = this.user.qbConnection?.serviceItemRef
     let serviceItem: ProductSyncTokenResponse | undefined
     if (serviceItemRef) {
@@ -512,9 +521,9 @@ export class InvoiceService extends BaseService {
     }
 
     if (!serviceItemRef || !serviceItem?.id) {
-      serviceItemRef = await this.manageServiceItemRef()
+      serviceItemRef = await this.manageServiceItemRef(intuitAPI, incomeAccRef)
     }
-    this.oneOffItem = { value: serviceItemRef }
+    return { value: serviceItemRef }
   }
 
   /**
@@ -541,8 +550,11 @@ export class InvoiceService extends BaseService {
       return
     }
 
-    this.intuitApiService = new IntuitAPI(qbTokenInfo)
-    await this.handleIncomeAccountRef(qbTokenInfo)
+    const intuitApiService = new IntuitAPI(qbTokenInfo)
+    const incomeAccRef = await this.handleIncomeAccountRef(
+      qbTokenInfo,
+      intuitApiService,
+    )
 
     const customerService = new CustomerService(this.user)
     // 1. get client (retrieve receipentId from invoice resource). Copilot: Retrieve client. If not found, retrieve company and get first client from the company
@@ -556,14 +568,14 @@ export class InvoiceService extends BaseService {
     const existingCustomer =
       await customerService.ensureCustomerExistsAndSyncToken(
         recipientInfo.clientCompanyId,
-        this.intuitApiService,
+        intuitApiService,
       )
 
     let customer,
       existingCustomerMapId = existingCustomer?.id
     if (!existingCustomer) {
       // 2.1. search client in qb using client's given name and family name
-      customer = await this.intuitApiService.getACustomer(
+      customer = await intuitApiService.getACustomer(
         replaceSpecialCharsForQB(recipientInfo.displayName),
         undefined,
         true,
@@ -593,7 +605,7 @@ export class InvoiceService extends BaseService {
         }
 
         const customerRes =
-          await this.intuitApiService.createCustomer(customerPayload)
+          await intuitApiService.createCustomer(customerPayload)
         customer = customerRes.Customer
 
         console.info(
@@ -662,7 +674,7 @@ export class InvoiceService extends BaseService {
           sparse: true as const,
         }
 
-        const customerRes = await this.intuitApiService.customerSparseUpdate(
+        const customerRes = await intuitApiService.customerSparseUpdate(
           customerSparsePayload,
         )
         customer = customerRes.Customer
@@ -687,14 +699,22 @@ export class InvoiceService extends BaseService {
 
     // Check if service item ref ID is present in our DB. If not create new
     // in QB and store the id in our DB
-    await this.handleServiceItem(this.intuitApiService)
+    const oneOffItem = await this.handleServiceItem(
+      intuitApiService,
+      incomeAccRef,
+    )
 
     // bottleneck implementation (rate limiting)
     const lineItemPromises = []
     for (const lineItem of invoiceResource.lineItems) {
       lineItemPromises.push(
         bottleneck.schedule(() => {
-          return this.prepareLineItemPayload(lineItem, this.intuitApiService)
+          return this.prepareLineItemPayload(
+            lineItem,
+            intuitApiService,
+            oneOffItem,
+            incomeAccRef,
+          )
         }),
       )
     }
@@ -715,7 +735,8 @@ export class InvoiceService extends BaseService {
     if (invoiceResource.status === InvoiceStatus.PAID) {
       const clientFeeLineItem = await this.handleFeePaidByClient(
         payload,
-        this.intuitApiService,
+        intuitApiService,
+        incomeAccRef,
       )
       if (clientFeeLineItem) {
         lineItems.push(clientFeeLineItem)
@@ -748,8 +769,7 @@ export class InvoiceService extends BaseService {
     }
 
     // 6. create invoice in QB
-    const invoiceRes =
-      await this.intuitApiService.createInvoice(qbInvoicePayload)
+    const invoiceRes = await intuitApiService.createInvoice(qbInvoicePayload)
 
     const invoicePayload = {
       portalId: this.user.workspaceId,
@@ -803,7 +823,7 @@ export class InvoiceService extends BaseService {
         ],
       }
       await paymentService.createPaymentAndSync(
-        this.intuitApiService,
+        intuitApiService,
         qbPaymentPayload,
         {
           invoiceNumber: invoiceResource.number,
@@ -1133,14 +1153,17 @@ export class InvoiceService extends BaseService {
     })
   }
 
-  private async handleIncomeAccountRef(qbTokenInfo: IntuitAPITokensType) {
+  private async handleIncomeAccountRef(
+    qbTokenInfo: IntuitAPITokensType,
+    intuitApiService: IntuitAPI,
+  ) {
     const tokenService = new TokenService(this.user)
     const incomeAccountRef = await tokenService.checkAndUpdateAccountStatus(
       AccountTypeObj.Income,
       qbTokenInfo.intuitRealmId,
-      this.intuitApiService,
+      intuitApiService,
       qbTokenInfo.incomeAccountRef,
     )
-    this.incomeAccountRef = z.string().parse(incomeAccountRef)
+    return z.string().parse(incomeAccountRef)
   }
 }
