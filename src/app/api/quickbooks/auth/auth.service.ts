@@ -233,6 +233,7 @@ export class AuthService extends BaseService {
         if (existingPortal) {
           console.info(`Not initial connection for the portal: ${portalId}`)
 
+          // check for impacted portals that could have incorrectly synced invoices
           await new CheckPortalInvoiceService(
             this.user,
           ).checkImpactedInvoiceForPortal(existingPortal)

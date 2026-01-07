@@ -2,7 +2,13 @@ import { authenticateWithToken } from '@/app/api/core/utils/authenticate'
 import { CheckPortalInvoiceService } from '@/app/api/quickbooks/portalImpactVerification-temp/checkPortalInvoice.service'
 import { z } from 'zod'
 
-// command to run the script: `yarn run cmd:check-impact-on-workspace -- --token={token}`
+/**
+ * Command: `yarn run cmd:check-impact-on-workspace -- --token={token}`
+ * Description: this script is created to check if the invoices are incorrectly synced in other workspaces.
+ *  This workspace simply returns the list of the invoice numbers that might have been incorrectly synced.
+ *  This script does not include the check of those invoice numbers with our sync log table (qb_sync_logs).
+ *  Might have to manually check if there are any such invoices.
+ * */
 ;(async function run() {
   try {
     const args = process.argv.slice(2)
