@@ -16,7 +16,7 @@ import Intuit from '@/utils/intuit'
 import CustomLogger from '@/utils/logger'
 import { captureMessage } from '@sentry/nextjs'
 import dayjs from 'dayjs'
-import { and, eq, inArray, SQL } from 'drizzle-orm'
+import { and, eq, inArray, ne, SQL } from 'drizzle-orm'
 import httpStatus from 'http-status'
 
 type InvoiceResponseType = {
@@ -303,7 +303,11 @@ export class CheckPortalInvoiceService extends BaseService {
       }
 
       const syncLogs = await this.db.query.QBSyncLog.findMany({
-        where: (logs) => inArray(logs.invoiceNumber, invoiceNumbers),
+        where: (logs) =>
+          and(
+            inArray(logs.invoiceNumber, invoiceNumbers),
+            ne(logs.portalId, portalId),
+          ),
         columns: {
           portalId: true,
           invoiceNumber: true,
