@@ -24,7 +24,7 @@ type InvoiceResponseType = {
   DocNumber: string
 }
 
-export class CheckPortalInvoiceService extends BaseService {
+export class PortalImpactVerificationService extends BaseService {
   async startProcess() {
     const portalConnections = await this.db.query.QBPortalConnection.findMany()
     const promises = []
@@ -194,7 +194,7 @@ export class CheckPortalInvoiceService extends BaseService {
           if (failedPortal) failedPortal.push(portal.portalId)
           throw new APIError(
             httpStatus.BAD_REQUEST,
-            'CheckPortalInvoiceService#getInoiceFromQB | No response from Intuit API',
+            'PortalImpactVerificationService#getInoiceFromQB | No response from Intuit API',
           )
         }
 
@@ -206,7 +206,7 @@ export class CheckPortalInvoiceService extends BaseService {
           if (failedPortal) failedPortal.push(portal.portalId)
           throw new APIError(
             res.Fault.Error?.code || httpStatus.BAD_REQUEST,
-            `CheckPortalInvoiceService#getInoiceFromQB`,
+            `PortalImpactVerificationService#getInoiceFromQB`,
             res.Fault?.Error,
           )
         }
@@ -345,7 +345,7 @@ export class CheckPortalInvoiceService extends BaseService {
 
       // report to sentry if any errors
       captureMessage(
-        `CheckPortalInvoiceService#checkImpactedInvoiceForPortal :: Error fetching invoices from Assembly. ${portal.portalId}`,
+        `PortalImpactVerificationService#checkImpactedInvoiceForPortal :: Error fetching invoices from Assembly. ${portal.portalId}`,
         {
           tags: {
             key: 'portalImpact', // can be used to search like "key:portalImpact"
@@ -362,7 +362,7 @@ export class CheckPortalInvoiceService extends BaseService {
 
   async markPortalImpactVerified(portalId: string) {
     console.info(
-      'CheckPortalInvoiceService#markPortalImpactVerified :: Marking portal impact verification as verified',
+      'PortalImpactVerificationService#markPortalImpactVerified :: Marking portal impact verification as verified',
     )
     await this.db
       .update(PortalImpactVerification)
@@ -372,7 +372,7 @@ export class CheckPortalInvoiceService extends BaseService {
       .where(eq(PortalImpactVerification.portalId, portalId))
 
     console.info(
-      `CheckPortalInvoiceService#markPortalImpactVerified :: Portal ${portalId} marked as verified`,
+      `PortalImpactVerificationService#markPortalImpactVerified :: Portal ${portalId} marked as verified`,
     )
   }
 

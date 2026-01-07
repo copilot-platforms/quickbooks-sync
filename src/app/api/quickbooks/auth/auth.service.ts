@@ -5,7 +5,7 @@ import { AuthStatus } from '@/app/api/core/types/auth'
 import { NotificationActions } from '@/app/api/core/types/notification'
 import { NotificationService } from '@/app/api/notification/notification.service'
 import { LogService } from '@/app/api/quickbooks/log/log.service'
-import { CheckPortalInvoiceService } from '@/app/api/quickbooks/portalImpactVerification-temp/checkPortalInvoice.service'
+import { PortalImpactVerificationService } from '@/app/api/quickbooks/portalImpactVerification-temp/portalImpactVerification.service'
 import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { SyncService } from '@/app/api/quickbooks/sync/sync.service'
 import { TokenService } from '@/app/api/quickbooks/token/token.service'
@@ -234,7 +234,7 @@ export class AuthService extends BaseService {
           console.info(`Not initial connection for the portal: ${portalId}`)
 
           // check for impacted portals that could have incorrectly synced invoices
-          await new CheckPortalInvoiceService(
+          await new PortalImpactVerificationService(
             this.user,
           ).checkImpactedInvoiceForPortal(existingPortal)
 

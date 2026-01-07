@@ -1,5 +1,5 @@
 import { authenticateWithToken } from '@/app/api/core/utils/authenticate'
-import { CheckPortalInvoiceService } from '@/app/api/quickbooks/portalImpactVerification-temp/checkPortalInvoice.service'
+import { PortalImpactVerificationService } from '@/app/api/quickbooks/portalImpactVerification-temp/portalImpactVerification.service'
 import { z } from 'zod'
 
 /**
@@ -22,10 +22,10 @@ import { z } from 'zod'
     const tokenParsed = z.string().parse(token)
     const user = await authenticateWithToken(tokenParsed)
 
-    const checkInvoiceService = new CheckPortalInvoiceService(user)
+    const checkInvoiceService = new PortalImpactVerificationService(user)
     await checkInvoiceService.startProcess()
 
-    console.info('\n Check invoices successfully 🎉')
+    console.info('\n Successfully checked invoices for impact 🎉')
     process.exit(1)
   } catch (error) {
     console.error(error)
