@@ -858,10 +858,11 @@ export class InvoiceService extends BaseService {
     }
 
     // check if the entity invoice has successful event paid
-    const syncLog = await this.syncLogService.getOneByCopilotIdAndEventType(
-      payload.data.id,
-      EventType.PAID,
-    )
+    const syncLog = await this.syncLogService.getOneByCopilotIdAndEventType({
+      copilotId: payload.data.id,
+      eventType: EventType.PAID,
+      entityType: EntityType.INVOICE,
+    })
 
     if (syncLog?.status === LogStatus.SUCCESS) {
       console.info('InvoiceService#webhookInvoicePaid | Invoice already paid')
@@ -893,10 +894,11 @@ export class InvoiceService extends BaseService {
     }
 
     // get invoice sync log
-    const invoiceLog = await this.syncLogService.getOneByCopilotIdAndEventType(
-      payload.data.id,
-      EventType.CREATED,
-    )
+    const invoiceLog = await this.syncLogService.getOneByCopilotIdAndEventType({
+      copilotId: payload.data.id,
+      eventType: EventType.CREATED,
+      entityType: EntityType.INVOICE,
+    })
 
     if (!invoiceLog) {
       console.error(
@@ -986,10 +988,11 @@ export class InvoiceService extends BaseService {
     }
 
     // get invoice sync log
-    const invoiceLog = await this.syncLogService.getOneByCopilotIdAndEventType(
-      payload.id,
-      EventType.CREATED,
-    )
+    const invoiceLog = await this.syncLogService.getOneByCopilotIdAndEventType({
+      copilotId: payload.id,
+      eventType: EventType.CREATED,
+      entityType: EntityType.INVOICE,
+    })
 
     if (!invoiceLog) {
       console.error(
@@ -1073,10 +1076,11 @@ export class InvoiceService extends BaseService {
     }
 
     // get invoice sync log
-    const invoiceLog = await this.syncLogService.getOneByCopilotIdAndEventType(
-      payload.id,
-      EventType.CREATED,
-    )
+    const invoiceLog = await this.syncLogService.getOneByCopilotIdAndEventType({
+      copilotId: payload.id,
+      eventType: EventType.CREATED,
+      entityType: EntityType.INVOICE,
+    })
 
     if (!invoiceLog) {
       console.error(

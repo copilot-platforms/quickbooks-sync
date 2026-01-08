@@ -169,6 +169,7 @@ export class PaymentService extends BaseService {
           feeAmount: (payload.Line[0].Amount * 100).toFixed(2),
           remark: 'Absorbed fees',
           qbItemName: 'Assembly Fees',
+          errorMessage: '',
         },
       )
     } catch (error: unknown) {

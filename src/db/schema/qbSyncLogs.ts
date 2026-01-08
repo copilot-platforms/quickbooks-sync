@@ -53,6 +53,14 @@ export const QBSyncLog = table('qb_sync_logs', {
 export const QBSyncLogCreateSchema = createInsertSchema(QBSyncLog)
 export type QBSyncLogCreateSchemaType = z.infer<typeof QBSyncLogCreateSchema>
 
+export type QBSyncLogWithEntityType = Omit<
+  QBSyncLogCreateSchemaType,
+  'entityType'
+> & {
+  entityType: EntityType
+  eventType: EventType
+}
+
 export const QBSyncLogSelectSchema = createSelectSchema(QBSyncLog)
 export type QBSyncLogSelectSchemaType = z.infer<typeof QBSyncLogSelectSchema>
 

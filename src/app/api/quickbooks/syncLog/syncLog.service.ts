@@ -8,6 +8,7 @@ import {
   QBSyncLogSelectSchemaType,
   QBSyncLogUpdateSchema,
   QBSyncLogUpdateSchemaType,
+  QBSyncLogWithEntityType,
 } from '@/db/schema/qbSyncLogs'
 import { WhereClause } from '@/type/common'
 import { orderMap } from '@/utils/drizzle'
@@ -66,15 +67,21 @@ export class SyncLogService extends BaseService {
     return log
   }
 
-  async getOneByCopilotIdAndEventType(
-    copilotId: string,
-    eventType?: EventType,
-  ) {
+  async getOneByCopilotIdAndEventType({
+    copilotId,
+    eventType,
+    entityType,
+  }: {
+    copilotId: string
+    eventType: EventType
+    entityType: EntityType
+  }) {
     const conditions = [
       eq(QBSyncLog.portalId, this.user.workspaceId),
       eq(QBSyncLog.copilotId, copilotId),
-      eventType ? eq(QBSyncLog.eventType, eventType) : undefined,
-    ].filter(Boolean) // removes undefined
+      eq(QBSyncLog.eventType, eventType),
+      eq(QBSyncLog.entityType, entityType),
+    ]
 
     const query = this.db.query.QBSyncLog.findFirst({
       where: and(...conditions),
@@ -94,18 +101,23 @@ export class SyncLogService extends BaseService {
   }
 
   async updateOrCreateQBSyncLog(
-    payload: QBSyncLogCreateSchemaType,
+    payload: QBSyncLogWithEntityType,
     conditions?: WhereClause,
   ) {
     let existingLog
 
     if (conditions) {
-      existingLog = await this.getOne(conditions)
+      const sqlConditions = and(
+        ...[conditions],
+        eq(QBSyncLog.entityType, payload.entityType),
+      ) as WhereClause
+      existingLog = await this.getOne(sqlConditions)
     } else {
-      existingLog = await this.getOneByCopilotIdAndEventType(
-        payload.copilotId,
-        payload.eventType,
-      )
+      existingLog = await this.getOneByCopilotIdAndEventType({
+        copilotId: payload.copilotId,
+        eventType: payload.eventType,
+        entityType: payload.entityType,
+      })
     }
 
     if (existingLog) {
@@ -129,7 +141,7 @@ export class SyncLogService extends BaseService {
   /**
    * Get all failed sync logs
    */
-  async getFailedSyncLogsByEntityType(
+  async getAllFailedLogsForWorkspace(
     includeDeleted: boolean,
   ): Promise<QBSyncLogSelectSchemaType[] | []> {
     return await this.db.query.QBSyncLog.findMany({
