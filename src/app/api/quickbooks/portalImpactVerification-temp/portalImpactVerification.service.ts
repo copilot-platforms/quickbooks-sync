@@ -24,6 +24,14 @@ type InvoiceResponseType = {
   DocNumber: string
 }
 
+type processForPortalType = {
+  portal: QBPortalConnectionSelectSchemaType
+  propagateError?: boolean
+  impactedPortal?: Record<string, string[]>
+  failedPortal?: string[]
+  failedPortalInAssembly?: string[]
+}
+
 export class PortalImpactVerificationService extends BaseService {
   async startProcess() {
     const portalConnections = await this.db.query.QBPortalConnection.findMany()
@@ -32,14 +40,14 @@ export class PortalImpactVerificationService extends BaseService {
     const failedPortal: string[] = []
     const failedPortalInAssembly: string[] = []
 
-    for (const portalConnection of portalConnections) {
+    for (const portal of portalConnections) {
       const asyncFn = bottleneck.schedule(() => {
-        return this.processForPortal(
-          portalConnection,
+        return this.processForPortal({
+          portal,
           impactedPortal,
           failedPortal,
           failedPortalInAssembly,
-        )
+        })
       })
       promises.push(asyncFn)
     }
@@ -58,59 +66,71 @@ export class PortalImpactVerificationService extends BaseService {
     )
   }
 
-  private async processForPortal(
-    portal: QBPortalConnectionSelectSchemaType,
-    impactedPortal?: Record<string, string[]>,
-    failedPortal?: string[],
-    failedPortalInAssembly?: string[],
-  ) {
+  private async processForPortal({
+    portal,
+    impactedPortal,
+    failedPortal,
+    failedPortalInAssembly,
+    propagateError = false,
+  }: processForPortalType) {
     const portalId = portal.portalId
-    // 1. get all invoices from assembly for the portal
-    const portalInvoiceNumberList = await this.getPortalInvoicesFromAssembly(
-      portalId,
-      failedPortalInAssembly,
-    )
-
-    if (portalInvoiceNumberList.length === 0) {
-      console.info(
-        '\n\n No invoice found for portal: ' + portalId + ' Skipping.. \n\n',
+    try {
+      // 1. get all invoices from assembly for the portal
+      const portalInvoiceNumberList = await this.getPortalInvoicesFromAssembly(
+        portalId,
+        failedPortalInAssembly,
       )
-      return
-    }
 
-    // 2. get all synced invoices for the portal in QB
-    const accessToken = await this.getRefreshedAccessToken(portal, failedPortal)
-    if (!accessToken) {
-      console.error('No access token for portal: ' + portal.portalId)
-      return
-    }
+      if (portalInvoiceNumberList.length === 0) {
+        console.info(
+          '\n\n No invoice found for portal: ' + portalId + ' Skipping.. \n\n',
+        )
+        return
+      }
 
-    const qbInvoices = await this.getInvoiceFromQB(
-      portal,
-      accessToken,
-      failedPortal,
-    )
+      // 2. get all synced invoices for the portal in QB
+      const accessToken = await this.getRefreshedAccessToken(
+        portal,
+        failedPortal,
+      )
+      if (!accessToken) {
+        console.error('No access token for portal: ' + portal.portalId)
+        return
+      }
 
-    if (!qbInvoices) {
+      const qbInvoices = await this.getInvoiceFromQB(
+        portal,
+        accessToken,
+        failedPortal,
+      )
+
+      if (!qbInvoices) {
+        console.error(
+          '\n\nNo invoices found for portal in QB: ' + portal.portalId,
+        )
+        return
+      }
+
+      // 3. diff two lists and get invoices only in QB
+      const diffInvoiceNumber = qbInvoices
+        .filter((invNumber) => !portalInvoiceNumberList.includes(invNumber))
+        .filter((inv) => inv !== null || inv !== undefined || inv !== '')
+      if (impactedPortal) impactedPortal[portalId] = diffInvoiceNumber
+
+      CustomLogger.info({
+        message: `Portal ${portalId} with impacted invoice list: `,
+        obj: { invoices: diffInvoiceNumber },
+      })
+      console.info('\n\n##### Completed portal: ' + portalId)
+
+      return diffInvoiceNumber
+    } catch (error: unknown) {
       console.error(
-        '\n\nNo invoices found for portal in QB: ' + portal.portalId,
+        'portalImpactVerificationService#processForPortal :: Error processing portal',
+        portalId,
       )
-      return
+      if (propagateError) throw error
     }
-
-    // 3. diff two lists and get invoices only in QB
-    const diffInvoiceNumber = qbInvoices
-      .filter((invNumber) => !portalInvoiceNumberList.includes(invNumber))
-      .filter((inv) => inv !== null || inv !== undefined || inv !== '')
-    if (impactedPortal) impactedPortal[portalId] = diffInvoiceNumber
-
-    CustomLogger.info({
-      message: `Portal ${portalId} with impacted invoice list: `,
-      obj: { invoices: diffInvoiceNumber },
-    })
-    console.info('\n\n##### Completed portal: ' + portalId)
-
-    return diffInvoiceNumber
   }
 
   private async getPortalInvoicesFromAssembly(
@@ -292,7 +312,10 @@ export class PortalImpactVerificationService extends BaseService {
         return
       }
 
-      const invoiceNumbers = await this.processForPortal(portal)
+      const invoiceNumbers = await this.processForPortal({
+        portal,
+        propagateError: true,
+      })
       if (!invoiceNumbers || invoiceNumbers.length === 0) {
         console.info(
           `No invoice number difference found for portal: ${portalId}.`,
