@@ -22,7 +22,7 @@ import {
 } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
-import { and, count, desc, eq, inArray, isNull, not, sql } from 'drizzle-orm'
+import { and, count, desc, eq, inArray, isNull, not, SQL } from 'drizzle-orm'
 import { convert } from 'html-to-text'
 import { z } from 'zod'
 import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
@@ -30,7 +30,7 @@ import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 import dayjs from 'dayjs'
 import APIError from '@/app/api/core/exceptions/api'
 import httpStatus from 'http-status'
-import { QBSyncLog, QBSyncLogCreateSchemaType } from '@/db/schema/qbSyncLogs'
+import { QBSyncLog, QBSyncLogWithEntityType } from '@/db/schema/qbSyncLogs'
 import User from '@/app/api/core/models/User.model'
 import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { replaceBeforeParens, replaceSpecialCharsForQB } from '@/utils/string'
@@ -605,7 +605,7 @@ export class ProductService extends BaseService {
       payload.map(async (item) => {
         const copilotId = item.id
 
-        const payload: QBSyncLogCreateSchemaType = {
+        const payload: QBSyncLogWithEntityType = {
           portalId: this.user.workspaceId,
           entityType: EntityType.PRODUCT,
           eventType: EventType.UNMAPPED,
@@ -645,13 +645,20 @@ export class ProductService extends BaseService {
       productPrice?: string
     },
   ) {
-    const conditions = [
-      eq(QBSyncLog.portalId, this.user.workspaceId),
-      eventType === EventType.UPDATED
-        ? (eq(QBSyncLog.copilotId, copilotId), // product update should be reflected to all the products with multiple prices
-          eq(QBSyncLog.status, LogStatus.FAILED))
-        : eq(QBSyncLog.copilotPriceId, z.string().parse(opts.copilotPriceId)), // product create should have different price Id,
-    ].filter(Boolean)
+    const conditions: SQL[] = [eq(QBSyncLog.portalId, this.user.workspaceId)]
+
+    if (eventType === EventType.UPDATED) {
+      conditions.push(
+        eq(QBSyncLog.copilotId, copilotId), // product update should be reflected to all the products with multiple prices
+        eq(QBSyncLog.eventType, eventType),
+        eq(QBSyncLog.status, LogStatus.FAILED),
+        eq(QBSyncLog.quickbooksId, quickbooksId),
+      )
+    } else {
+      conditions.push(
+        eq(QBSyncLog.copilotPriceId, z.string().parse(opts.copilotPriceId)), // product create should have different price Id,
+      )
+    }
 
     await this.syncLogService.updateOrCreateQBSyncLog(
       {

@@ -154,7 +154,10 @@ export class WebhookService extends BaseService {
         parsedInvoiceResource.data.total,
         getMessageAndCodeFromError(error),
       )
-      throw error
+      console.error(
+        `WebhookService#handleWebhookEvent#invoiceCreated :: Error | Portal Id: ${this.user.workspaceId} | Invoice: ${parsedInvoiceResource.data.id}`,
+      )
+      return
     }
   }
 
@@ -187,7 +190,10 @@ export class WebhookService extends BaseService {
         parsedVoidedInvoiceResource.data.total,
         getMessageAndCodeFromError(error),
       )
-      throw error
+      console.error(
+        `WebhookService#handleWebhookEvent#handleInvoiceVoided :: Error | Portal Id: ${this.user.workspaceId} | Invoice: ${parsedVoidedInvoiceResource.data.id}`,
+      )
+      return
     }
   }
 
@@ -216,7 +222,10 @@ export class WebhookService extends BaseService {
         deletePayload.total,
         getMessageAndCodeFromError(error),
       )
-      throw error
+      console.error(
+        `WebhookService#handleWebhookEvent#handleInvoiceDeleted :: Error | Portal Id: ${this.user.workspaceId} | Invoice: ${deletePayload.id}`,
+      )
+      return
     }
   }
 
@@ -257,7 +266,10 @@ export class WebhookService extends BaseService {
         deletedAt: getDeletedAtForAuthAccountCategoryLog(errorWithCode),
         category: getCategory(errorWithCode),
       })
-      throw error
+      console.error(
+        `WebhookService#handleWebhookEvent#handleInvoicePaid :: Error | Portal Id: ${this.user.workspaceId} | Invoice: ${parsedPaidInvoiceResource.data.id}`,
+      )
+      return
     }
   }
 
@@ -298,7 +310,10 @@ export class WebhookService extends BaseService {
         deletedAt: getDeletedAtForAuthAccountCategoryLog(errorWithCode),
         category: getCategory(errorWithCode),
       })
-      throw error
+      console.error(
+        `WebhookService#handleWebhookEvent#handleProductUpdated :: Error | Portal Id: ${this.user.workspaceId} | Product: ${parsedProductResource.data.id}`,
+      )
+      return
     }
   }
 
@@ -351,7 +366,10 @@ export class WebhookService extends BaseService {
         },
         conditions,
       )
-      throw error
+      console.error(
+        `WebhookService#handleWebhookEvent#handlePriceCreated :: Error | Portal Id: ${this.user.workspaceId} | PriceId: ${priceResource.id}`,
+      )
+      return
     }
   }
 
@@ -383,10 +401,11 @@ export class WebhookService extends BaseService {
       }
 
       const syncLogService = new SyncLogService(this.user)
-      const syncLog = await syncLogService.getOneByCopilotIdAndEventType(
-        parsedPaymentSucceedResource.data.id,
-        EventType.SUCCEEDED,
-      )
+      const syncLog = await syncLogService.getOneByCopilotIdAndEventType({
+        copilotId: parsedPaymentSucceedResource.data.id,
+        eventType: EventType.SUCCEEDED,
+        entityType: EntityType.PAYMENT,
+      })
       if (syncLog?.status === LogStatus.SUCCESS) {
         console.info(
           'WebhookService#webhookPaymentSucceeded | Payment already succeeded',
@@ -432,7 +451,10 @@ export class WebhookService extends BaseService {
           deletedAt: getDeletedAtForAuthAccountCategoryLog(errorWithCode),
           category: getCategory(errorWithCode),
         })
-        throw error
+        console.error(
+          `WebhookService#handleWebhookEvent#handlePaymentSucceeded :: Error | Portal Id: ${this.user.workspaceId} | Payment: ${parsedPaymentSucceedResource.data.id}`,
+        )
+        return
       }
     }
   }

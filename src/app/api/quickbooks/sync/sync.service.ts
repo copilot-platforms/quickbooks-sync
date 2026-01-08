@@ -410,7 +410,7 @@ export class SyncService extends BaseService {
       })
       // 1. get all failed sync logs group by the entity type
       const failedSyncLogs =
-        await this.syncLogService.getFailedSyncLogsByEntityType(includeDeleted)
+        await this.syncLogService.getAllFailedLogsForWorkspace(includeDeleted)
 
       if (failedSyncLogs.length === 0) {
         CustomLogger.info({
@@ -479,6 +479,7 @@ export class SyncService extends BaseService {
           eq(QBPortalConnection.portalId, this.user.workspaceId),
           ['id'],
         )
+
         const deleteLogs = this.syncLogService.updateQBSyncLog(
           {
             deletedAt: new Date(),
