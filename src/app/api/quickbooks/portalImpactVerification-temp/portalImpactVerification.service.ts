@@ -325,23 +325,7 @@ export class PortalImpactVerificationService extends BaseService {
         return
       }
 
-      const syncLogs = await this.db.query.QBSyncLog.findMany({
-        where: (logs) =>
-          and(
-            inArray(logs.invoiceNumber, invoiceNumbers),
-            ne(logs.portalId, portalId),
-          ),
-        columns: {
-          portalId: true,
-          invoiceNumber: true,
-          copilotId: true,
-        },
-      })
-
-      console.info(
-        `Result of syncLogs based on above invoice number list: ${JSON.stringify(syncLogs)}`,
-      )
-
+      const syncLogs = await this.getLogsNotInPortal(portalId, invoiceNumbers)
       if (syncLogs.length > 0) {
         // report to sentry if incorrect invoices in QB are synced through our app
         captureMessage(
@@ -407,5 +391,24 @@ export class PortalImpactVerificationService extends BaseService {
           eq(PortalImpactVerification.isVerified, false),
         ),
     })
+  }
+
+  async getLogsNotInPortal(portalId: string, invoiceNumbers: string[]) {
+    const logs = await this.db.query.QBSyncLog.findMany({
+      where: (logs) =>
+        and(
+          inArray(logs.invoiceNumber, invoiceNumbers),
+          ne(logs.portalId, portalId),
+        ),
+      columns: {
+        portalId: true,
+        invoiceNumber: true,
+        copilotId: true,
+      },
+    })
+    console.info(
+      `Result of syncLogs based on above invoice number list: ${JSON.stringify(logs)}`,
+    )
+    return logs
   }
 }
