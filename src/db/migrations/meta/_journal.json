@@ -85,6 +85,13 @@
       "when": 1766066307157,
       "tag": "20251218135827_add_attempts_is_suspended_category_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1767787236762,
+      "tag": "20260107120036_create_portal_impact_verification_table",
+      "breakpoints": true
     }
   ]
 }
