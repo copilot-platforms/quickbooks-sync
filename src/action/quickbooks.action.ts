@@ -1,3 +1,5 @@
+'use server'
+
 import { AuthStatus } from '@/app/api/core/types/auth'
 import { PortalConnectionWithSettingType } from '@/db/schema/qbPortalConnections'
 import { QBSettingsSelectSchemaType } from '@/db/schema/qbSettings'
@@ -5,6 +7,8 @@ import {
   getPortalConnection,
   getPortalSettings,
 } from '@/db/service/token.service'
+import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
+import CustomLogger from '@/utils/logger'
 import { z } from 'zod'
 
 export async function checkPortalConnection(
@@ -27,6 +31,24 @@ export async function checkSyncStatus(portalId: string): Promise<boolean> {
     console.error('checkSyncStatus#getPortalSettings | Error =', err)
     return false
   }
+}
+
+export async function checkForNonUsCompany(tokenInfo: IntuitAPITokensType) {
+  CustomLogger.info({
+    message: 'checkForNonUsCompany | Checking for non-US company',
+  })
+  const intuitApi = new IntuitAPI(tokenInfo)
+  const companyInfo = await intuitApi.getCompanyInfo()
+
+  CustomLogger.info({
+    obj: { companyInfo },
+    message: 'checkForNonUsCompany | Company Info',
+  })
+
+  if (companyInfo?.Country !== 'US') {
+    return true
+  }
+  return false
 }
 
 export async function reconnectIfCta(type?: string) {
