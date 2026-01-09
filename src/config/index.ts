@@ -36,3 +36,4 @@ export const intuitApiMinorVersion =
 export const supabaseProjectUrl =
   process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL || ''
 export const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+export const impacteWorkspaces = process.env.IMPACTED_WORKSPACES || ''
