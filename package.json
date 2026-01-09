@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "trigger:dev": "npx trigger.dev@4.3.0 dev",
+    "trigger:deploy": "npx trigger.dev@4.3.0 deploy",
     "dev:embedded": "node scripts/dev.js",
     "build": "next build",
     "start": "next start",
