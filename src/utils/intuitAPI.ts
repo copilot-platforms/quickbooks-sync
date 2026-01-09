@@ -269,8 +269,9 @@ export default class IntuitAPI {
       )
     }
 
-    let queryCondition = displayName
-      ? `DisplayName = '${displayName}'`
+    const sanitizedDisplayName = displayName && displayName.trim()
+    let queryCondition = sanitizedDisplayName
+      ? `DisplayName = '${sanitizedDisplayName}'`
       : `Id = '${id}'`
 
     queryCondition = `${queryCondition} AND Active IN (true${includeInactive ? ', false' : ''})` // By default, QB returns only active customers.
@@ -321,7 +322,10 @@ export default class IntuitAPI {
       )
     }
 
-    let queryCondition = name ? `Name = '${name}'` : `Id = '${id}'`
+    const sanitizedName = name && name.trim()
+    let queryCondition = sanitizedName
+      ? `Name = '${sanitizedName}'`
+      : `Id = '${id}'`
     queryCondition = `${queryCondition} AND Active IN (true${includeInactive ? ', false' : ''})` // By default, QB returns only active items.
 
     CustomLogger.info({
@@ -646,8 +650,10 @@ export default class IntuitAPI {
       obj: { realmId: this.tokens.intuitRealmId },
       message: 'IntuitAPI#getAnAccount | Account query start for realmId: ',
     })
-    let queryCondition = accountName
-      ? `Name = '${accountName}'`
+
+    const sanitizedAccountName = accountName && accountName.trim()
+    let queryCondition = sanitizedAccountName
+      ? `Name = '${sanitizedAccountName}'`
       : `Id = '${id}'`
     queryCondition = `${queryCondition} AND Active IN (true${includeInactive ? ', false' : ''})` // By default, QB returns only active items.
 

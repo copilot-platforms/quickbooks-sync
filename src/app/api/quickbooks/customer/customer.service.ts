@@ -180,7 +180,7 @@ export class CustomerService extends BaseService {
       if (setting?.useCompanyNameFlag) {
         // if yes, load data to create/update a customer with company info in Quickbooks
         clientCompany.displayName = company.name
-        clientCompany.type = 'company' as const
+        clientCompany.type = 'company'
         clientCompany.companyId = company.id
         clientCompany.companyName = company.name
       } else {
