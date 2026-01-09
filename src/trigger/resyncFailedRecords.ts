@@ -3,7 +3,7 @@ import { task } from '@trigger.dev/sdk'
 
 export const processResyncForFailedRecords = task({
   id: 'process-resync-for-failed-records',
-  machine: 'micro',
+  machine: 'small-2x',
   run: async () => {
     console.log(
       'resyncFailedRecords#processResyncForFailedRecords :: Trigger resync task',
