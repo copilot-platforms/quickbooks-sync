@@ -68,6 +68,10 @@ export default class IntuitAPI {
     }
   }
 
+  private getNameWithDeleted(name: string) {
+    return `${name} (deleted)`
+  }
+
   /**
    * This function is used to make a POST request to Intuit API with necessary authorization headers
    */
@@ -271,7 +275,7 @@ export default class IntuitAPI {
 
     const sanitizedDisplayName = displayName && displayName.trim()
     let queryCondition = sanitizedDisplayName
-      ? `DisplayName = '${sanitizedDisplayName}'`
+      ? `DisplayName IN ('${sanitizedDisplayName}', '${this.getNameWithDeleted(sanitizedDisplayName)}')`
       : `Id = '${id}'`
 
     queryCondition = `${queryCondition} AND Active IN (true${includeInactive ? ', false' : ''})` // By default, QB returns only active customers.
@@ -324,7 +328,7 @@ export default class IntuitAPI {
 
     const sanitizedName = name && name.trim()
     let queryCondition = sanitizedName
-      ? `Name = '${sanitizedName}'`
+      ? `Name IN ('${sanitizedName}', '${this.getNameWithDeleted(sanitizedName)}')`
       : `Id = '${id}'`
     queryCondition = `${queryCondition} AND Active IN (true${includeInactive ? ', false' : ''})` // By default, QB returns only active items.
 
@@ -653,7 +657,7 @@ export default class IntuitAPI {
 
     const sanitizedAccountName = accountName && accountName.trim()
     let queryCondition = sanitizedAccountName
-      ? `Name = '${sanitizedAccountName}'`
+      ? `Name IN ('${sanitizedAccountName}', '${this.getNameWithDeleted(sanitizedAccountName)}')`
       : `Id = '${id}'`
     queryCondition = `${queryCondition} AND Active IN (true${includeInactive ? ', false' : ''})` // By default, QB returns only active items.
 
