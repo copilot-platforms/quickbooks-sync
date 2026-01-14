@@ -94,7 +94,7 @@ export const Main = () => {
             <div className="mb-4">
               <Callout
                 title="Support Limited to U.S. QuickBooks Online Accounts"
-                description="At this time, we support only U.S.-based QuickBooks Online accounts. Please disconnect your current account and reconnect using a U.S. QuickBooks Online account."
+                description="At this time, the integration only supports US-based QuickBooks Online accounts. To use the integration, please disconnect your current account and reconnect using a US QuickBooks account."
                 variant={CalloutVariant.ERROR}
               />
             </div>
