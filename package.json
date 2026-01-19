@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "trigger:dev": "npx trigger.dev@4.3.0 dev",
+    "trigger:deploy": "npx trigger.dev@4.3.0 deploy",
     "dev:embedded": "node scripts/dev.js",
     "build": "next build",
     "start": "next start",
@@ -16,7 +17,9 @@
     "lint-staged": "npx lint-staged",
     "prepare": "husky",
     "supabase:dev": "supabase start --ignore-health-check",
-    "cmd:rename-qb-accounts": "tsx src/cmd/renameQbAccount/index.ts"
+    "cmd:rename-qb-accounts": "tsx src/cmd/renameQbAccount/index.ts",
+    "cmd:check-impact-on-workspace": "tsx src/cmd/checkWorkspaceInvoice/index.ts",
+    "cmd:seed-impacted-workspace": "tsx src/cmd/seedPortalImpactVerification.ts"
   },
   "dependencies": {
     "@sentry/nextjs": "^9.13.0",

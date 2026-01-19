@@ -6,6 +6,7 @@ import { QBConnectionLogs } from '@/db/schema/qbConnectionLogs'
 import { QBCustomers } from '@/db/schema/qbCustomers'
 import { QBSetting } from '@/db/schema/qbSettings'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
+import { PortalImpactVerification } from '@/db/schema/portalImpactVerification'
 
 export const schema = {
   QBInvoiceSync,
@@ -16,4 +17,5 @@ export const schema = {
   QBCustomers,
   QBSetting,
   QBSyncLog,
+  PortalImpactVerification,
 }
