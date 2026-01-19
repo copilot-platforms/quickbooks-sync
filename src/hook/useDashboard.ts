@@ -53,12 +53,14 @@ export const useDashboardMain = () => {
       nonUsCompany,
     }))
     setNonUsCompanyChecking(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncFlag])
 
   useEffect(() => {
     if (syncFlag) {
       checkCompanyCountry()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncFlag])
 
   useEffect(() => {
@@ -88,6 +90,7 @@ export const useDashboardMain = () => {
     }
     setIsLoading(false)
     return () => clearTimeout(timeout)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncFlag, isEnabled])
 
   return {
