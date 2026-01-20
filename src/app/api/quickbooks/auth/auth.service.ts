@@ -62,7 +62,7 @@ export class AuthService extends BaseService {
     )
 
     const payload = {
-      Name: 'Assembly General Income',
+      Name: 'Assembly SOP Income',
       Classification: 'Revenue',
       AccountType: 'Income',
       AccountSubType: 'SalesOfProductIncome',
