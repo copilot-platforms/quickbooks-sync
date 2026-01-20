@@ -54,7 +54,7 @@ export class AuthService extends BaseService {
   async manageIncomeAccountRef(intuitApi: IntuitAPI): Promise<string> {
     const existingIncomeAccRef = await intuitApi.getSingleIncomeAccount()
     if (existingIncomeAccRef) {
-      return existingIncomeAccRef.Id
+      return existingIncomeAccRef?.Id
     }
 
     console.info(
@@ -76,7 +76,7 @@ export class AuthService extends BaseService {
     const accName = 'Assembly Processing Fees'
     const existingAccount = await intuitApi.getAnAccount(accName)
     if (existingAccount) {
-      return existingAccount.Id
+      return existingAccount?.Id
     }
 
     // Docs: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/account#the-account-object
@@ -95,7 +95,7 @@ export class AuthService extends BaseService {
     const accName = 'Assembly General Asset'
     const existingAccount = await intuitApi.getAnAccount(accName)
     if (existingAccount) {
-      return existingAccount.Id
+      return existingAccount?.Id
     }
 
     /**
