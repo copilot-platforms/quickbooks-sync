@@ -52,7 +52,23 @@ export class AuthService extends BaseService {
   }
 
   async manageIncomeAccountRef(intuitApi: IntuitAPI): Promise<string> {
-    const incomeAccRef = await intuitApi.getSingleIncomeAccount()
+    const existingIncomeAccRef = await intuitApi.getSingleIncomeAccount()
+    if (existingIncomeAccRef) {
+      return existingIncomeAccRef.Id
+    }
+
+    console.info(
+      `IntuitAPI#manageIncomeAccountRef | No existing income account found. Creating new one.`,
+    )
+
+    const payload = {
+      Name: 'Assembly General Income',
+      Classification: 'Revenue',
+      AccountType: 'Income',
+      AccountSubType: 'SalesOfProductIncome',
+      Active: true,
+    }
+    const incomeAccRef = await intuitApi.createAccount(payload)
     return incomeAccRef.Id
   }
 
