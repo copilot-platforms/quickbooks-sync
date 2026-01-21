@@ -228,9 +228,11 @@ export const useQuickbooksCallback = () => {
     )
     setLoading(false)
     if (!res.ok) {
-      console.error({ res })
+      const respBody = await res.json()
+      const error =
+        respBody.error || 'handleError :: Error connecting to QuickBooks'
       setError('Error connecting to QuickBooks')
-      return
+      throw new Error(error)
     }
   }
 
@@ -254,9 +256,12 @@ export const useQuickbooksCallback = () => {
 
     setLoading(false)
     if (!res.ok) {
-      console.error({ res })
+      const respBody = await res.json()
+      const error =
+        respBody.error ||
+        'handleTokenExchange :: Error connecting to QuickBooks'
       setError('Error connecting to QuickBooks')
-      return
+      throw new Error(error)
     }
 
     // auto close the current window after 2 seconds
