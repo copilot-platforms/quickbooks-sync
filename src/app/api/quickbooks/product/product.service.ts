@@ -548,23 +548,28 @@ export class ProductService extends BaseService {
       )
       const productDescription = convert(copilotProduct.description)
 
-      const tokenService = new TokenService(this.user)
-      const incomeAccountRef = await tokenService.checkAndUpdateAccountStatus(
-        AccountTypeObj.Income,
-        qbTokenInfo.intuitRealmId,
-        intuitApi,
-        qbTokenInfo.incomeAccountRef,
-      )
-      // create item in QB
-      const item = await this.createItemInQB(
-        {
-          productName: z.string().parse(qbItemName),
-          unitPrice: priceResource.amount,
-          incomeAccRefVal: z.string().parse(incomeAccountRef),
-          productDescription,
-        },
-        intuitApi,
-      )
+      // check if item with name exists in QBO
+      let qbItem = await intuitApi.getAnItem(qbItemName, undefined, true)
+
+      if (!qbItem) {
+        const tokenService = new TokenService(this.user)
+        const incomeAccountRef = await tokenService.checkAndUpdateAccountStatus(
+          AccountTypeObj.Income,
+          qbTokenInfo.intuitRealmId,
+          intuitApi,
+          qbTokenInfo.incomeAccountRef,
+        )
+        // create item in QB
+        qbItem = await this.createItemInQB(
+          {
+            productName: z.string().parse(qbItemName),
+            unitPrice: priceResource.amount,
+            incomeAccRefVal: z.string().parse(incomeAccountRef),
+            productDescription,
+          },
+          intuitApi,
+        )
+      }
 
       // map product and price
       await this.createQBProduct({
@@ -572,20 +577,25 @@ export class ProductService extends BaseService {
         productId: priceResource.productId,
         priceId: priceResource.id,
         unitPrice: priceResource.amount.toFixed(2),
-        qbItemId: item.Id,
-        qbSyncToken: item.SyncToken,
+        qbItemId: qbItem.Id,
+        qbSyncToken: qbItem.SyncToken,
         name: qbItemName,
         copilotName: copilotProduct.name,
         description: productDescription,
       })
 
       console.info('WebhookService#webhookPriceCreated | Product created in QB')
-      await this.logSync(priceResource.productId, item.Id, EventType.CREATED, {
-        productName: copilotProduct.name,
-        productPrice: priceResource.amount.toFixed(2),
-        qbItemName: item.Name,
-        copilotPriceId: priceResource.id,
-      })
+      await this.logSync(
+        priceResource.productId,
+        qbItem.Id,
+        EventType.CREATED,
+        {
+          productName: copilotProduct.name,
+          productPrice: priceResource.amount.toFixed(2),
+          qbItemName: qbItem.Name,
+          copilotPriceId: priceResource.id,
+        },
+      )
 
       this.unsetTransaction()
     })
