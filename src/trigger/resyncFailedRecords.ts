@@ -5,7 +5,7 @@ export const processResyncForFailedRecords = task({
   id: 'process-resync-for-failed-records',
   machine: 'small-2x',
   run: async () => {
-    console.log(
+    console.info(
       'resyncFailedRecords#processResyncForFailedRecords :: Trigger resync task',
     )
     const cronService = new CronService()

@@ -219,4 +219,10 @@ export class SyncLogService extends BaseService {
 
     return json2csv(data)
   }
+
+  async getAllForWorkspace(portalId: string) {
+    return await this.db.query.QBSyncLog.findMany({
+      where: (logs, { eq }) => eq(logs.portalId, portalId),
+    })
+  }
 }

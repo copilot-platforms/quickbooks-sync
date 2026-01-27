@@ -21,6 +21,7 @@ import {
   getPortalConnection,
   getPortalSettings,
 } from '@/db/service/token.service'
+import { checkIncorrectlySyncedInvoiceForPortal } from '@/trigger/checkImpactedInvoiceForPortal'
 import {
   QBAuthTokenResponse,
   QBAuthTokenResponseSchema,
@@ -190,7 +191,7 @@ export class AuthService extends BaseService {
 
       const tokenService = new TokenService(this.user)
       // check if the token exists
-      const existingToken = await tokenService.getOneByPortalId(portalId)
+      const existingPortal = await tokenService.getOneByPortalId(portalId)
 
       const insertPayload: QBPortalConnectionCreateSchemaType = {
         intuitRealmId: realmId,
@@ -202,9 +203,9 @@ export class AuthService extends BaseService {
         tokenSetTime,
         tokenType: tokenInfo.token_type,
         intiatedBy: this.user.internalUserId as string, // considering this is defined since we know this action is intiated by an IU
-        incomeAccountRef: existingToken?.incomeAccountRef || '',
-        expenseAccountRef: existingToken?.expenseAccountRef || '',
-        assetAccountRef: existingToken?.assetAccountRef || '',
+        incomeAccountRef: existingPortal?.incomeAccountRef || '',
+        expenseAccountRef: existingPortal?.expenseAccountRef || '',
+        assetAccountRef: existingPortal?.assetAccountRef || '',
         isSuspended: false, // default vaalue is false when created. Added this for the re-auth case.
       }
       const intuitApi = new IntuitAPI({
@@ -214,8 +215,8 @@ export class AuthService extends BaseService {
         incomeAccountRef: insertPayload.incomeAccountRef,
         expenseAccountRef: insertPayload.expenseAccountRef,
         assetAccountRef: insertPayload.assetAccountRef,
-        serviceItemRef: existingToken?.serviceItemRef || null,
-        clientFeeRef: existingToken?.clientFeeRef || null,
+        serviceItemRef: existingPortal?.serviceItemRef || null,
+        clientFeeRef: existingPortal?.clientFeeRef || null,
       })
       // handle accounts
       const createPayload = await this.handleAccountReferences(
@@ -245,11 +246,21 @@ export class AuthService extends BaseService {
       })
 
       after(async () => {
-        if (existingToken) {
-          console.info('Not initial process. Starting the re-sync process')
+        if (existingPortal) {
+          console.info(`Not initial connection for the portal: ${portalId}`)
+
+          // check for impacted portals that could have incorrectly synced invoices
+          checkIncorrectlySyncedInvoiceForPortal.trigger({
+            user: this.user,
+            portal: existingPortal,
+          })
+
+          console.info(
+            `Starting the re-sync process for the portal ${portalId}`,
+          )
           this.user.qbConnection = {
-            serviceItemRef: existingToken.serviceItemRef,
-            clientFeeRef: existingToken.clientFeeRef,
+            serviceItemRef: existingPortal.serviceItemRef,
+            clientFeeRef: existingPortal.clientFeeRef,
           }
           const syncService = new SyncService(this.user)
           await syncService.syncFailedRecords({
