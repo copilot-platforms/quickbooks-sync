@@ -561,6 +561,24 @@ export class InvoiceService extends BaseService {
     }
 
     const intuitApiService = new IntuitAPI(qbTokenInfo)
+
+    // Check if invoice already exists in QBO (e.g. manually created) and map it if so
+    const mappedFromQBO = await this.findOrMapInvoiceFromQBO({
+      invoiceNumber: invoiceResource.number,
+      copilotInvoiceId: invoiceResource.id,
+      clientId: invoiceResource.clientId,
+      companyId: invoiceResource.companyId,
+      status: invoiceResource.status,
+      total: invoiceResource.total,
+      taxAmount: invoiceResource.taxAmount,
+      intuitApi: intuitApiService,
+    })
+    if (mappedFromQBO) {
+      console.info(
+        'InvoiceService#webhookInvoiceCreated | Invoice found in QBO and mapped. Skipping creation.',
+      )
+      return
+    }
     const incomeAccRef = await this.handleIncomeAccountRef(
       qbTokenInfo,
       intuitApiService,
@@ -822,7 +840,7 @@ export class InvoiceService extends BaseService {
       invoiceNumber: payload.data.number,
     })
     // 1. check if the status of invoice is already paid in sync table
-    const invoiceSync = await this.getInvoiceByNumber(payload.data.number, [
+    let invoiceSync = await this.getInvoiceByNumber(payload.data.number, [
       'id',
       'qbInvoiceId',
       'status',
@@ -830,10 +848,27 @@ export class InvoiceService extends BaseService {
     ])
 
     if (!invoiceSync) {
-      console.error(
-        'InvoiceService#webhookInvoicePaid | Invoice not found in sync table',
+      console.info(
+        'InvoiceService#webhookInvoicePaid | Invoice not found in sync table. Attempting find-or-map from QBO...',
       )
-      return // slient return if no invoice is synced at first place.
+      const intuitApi = new IntuitAPI(qbTokenInfo)
+      const mappedInvoice = await this.findOrMapInvoiceFromQBO({
+        invoiceNumber: payload.data.number,
+        copilotInvoiceId: payload.data.id,
+        clientId: payload.data.clientId,
+        companyId: payload.data.companyId,
+        status: payload.data.status,
+        total: payload.data.total,
+        taxAmount: payload.data.taxAmount,
+        intuitApi,
+      })
+      if (!mappedInvoice) {
+        console.info(
+          'InvoiceService#webhookInvoicePaid | Invoice not found in QBO either. Skipping.',
+        )
+        return
+      }
+      invoiceSync = mappedInvoice
     }
 
     // check if the entity invoice has successful event paid
@@ -967,7 +1002,7 @@ export class InvoiceService extends BaseService {
       invoiceNumber: payload.number,
     })
     // 1. check if the status of invoice is already paid in sync table
-    const invoiceSync = await this.getInvoiceByNumber(payload.number, [
+    let invoiceSync = await this.getInvoiceByNumber(payload.number, [
       'id',
       'qbInvoiceId',
       'status',
@@ -977,9 +1012,25 @@ export class InvoiceService extends BaseService {
 
     if (!invoiceSync) {
       console.info(
-        'invoiceService#webhookInvoiceVoided | Invoice not found in sync table',
+        'InvoiceService#webhookInvoiceVoided | Invoice not found in sync table. Attempting find-or-map from QBO...',
       )
-      return // slient return if no invoice is synced at first place.
+      const intuitApi = new IntuitAPI(qbTokenInfo)
+      const mappedInvoice = await this.findOrMapInvoiceFromQBO({
+        invoiceNumber: payload.number,
+        copilotInvoiceId: payload.id,
+        clientId: payload.clientId,
+        companyId: payload.companyId,
+        status: InvoiceStatus.OPEN,
+        total: payload.total,
+        intuitApi,
+      })
+      if (!mappedInvoice) {
+        console.info(
+          'InvoiceService#webhookInvoiceVoided | Invoice not found in QBO either. Skipping.',
+        )
+        return
+      }
+      invoiceSync = mappedInvoice
     }
 
     if (invoiceSync.status !== InvoiceStatus.OPEN) {
@@ -1056,7 +1107,8 @@ export class InvoiceService extends BaseService {
     addSyncBreadcrumb('Invoice deleted flow started', {
       invoiceNumber: payload.number,
     })
-    const syncedInvoice = await this.getInvoiceByNumber(payload.number, [
+
+    let syncedInvoice = await this.getInvoiceByNumber(payload.number, [
       'id',
       'qbInvoiceId',
       'status',
@@ -1066,10 +1118,25 @@ export class InvoiceService extends BaseService {
 
     if (!syncedInvoice) {
       console.info(
-        // NOTE: we will not sync invoices that were created before the QB app installation. Therefore just ignore such case
-        'InvoiceService#handleInvoiceDeleted | Invoice not found in sync table',
+        'InvoiceService#handleInvoiceDeleted | Invoice not found in sync table. Attempting find-or-map from QBO...',
       )
-      return // slient return if no invoice is synced at first place.
+      const intuitApi = new IntuitAPI(qbTokenInfo)
+      const mappedInvoice = await this.findOrMapInvoiceFromQBO({
+        invoiceNumber: payload.number,
+        copilotInvoiceId: payload.id,
+        clientId: payload.clientId,
+        companyId: payload.companyId,
+        status: InvoiceStatus.VOID,
+        total: payload.total,
+        intuitApi,
+      })
+      if (!mappedInvoice) {
+        console.info(
+          'InvoiceService#handleInvoiceDeleted | Invoice not found in QBO either. Skipping.',
+        )
+        return
+      }
+      syncedInvoice = mappedInvoice
     }
 
     // Copilot doesn't allow to delete invoice that are not voided. So, just log an error about possible edge cases without returning an error
@@ -1184,41 +1251,122 @@ export class InvoiceService extends BaseService {
       'InvoiceService#checkIfInvoiceExistsInQBO | Checking if invoice exists in QBO',
     )
     const invoice = invoiceResource.data
-    const intuitApi = new IntuitAPI(qbTokenInfo)
-    const qbInvoice = await intuitApi.getInvoice(invoice.number)
 
-    if (!qbInvoice) {
-      console.info(
-        'InvoiceService#checkIfInvoiceExistsInQBO | No invoice found in QBO',
-      )
-      return { exists: false }
+    // Check local DB first to avoid unnecessary QBO API calls
+    const existingMapping = await this.getInvoiceByNumber(invoice.number, [
+      'id',
+    ])
+    if (existingMapping) {
+      return { exists: true }
     }
 
-    const customerService = new CustomerService(this.user)
-
-    const { recipientInfo } = await customerService.getRecipientInfo({
+    const intuitApi = new IntuitAPI(qbTokenInfo)
+    const mapping = await this.findOrMapInvoiceFromQBO({
+      invoiceNumber: invoice.number,
+      copilotInvoiceId: invoice.id,
       clientId: invoice.clientId,
       companyId: invoice.companyId,
+      status: invoice.status,
+      total: invoice.lineItems[0]?.amount,
+      taxAmount: invoice.taxAmount,
+      intuitApi,
     })
 
+    return { exists: mapping !== null }
+  }
+
+  async findOrMapInvoiceFromQBO(params: {
+    invoiceNumber: string
+    copilotInvoiceId: string
+    clientId: string
+    companyId: string
+    status: InvoiceStatus
+    total?: number
+    taxAmount?: number | null
+    intuitApi: IntuitAPI
+  }) {
+    const {
+      invoiceNumber,
+      copilotInvoiceId,
+      clientId,
+      companyId,
+      status,
+      total,
+      taxAmount,
+      intuitApi,
+    } = params
+
+    // 1. Query QBO for the invoice by DocNumber
+    const qbInvoice = await intuitApi.getInvoice(invoiceNumber)
+    if (!qbInvoice) {
+      console.info(
+        'InvoiceService#findOrMapInvoiceFromQBO | Invoice not found in QBO',
+      )
+      return null
+    }
+
+    // 3. Resolve customer mapping (reuse existing pattern from webhookInvoiceCreated)
+    const customerService = new CustomerService(this.user)
+    const { recipientInfo, companyInfo } =
+      await customerService.getRecipientInfo({
+        clientId,
+        companyId,
+      })
+
+    let customerMapId: string
+    const existingCustomer =
+      await customerService.ensureCustomerExistsAndSyncToken(
+        recipientInfo.clientCompanyId,
+        recipientInfo.type,
+        intuitApi,
+      )
+
+    if (existingCustomer) {
+      customerMapId = existingCustomer.id
+    } else {
+      const customerResult = await customerService.findOrCreateCustomer({
+        intuitApiService: intuitApi,
+        recipientInfo,
+        companyInfo,
+        invoiceResource: {
+          clientId,
+          companyId,
+        } as InvoiceCreatedResponseType['data'],
+      })
+      customerMapId = customerResult.customerSyncId
+    }
+
+    // 4. Create the qb_invoice_sync mapping row
+    await this.createQBInvoice({
+      portalId: this.user.workspaceId,
+      invoiceNumber,
+      qbInvoiceId: qbInvoice.Id,
+      qbSyncToken: qbInvoice.SyncToken,
+      recipientId: recipientInfo.recipientId,
+      customerId: customerMapId,
+      status,
+    })
+
+    // 5. Create the sync log entry
     await this.logSync(
-      invoice.id,
+      copilotInvoiceId,
       {
         qbInvoiceId: qbInvoice.Id,
-        invoiceNumber: invoice.number,
+        invoiceNumber,
       },
       EventType.CREATED,
       {
-        amount: (invoice.lineItems[0].amount * 100).toFixed(2),
-        taxAmount: invoice.taxAmount ? invoice.taxAmount.toFixed(2) : '0',
+        amount: total ? (total * 100).toFixed(2) : undefined,
+        taxAmount: taxAmount ? taxAmount.toFixed(2) : '0',
         customerName: recipientInfo.displayName,
         customerEmail: recipientInfo.email,
-        errorMessage: '',
       },
     )
+
     console.info(
-      'InvoiceService#checkIfInvoiceExistsInQBO | Invoice exists in QBO',
+      'InvoiceService#findOrMapInvoiceFromQBO | Created mapping for existing QBO invoice',
     )
-    return { exists: true }
+
+    return await this.getInvoiceByNumber(invoiceNumber)
   }
 }
