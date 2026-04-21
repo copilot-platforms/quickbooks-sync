@@ -9,8 +9,10 @@ import {
 } from '@/db/service/token.service'
 import IntuitAPI from '@/utils/intuitAPI'
 import CustomLogger from '@/utils/logger'
-import { getRefreshedQbTokenInfo } from '@/utils/tokenRefresh'
-import dayjs from 'dayjs'
+import {
+  getValidQbTokens,
+  QBReconnectRequiredError,
+} from '@/utils/tokenRefresh'
 import { z } from 'zod'
 
 export async function checkPortalConnection(
@@ -35,48 +37,35 @@ export async function checkSyncStatus(portalId: string): Promise<boolean> {
   }
 }
 
-export async function checkForNonUsCompany(portalId: string) {
+export async function checkForNonUsCompany(portalId: string): Promise<boolean> {
   CustomLogger.info({
     message: 'checkForNonUsCompany | Checking for non-US company',
   })
 
-  const portalConnection = await getPortalConnection(portalId)
-  if (!portalConnection) {
-    throw new Error(
-      `checkForNonUsCompany | Portal connection not found for portalId: ${portalId}`,
-    )
+  try {
+    const tokenInfo = await getValidQbTokens(portalId)
+    const intuitApi = new IntuitAPI(tokenInfo)
+    const companyInfo = await intuitApi.getCompanyInfo()
+
+    CustomLogger.info({
+      obj: { companyInfo },
+      message: 'checkForNonUsCompany | Company Info',
+    })
+
+    return companyInfo.Country !== 'US'
+  } catch (error) {
+    if (error instanceof QBReconnectRequiredError) {
+      // Intentionally no side effects here. The next webhook/sync path to
+      // run for this portal goes through AuthService.getQBPortalConnection,
+      // which owns the paired disable-sync + IU-notify work. We just log
+      // and return a safe default so the dashboard doesn't crash.
+      CustomLogger.info({
+        message: `checkForNonUsCompany | Refresh token revoked for portalId: ${portalId}. Deferring cleanup to webhook path.`,
+      })
+      return false
+    }
+    throw error
   }
-
-  const { tokenSetTime, expiresIn } = portalConnection
-
-  // Refresh token if expired (treat missing tokenSetTime as expired)
-  const isExpired =
-    !tokenSetTime ||
-    dayjs().isAfter(dayjs(tokenSetTime).add(expiresIn, 'seconds'))
-
-  const tokenInfo = isExpired
-    ? await getRefreshedQbTokenInfo(portalId)
-    : {
-        accessToken: portalConnection.accessToken,
-        refreshToken: portalConnection.refreshToken,
-        intuitRealmId: portalConnection.intuitRealmId,
-        incomeAccountRef: portalConnection.incomeAccountRef,
-        expenseAccountRef: portalConnection.expenseAccountRef,
-        assetAccountRef: portalConnection.assetAccountRef,
-        serviceItemRef: portalConnection.serviceItemRef,
-        clientFeeRef: portalConnection.clientFeeRef,
-        bankAccountRef: portalConnection.bankAccountRef,
-      }
-
-  const intuitApi = new IntuitAPI(tokenInfo)
-  const companyInfo = await intuitApi.getCompanyInfo()
-
-  CustomLogger.info({
-    obj: { companyInfo },
-    message: 'checkForNonUsCompany | Company Info',
-  })
-
-  return companyInfo.Country !== 'US'
 }
 
 export async function reconnectIfCta(type?: string) {

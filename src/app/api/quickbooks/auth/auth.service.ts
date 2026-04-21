@@ -1,5 +1,4 @@
 import APIError from '@/app/api/core/exceptions/api'
-import { isIntuitOAuthError } from '@/app/api/core/exceptions/custom'
 import { BaseService } from '@/app/api/core/services/base.service'
 import { AuthStatus } from '@/app/api/core/types/auth'
 import { NotificationActions } from '@/app/api/core/types/notification'
@@ -9,7 +8,6 @@ import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { SyncService } from '@/app/api/quickbooks/sync/sync.service'
 import { TokenService } from '@/app/api/quickbooks/token/token.service'
 import { intuitRedirectUri } from '@/config'
-import { OAuthErrorCodes } from '@/constant/intuitErrorCode'
 import { AccountTypeObj } from '@/constant/qbConnection'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
 import { QBPortalConnectionCreateSchemaType } from '@/db/schema/qbPortalConnections'
@@ -25,7 +23,10 @@ import dayjs from 'dayjs'
 import { eq } from 'drizzle-orm'
 import httpStatus from 'http-status'
 import { afterIfAvailable } from '@/app/api/core/utils/afterIfAvailable'
-import { getRefreshedQbTokenInfo } from '@/utils/tokenRefresh'
+import {
+  getValidQbTokens,
+  QBReconnectRequiredError,
+} from '@/utils/tokenRefresh'
 import { after } from 'next/server'
 
 export class AuthService extends BaseService {
@@ -226,22 +227,7 @@ export class AuthService extends BaseService {
       )
     }
 
-    const {
-      accessToken,
-      refreshToken,
-      tokenSetTime,
-      intuitRealmId,
-      intiatedBy,
-      expiresIn,
-      incomeAccountRef,
-      expenseAccountRef,
-      assetAccountRef,
-      setting,
-      serviceItemRef,
-      clientFeeRef,
-      bankAccountRef,
-      isSuspended,
-    } = portalQBToken
+    const { intuitRealmId, setting, isSuspended } = portalQBToken
 
     if (!setting)
       throw new APIError(
@@ -274,59 +260,31 @@ export class AuthService extends BaseService {
       throw Error(`Sync is not enabled for portal with ID: ${portalId}`)
     }
 
-    const expiryTime = dayjs(tokenSetTime).add(expiresIn, 'seconds')
-    let updatedTokenInfo = {
-      accessToken,
-      refreshToken,
-      intuitRealmId,
-      incomeAccountRef,
-      expenseAccountRef,
-      assetAccountRef,
-      serviceItemRef,
-      clientFeeRef,
-      bankAccountRef,
-    }
-
-    // Refresh token if expired
-    if (dayjs().isAfter(expiryTime)) {
-      try {
-        updatedTokenInfo = await getRefreshedQbTokenInfo(portalId)
-      } catch (error: unknown) {
-        console.error('AuthService#getQBPortalConnection | Error =', error)
-
-        if (isIntuitOAuthError(error)) {
-          // Special handling for refresh token expired
-          console.error(
-            `Refresh token is invalid or expired, reauthorization needed for portalId: ${portalId}.`,
-            { message: error.error_description },
+    try {
+      return await getValidQbTokens(portalId)
+    } catch (error: unknown) {
+      if (error instanceof QBReconnectRequiredError) {
+        console.error(
+          `AuthService#getQBPortalConnection | Reconnect required for portalId: ${portalId}. Disabling sync and notifying IU.`,
+        )
+        // Pair the two side effects: disable sync at the DB level and notify
+        // the IU. Queue the notification first so that if `turnOffSync` fails
+        // (DB hiccup, etc.) the IU still gets told to reconnect — in that
+        // case the next webhook will retry `turnOffSync` through this same
+        // catch. `getValidQbTokens` deliberately does not mutate state on
+        // revocation; that's our job here where we have a user context.
+        afterIfAvailable(async () => {
+          const notificationService = new NotificationService(this.user)
+          await notificationService.sendNotificationToIU(
+            error.intiatedBy ?? '',
+            NotificationActions.AUTH_RECONNECT,
           )
-
-          if (error.error === OAuthErrorCodes.INVALID_GRANT) {
-            // indicates that the refresh token is invalid
-            // turn off the sync and send notifications to IU (product and email)
-            const tokenService = new TokenService(this.user)
-            await tokenService.turnOffSync(intuitRealmId)
-
-            // send notification to IU
-            afterIfAvailable(async () => {
-              console.info(
-                'AuthService#handleConnectionError | running after() .. | Sending notification to IU',
-              )
-
-              const notificationService = new NotificationService(this.user)
-              await notificationService.sendNotificationToIU(
-                intiatedBy,
-                NotificationActions.AUTH_RECONNECT,
-              )
-            })
-
-            return emptyTokens
-          }
-        }
-
-        throw error
+        })
+        const tokenService = new TokenService(this.user)
+        await tokenService.turnOffSync(error.intuitRealmId)
+        return emptyTokens
       }
+      throw error
     }
-    return updatedTokenInfo
   }
 }
