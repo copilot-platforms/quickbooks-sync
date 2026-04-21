@@ -92,7 +92,12 @@ export async function getValidQbTokens(
     )
   }
   if (isTokenFresh(row)) return extractTokens(row)
-  return getRefreshedQbTokenInfo(portalId)
+  // Pass the row we just read so `getRefreshedQbTokenInfo` can use it as the
+  // race-detection baseline. Without this, a concurrent worker winning a
+  // refresh between our two reads would advance `tokenSetTime`, causing our
+  // inner read to capture the winner's value as `startingTokenSetTime` — and
+  // a subsequent `invalid_grant` response would be misdiagnosed as revocation.
+  return getRefreshedQbTokenInfo(portalId, row)
 }
 
 /**
@@ -107,8 +112,14 @@ export async function getValidQbTokens(
  */
 export async function getRefreshedQbTokenInfo(
   portalId: string,
+  prefetchedConnection?: QBPortalConnectionSelectSchemaType,
 ): Promise<IntuitAPITokensType> {
-  const portalConnection = await getPortalConnection(portalId)
+  // Prefer the pre-fetched row (from the caller's own freshness check) so the
+  // race-detection baseline matches what the caller observed. Fall back to a
+  // fresh read for callers that invoke this directly (e.g. the
+  // rename-qb-account CLI, which unconditionally refreshes every iteration).
+  const portalConnection =
+    prefetchedConnection ?? (await getPortalConnection(portalId))
   if (!portalConnection) {
     throw new Error(
       `getRefreshedQbTokenInfo | Portal connection not found for portalId: ${portalId}`,

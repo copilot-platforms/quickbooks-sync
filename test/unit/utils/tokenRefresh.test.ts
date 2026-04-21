@@ -37,9 +37,11 @@ vi.mock('@/utils/logger', () => ({
   },
 }))
 
-// `getPortalConnection` is read at least once per helper call, and twice on
-// the `invalid_grant` path (entry-time snapshot + post-failure re-read for
-// race detection). Tests configure `mockResolvedValueOnce` in that order.
+// `getPortalConnection` is read once per helper call on the happy path
+// (`getValidQbTokens` reads the row and passes it into `getRefreshedQbTokenInfo`,
+// which reuses it to avoid a race-window between the two reads). The only
+// second read happens inside `handleInvalidGrant` for race detection.
+// Tests configure `mockResolvedValueOnce` in that order.
 const getPortalConnection = vi.fn()
 vi.mock('@/db/service/token.service', () => ({
   getPortalConnection: (portalId: string) => getPortalConnection(portalId),
@@ -165,19 +167,13 @@ describe('getValidQbTokens', () => {
   })
 
   it('refreshes when token is within the 10-min buffer of expiry', async () => {
-    // Two `getPortalConnection` calls expected on the refresh path: once in
-    // `getValidQbTokens` (freshness check) and once in `getRefreshedQbTokenInfo`
-    // (snapshot before calling Intuit, used for later race detection).
-    getPortalConnection
-      .mockResolvedValueOnce({
-        ...basePortalRow,
-        // 55 minutes old of 60 min lifetime → 5 min remaining → within buffer.
-        tokenSetTime: new Date(Date.now() - 55 * 60 * 1000),
-      })
-      .mockResolvedValueOnce({
-        ...basePortalRow,
-        tokenSetTime: new Date(Date.now() - 55 * 60 * 1000),
-      })
+    // One `getPortalConnection` call on the happy refresh path: `getValidQbTokens`
+    // reads the row, then hands it to `getRefreshedQbTokenInfo` for reuse.
+    getPortalConnection.mockResolvedValueOnce({
+      ...basePortalRow,
+      // 55 minutes old of 60 min lifetime → 5 min remaining → within buffer.
+      tokenSetTime: new Date(Date.now() - 55 * 60 * 1000),
+    })
 
     getRefreshedQBToken.mockResolvedValueOnce({
       access_token: 'fresh-access',
@@ -191,6 +187,7 @@ describe('getValidQbTokens', () => {
 
     expect(tokens.accessToken).toBe('fresh-access')
     expect(tokens.refreshToken).toBe('fresh-refresh')
+    expect(getPortalConnection).toHaveBeenCalledExactlyOnceWith('portal-abc')
     expect(getRefreshedQBToken).toHaveBeenCalledExactlyOnceWith(
       'stored-refresh',
     )
@@ -204,9 +201,10 @@ describe('getValidQbTokens', () => {
     // Edge case: a portal row can exist without `tokenSetTime` (legacy rows,
     // or mid-insert states). The helper must conservatively refresh rather
     // than assuming freshness.
-    getPortalConnection
-      .mockResolvedValueOnce({ ...basePortalRow, tokenSetTime: null })
-      .mockResolvedValueOnce({ ...basePortalRow, tokenSetTime: null })
+    getPortalConnection.mockResolvedValueOnce({
+      ...basePortalRow,
+      tokenSetTime: null,
+    })
 
     getRefreshedQBToken.mockResolvedValueOnce({
       access_token: 'fresh-access',
@@ -253,6 +251,44 @@ describe('getRefreshedQbTokenInfo', () => {
     expect(dbUpdates).toEqual([
       expect.objectContaining({ table: QBPortalConnection }),
     ])
+  })
+
+  it('getValidQbTokens → invalid_grant race: uses prefetched row as baseline so a concurrent writer does not produce a false-positive revocation', async () => {
+    // Regression guard for a subtle correctness bug: `getRefreshedQbTokenInfo`
+    // used to do its own `getPortalConnection` read to snapshot
+    // `startingTokenSetTime`. If another worker wrote between that read and
+    // `getValidQbTokens`'s freshness check, the snapshot would capture the
+    // winner's `tokenSetTime`. A subsequent `invalid_grant` from Intuit would
+    // then see an unchanged `tokenSetTime` in the re-read and misdiagnose the
+    // race as a genuine revocation — wrongly flipping `syncFlag=false` and
+    // spamming the IU. Passing the prefetched row through preserves the
+    // original T0 baseline so the comparison correctly identifies the race.
+    const t0 = new Date('2026-04-21T10:00:00Z')
+    const t1 = new Date('2026-04-21T10:00:05Z')
+    getPortalConnection
+      // `getValidQbTokens` reads row → still at T0 (within buffer → needs refresh).
+      .mockResolvedValueOnce({
+        ...basePortalRow,
+        tokenSetTime: t0,
+        // Force the buffer trigger — ensure the helper goes down the refresh path.
+        expiresIn: 60,
+      })
+      // Later, `handleInvalidGrant` re-reads → winner already advanced it to T1.
+      .mockResolvedValueOnce({
+        ...basePortalRow,
+        tokenSetTime: t1,
+        accessToken: 'winner-access',
+        refreshToken: 'winner-refresh',
+      })
+
+    getRefreshedQBToken.mockRejectedValueOnce(makeOAuthError('invalid_grant'))
+
+    const tokens = await getValidQbTokens('portal-abc')
+
+    // Correctly recovers the winner's tokens — no `QBReconnectRequiredError`,
+    // no `syncFlag` mutation.
+    expect(tokens.accessToken).toBe('winner-access')
+    expect(dbUpdates).toHaveLength(0)
   })
 
   it('invalid_grant with DB row advanced → returns winner tokens (race)', async () => {
