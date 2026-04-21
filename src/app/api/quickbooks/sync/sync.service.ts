@@ -384,19 +384,45 @@ export class SyncService extends BaseService {
       message: 'SyncService#intiateSync | Initiating re-sync',
     })
     const authService = new AuthService(this.user)
-    const qbTokenInfo = await authService.getQBPortalConnection(
-      this.user.workspaceId,
-    )
-    CustomLogger.info({
-      obj: { qbTokenInfo, user: this.user },
-      message: 'SyncService#intiateSync | QB Token Info and User',
-    })
 
     for (const log of logs) {
       // check and update attempt for failed logs
       const resyncAttemtps = await this.checkAndUpdateAttempt(log)
       if (resyncAttemtps.maxAttempts) {
         continue
+      }
+
+      // Re-hydrate per iteration. This loop runs in trigger.dev (no Vercel
+      // function timeout), so a long backlog can outrun the proactive
+      // refresh buffer if we fetched the token once upfront. `getValidQbTokens`
+      // is cheap when the token is fresh — one DB read, no Intuit roundtrip.
+      //
+      // Note: `getQBPortalConnection` throws on `isSuspended` (rare — typically
+      // only flipped via webhook). That throw aborts this portal's resync but
+      // leaves earlier iterations' work intact.
+      const qbTokenInfo = await authService.getQBPortalConnection(
+        this.user.workspaceId,
+      )
+      CustomLogger.info({
+        message: 'SyncService#intiateSync | Hydrated tokens for log',
+        obj: {
+          workspaceId: this.user.workspaceId,
+          logId: log.id,
+          entityType: log.entityType,
+          eventType: log.eventType,
+          hasAccessToken: Boolean(qbTokenInfo.accessToken),
+        },
+      })
+      if (!qbTokenInfo.accessToken) {
+        // Sync was disabled mid-loop — typically by an earlier iteration's
+        // invalid_grant triggering AuthService's turnOffSync + IU notify.
+        // Empty tokens mean every remaining call would fail; halt cleanly
+        // and let the next scheduled run re-evaluate.
+        CustomLogger.info({
+          message: 'SyncService#intiateSync | Sync disabled mid-loop, halting',
+          obj: { workspaceId: this.user.workspaceId },
+        })
+        break
       }
 
       switch (log.entityType) {
