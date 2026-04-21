@@ -340,6 +340,39 @@ export default class IntuitAPI {
   }
 
   /**
+   * QB enforces DisplayName uniqueness across Customer, Vendor, and Employee.
+   * Returns the colliding entity's type and Id, or null if no Vendor/Employee
+   * collision exists.
+   */
+  async _getNameCollisionEntity(
+    displayName: string,
+  ): Promise<{ type: 'Vendor' | 'Employee'; id: string } | null> {
+    const sanitizedDisplayName = escapeForQBQuery(displayName.trim())
+
+    CustomLogger.info({
+      message: `IntuitAPI#getNameCollisionEntity | Collision check start for realmId: ${this.tokens.intuitRealmId}. Name: ${displayName}`,
+    })
+
+    // QBO auto-suffixes inactive records' DisplayName with " (deleted)", freeing
+    // the original name, so only active records can actually collide.
+    const vendorQuery = `SELECT Id FROM Vendor WHERE DisplayName = '${sanitizedDisplayName}' maxresults 1`
+    const vendorRes = await this.customQuery(vendorQuery)
+
+    if (vendorRes?.Vendor?.length) {
+      return { type: 'Vendor', id: vendorRes.Vendor[0].Id }
+    }
+
+    const employeeQuery = `SELECT Id FROM Employee WHERE DisplayName = '${sanitizedDisplayName}' maxresults 1`
+    const employeeRes = await this.customQuery(employeeQuery)
+
+    if (employeeRes?.Employee?.length) {
+      return { type: 'Employee', id: employeeRes.Employee[0].Id }
+    }
+
+    return null
+  }
+
+  /**
    * Either name or id must be provided
    */
   async _getAnItem(
@@ -952,6 +985,7 @@ export default class IntuitAPI {
     ): Promise<CustomerQueryResponseType>
   } = this.wrapWithRetry(this._getACustomer) as any
   getCustomerByEmail = this.wrapWithRetry(this._getCustomerByEmail)
+  getNameCollisionEntity = this.wrapWithRetry(this._getNameCollisionEntity)
   getAnItem: {
     (
       name: string,

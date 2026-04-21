@@ -68,6 +68,21 @@ export function truncateForQB(input: string, suffix?: string): string {
   return input.slice(0, maxBaseLength) + ELLIPSIS + suffix
 }
 
+const CUSTOMER_SUFFIX = ' (Customer)'
+
+/**
+ * Appends " (Customer)" to a DisplayName to disambiguate it from a colliding
+ * Vendor/Employee. QBO enforces DisplayName uniqueness across those three
+ * entities, so a Customer that shares a name with a Vendor needs a distinct
+ * name. No-op if the suffix is already present.
+ */
+export function getNameAsCustomer(name: string): string {
+  if (name.endsWith(CUSTOMER_SUFFIX)) {
+    return name
+  }
+  return `${name}${CUSTOMER_SUFFIX}`
+}
+
 export function replaceSpecialCharsForQB(input: string) {
   // list of allowed characters in QB.
   // Doc: https://quickbooks.intuit.com/learn-support/en-us/help-article/account-management/acceptable-characters-quickbooks-online/L3CiHlD9J_US_en_US

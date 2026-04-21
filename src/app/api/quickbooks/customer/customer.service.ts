@@ -16,7 +16,7 @@ import { InvoiceCreatedResponseType } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI from '@/utils/intuitAPI'
 import { addSyncBreadcrumb } from '@/utils/sentry'
-import { replaceSpecialCharsForQB } from '@/utils/string'
+import { getNameAsCustomer, replaceSpecialCharsForQB } from '@/utils/string'
 import { and, eq, isNull } from 'drizzle-orm'
 import httpStatus from 'http-status'
 
@@ -376,8 +376,24 @@ export class CustomerService extends BaseService {
         `InvoiceService#WebhookInvoiceCreated | Customer named ${recipientInfo.displayName} not found in QB. Creating new customer...`,
       )
       // Create a new customer in QB
+      const sanitizedDisplayName = replaceSpecialCharsForQB(displayName)
+
+      // QB enforces DisplayName uniqueness across Customer, Vendor, and Employee.
+      // If the name collides with a Vendor/Employee, suffix it to avoid error 6240.
+      const collision =
+        await intuitApiService.getNameCollisionEntity(sanitizedDisplayName)
+      const finalDisplayName = collision
+        ? getNameAsCustomer(sanitizedDisplayName)
+        : sanitizedDisplayName
+
+      if (collision) {
+        console.info(
+          `InvoiceService#WebhookInvoiceCreated | DisplayName "${sanitizedDisplayName}" collides with existing ${collision.type} (Id: ${collision.id}). Using "${finalDisplayName}" instead.`,
+        )
+      }
+
       let customerPayload: QBCustomerCreatePayloadType = {
-        DisplayName: replaceSpecialCharsForQB(displayName),
+        DisplayName: finalDisplayName,
         CompanyName: companyInfo && replaceSpecialCharsForQB(companyInfo.name),
         PrimaryEmailAddr: {
           Address: recipientInfo.email,
@@ -404,6 +420,9 @@ export class CustomerService extends BaseService {
     }
 
     // create map for customer into mapping table
+    // NOTE: displayName here is the Copilot-side name (may differ from the QB
+    // DisplayName when a collision suffix was applied). The source of truth
+    // for the QB record's DisplayName is QB itself (fetched via qbCustomerId).
     const customerSync = await this.createQBCustomer({
       portalId: this.user.workspaceId,
       customerId: recipientInfo.recipientId, // TODO: remove everything related to this field. in case anything goes off the track
