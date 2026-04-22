@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "trigger:dev": "npx trigger.dev@4.3.0 dev",
+    "trigger:dev": "npx trigger.dev@4.4.4 dev",
+    "trigger:deploy": "npx trigger.dev@4.4.4 deploy",
     "dev:embedded": "node scripts/dev.js",
     "build": "next build",
     "start": "next start",
@@ -28,7 +29,7 @@
   "dependencies": {
     "@sentry/nextjs": "^9.13.0",
     "@supabase/supabase-js": "^2.49.4",
-    "@trigger.dev/sdk": "4.3.0",
+    "@trigger.dev/sdk": "4.4.4",
     "bottleneck": "^2.19.5",
     "copilot-design-system": "^2.0.10",
     "copilot-node-sdk": "~3.16.0",
@@ -62,7 +63,7 @@
     "@ngrok/ngrok": "^1.4.1",
     "@sentry/esbuild-plugin": "^4.6.1",
     "@tailwindcss/postcss": "^4.1.5",
-    "@trigger.dev/build": "4.3.0",
+    "@trigger.dev/build": "4.4.4",
     "@types/deep-equal": "^1.0.4",
     "@types/html-to-text": "^9",
     "@types/node": "^22.14.1",
