@@ -29,7 +29,7 @@ import {
   QBItemsResponseSchema,
   SingleIdAndTokenResponseSchema,
 } from '@/type/dto/intuitAPI.dto'
-import { escapeForQBQuery } from '@/utils/string'
+import { escapeForQBQuery, getNameAsCustomer } from '@/utils/string'
 import { RetryableError } from '@/utils/error'
 import CustomLogger from '@/utils/logger'
 import httpStatus from 'http-status'
@@ -64,6 +64,11 @@ export type ItemResponseType = BaseResponseType & {
 }
 
 export const IntuitAPIErrorMessage = '#IntuitAPIErrorMessage#'
+
+// Upper bound on the " (Customer) N" suffix counter when resolving a unique
+// DisplayName. If exceeded, creation is aborted and a human is paged — having
+// 20+ Copilot clients sharing a single display name is pathological.
+const CUSTOMER_NAME_MAX_CANDIDATES = 20
 
 export default class IntuitAPI {
   tokens: IntuitAPITokensType
@@ -310,36 +315,70 @@ export default class IntuitAPI {
   }
 
   /**
-   * QB enforces DisplayName uniqueness across Customer, Vendor, and Employee.
-   * Returns the colliding entity's type and Id, or null if no Vendor/Employee
-   * collision exists.
+   * Resolves a DisplayName that is free across Customer, Vendor, and Employee
+   * (QBO enforces uniqueness across all three). Tries the baseName first, then
+   * "baseName (Customer)", "baseName (Customer) 2", ..., up to
+   * CUSTOMER_NAME_MAX_CANDIDATES. Queries all three entities in parallel with
+   * DisplayName IN (...) and picks the first candidate not in the returned set.
+   *
+   * Inactive records are intentionally excluded: QBO auto-suffixes their
+   * DisplayName with " (deleted)" when deactivated, freeing the original name.
+   *
+   * Intentionally NOT wrapped in wrapWithRetry — the inner customQuery calls
+   * already retry on 429; re-wrapping would amplify rate-limit bursts (worst
+   * case 4 × 3 × 4 = 48 requests) and make recovery worse.
+   *
+   * Throws if every candidate is taken.
    */
-  async _getNameCollisionEntity(
-    displayName: string,
-  ): Promise<{ type: 'Vendor' | 'Employee'; id: string } | null> {
-    const sanitizedDisplayName = escapeForQBQuery(displayName.trim())
+  async resolveUniqueCustomerName(baseName: string): Promise<string> {
+    const suffixed = getNameAsCustomer(baseName)
+    const candidates = [baseName, suffixed]
+    for (let i = 2; i <= CUSTOMER_NAME_MAX_CANDIDATES; i++) {
+      candidates.push(`${suffixed} ${i}`)
+    }
+
+    const escapedList = candidates
+      .map((c) => `'${escapeForQBQuery(c)}'`)
+      .join(', ')
 
     CustomLogger.info({
-      message: `IntuitAPI#getNameCollisionEntity | Collision check start for realmId: ${this.tokens.intuitRealmId}. Name: ${displayName}`,
+      message: `IntuitAPI#resolveUniqueCustomerName | Resolving unique DisplayName for realmId: ${this.tokens.intuitRealmId}. Base: "${baseName}"`,
     })
 
-    // QBO auto-suffixes inactive records' DisplayName with " (deleted)", freeing
-    // the original name, so only active records can actually collide.
-    const vendorQuery = `SELECT Id FROM Vendor WHERE DisplayName = '${sanitizedDisplayName}' maxresults 1`
-    const vendorRes = await this.customQuery(vendorQuery)
+    const [customerRes, vendorRes, employeeRes] = await Promise.all([
+      this.customQuery(
+        `SELECT DisplayName FROM Customer WHERE DisplayName IN (${escapedList})`,
+      ),
+      this.customQuery(
+        `SELECT DisplayName FROM Vendor WHERE DisplayName IN (${escapedList})`,
+      ),
+      this.customQuery(
+        `SELECT DisplayName FROM Employee WHERE DisplayName IN (${escapedList})`,
+      ),
+    ])
 
-    if (vendorRes?.Vendor?.length) {
-      return { type: 'Vendor', id: vendorRes.Vendor[0].Id }
+    // Case-insensitive comparison: QBO's DisplayName equality is case-
+    // insensitive, so a returned record may differ in case from our candidate.
+    const usedNames = new Set<string>()
+    for (const c of customerRes?.Customer ?? []) {
+      usedNames.add(c.DisplayName.toLowerCase())
+    }
+    for (const v of vendorRes?.Vendor ?? []) {
+      usedNames.add(v.DisplayName.toLowerCase())
+    }
+    for (const e of employeeRes?.Employee ?? []) {
+      usedNames.add(e.DisplayName.toLowerCase())
     }
 
-    const employeeQuery = `SELECT Id FROM Employee WHERE DisplayName = '${sanitizedDisplayName}' maxresults 1`
-    const employeeRes = await this.customQuery(employeeQuery)
-
-    if (employeeRes?.Employee?.length) {
-      return { type: 'Employee', id: employeeRes.Employee[0].Id }
+    const freeName = candidates.find((c) => !usedNames.has(c.toLowerCase()))
+    if (!freeName) {
+      throw new APIError(
+        httpStatus.CONFLICT,
+        `${IntuitAPIErrorMessage}resolveUniqueCustomerName | All ${CUSTOMER_NAME_MAX_CANDIDATES} candidate names are taken for base "${baseName}"`,
+      )
     }
 
-    return null
+    return freeName
   }
 
   /**
@@ -910,7 +949,6 @@ export default class IntuitAPI {
     ): Promise<CustomerQueryResponseType>
   } = this.wrapWithRetry(this._getACustomer) as any
   getCustomerByEmail = this.wrapWithRetry(this._getCustomerByEmail)
-  getNameCollisionEntity = this.wrapWithRetry(this._getNameCollisionEntity)
   getAnItem: {
     (
       name: string,

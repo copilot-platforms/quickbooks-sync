@@ -16,7 +16,7 @@ import { InvoiceCreatedResponseType } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI from '@/utils/intuitAPI'
 import { addSyncBreadcrumb } from '@/utils/sentry'
-import { getNameAsCustomer, replaceSpecialCharsForQB } from '@/utils/string'
+import { replaceSpecialCharsForQB } from '@/utils/string'
 import { and, eq, isNull } from 'drizzle-orm'
 import httpStatus from 'http-status'
 
@@ -375,20 +375,17 @@ export class CustomerService extends BaseService {
       console.info(
         `InvoiceService#WebhookInvoiceCreated | Customer named ${recipientInfo.displayName} not found in QB. Creating new customer...`,
       )
-      // Create a new customer in QB
-      const sanitizedDisplayName = replaceSpecialCharsForQB(displayName)
-
+      // Create a new customer in QB.
       // QB enforces DisplayName uniqueness across Customer, Vendor, and Employee.
-      // If the name collides with a Vendor/Employee, suffix it to avoid error 6240.
-      const collision =
-        await intuitApiService.getNameCollisionEntity(sanitizedDisplayName)
-      const finalDisplayName = collision
-        ? getNameAsCustomer(sanitizedDisplayName)
-        : sanitizedDisplayName
+      // Resolve a free DisplayName up-front to avoid 6240/6200 errors when the
+      // base name or its "(Customer)" suffixed form is already taken.
+      const sanitizedDisplayName = replaceSpecialCharsForQB(displayName)
+      const finalDisplayName =
+        await intuitApiService.resolveUniqueCustomerName(sanitizedDisplayName)
 
-      if (collision) {
+      if (finalDisplayName !== sanitizedDisplayName) {
         console.info(
-          `InvoiceService#WebhookInvoiceCreated | DisplayName "${sanitizedDisplayName}" collides with existing ${collision.type} (Id: ${collision.id}). Using "${finalDisplayName}" instead.`,
+          `InvoiceService#WebhookInvoiceCreated | DisplayName "${sanitizedDisplayName}" was taken; resolved to "${finalDisplayName}".`,
         )
       }
 
