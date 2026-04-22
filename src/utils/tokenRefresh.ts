@@ -15,10 +15,10 @@ import { and, eq } from 'drizzle-orm'
 
 /**
  * Refresh proactively when less than this many seconds remain on the token.
- * Intuit access tokens live 3600s; 10 min gives buffer for long-running sync
+ * Intuit access tokens live 3600s; 15 min gives buffer for long-running sync
  * jobs, queue latency, and mild clock skew between the app server and Intuit.
  */
-export const REFRESH_BUFFER_SECONDS = 10 * 60
+export const REFRESH_BUFFER_SECONDS = 15 * 60
 
 /**
  * Thrown when the QBO refresh token has been genuinely revoked (as opposed to

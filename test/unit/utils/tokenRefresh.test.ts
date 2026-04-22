@@ -155,7 +155,7 @@ describe('getValidQbTokens', () => {
     getPortalConnection.mockResolvedValueOnce({
       ...basePortalRow,
       // 2000s old out of 3600s lifetime → 1600s remaining → well outside the
-      // 600s (10-min) buffer, so no refresh expected.
+      // 900s (15-min) buffer, so no refresh expected.
       tokenSetTime: new Date(Date.now() - 2000 * 1000),
     })
 
@@ -166,7 +166,7 @@ describe('getValidQbTokens', () => {
     expect(dbUpdates).toHaveLength(0)
   })
 
-  it('refreshes when token is within the 10-min buffer of expiry', async () => {
+  it('refreshes when token is within the 15-min buffer of expiry', async () => {
     // One `getPortalConnection` call on the happy refresh path: `getValidQbTokens`
     // reads the row, then hands it to `getRefreshedQbTokenInfo` for reuse.
     getPortalConnection.mockResolvedValueOnce({
@@ -387,7 +387,7 @@ describe('REFRESH_BUFFER_SECONDS', () => {
   // Guards the contractual buffer value. A change here should be deliberate
   // and probably needs stakeholder discussion — this value trades refresh
   // frequency against mid-request expiry risk (see tokenRefresh.ts docs).
-  it('is 10 minutes', () => {
-    expect(REFRESH_BUFFER_SECONDS).toBe(600)
+  it('is 15 minutes', () => {
+    expect(REFRESH_BUFFER_SECONDS).toBe(900)
   })
 })
