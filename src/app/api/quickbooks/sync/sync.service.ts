@@ -132,7 +132,7 @@ export class SyncService extends BaseService {
       const invoice = {
         id: record.copilotId,
         number: invNumber,
-        total: record.amount ? parseFloat(record.amount) / 100 : 0, // assuming amount is in cents
+        total: record.amount ? parseFloat(record.amount) : 0,
         clientId: invoiceSync.customer.clientId || '',
         companyId: invoiceSync.customer.companyId || '',
       }
@@ -177,7 +177,7 @@ export class SyncService extends BaseService {
       const invoice = {
         id: record.copilotId,
         number: invNumber,
-        total: record.amount ? parseFloat(record.amount) / 100 : 0, // assuming amount is in cents
+        total: record.amount ? parseFloat(record.amount) : 0,
         clientId: invoiceSync.customer.clientId || '',
         companyId: invoiceSync.customer.companyId || '',
       }

@@ -119,7 +119,7 @@ export class WebhookService extends BaseService {
     const errorMessage = error?.message
 
     const syncLogService = new SyncLogService(this.user)
-    await syncLogService.createQBSyncLog({
+    await syncLogService.updateOrCreateQBSyncLog({
       portalId: this.user.workspaceId,
       entityType: EntityType.INVOICE,
       eventType,
