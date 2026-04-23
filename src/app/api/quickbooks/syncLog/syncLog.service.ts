@@ -138,6 +138,24 @@ export class SyncLogService extends BaseService {
       )
   }
 
+  async softDeleteLogsByCopilotId(
+    copilotId: string,
+    entityType: EntityType,
+    deletedAt: Date = new Date(),
+  ): Promise<void> {
+    await this.db
+      .update(QBSyncLog)
+      .set({ deletedAt })
+      .where(
+        and(
+          eq(QBSyncLog.portalId, this.user.workspaceId),
+          eq(QBSyncLog.copilotId, copilotId),
+          eq(QBSyncLog.entityType, entityType),
+          isNull(QBSyncLog.deletedAt),
+        ),
+      )
+  }
+
   /**
    * Get all failed sync logs
    */

@@ -557,6 +557,7 @@ export class InvoiceService extends BaseService {
       console.info(
         'InvoiceService#handleWebhookEvent#exists | Invoice already exists in the db',
       )
+
       return
     }
 
@@ -863,10 +864,10 @@ export class InvoiceService extends BaseService {
         intuitApi,
       })
       if (!mappedInvoice) {
-        console.info(
-          'InvoiceService#webhookInvoicePaid | Invoice not found in QBO either. Skipping.',
+        throw new APIError(
+          httpStatus.NOT_FOUND,
+          `Invoice not found in sync table or QBO for paid event. Invoice number: ${payload.data.number}. Likely preceded by a failed CREATE sync.`,
         )
-        return
       }
       invoiceSync = mappedInvoice
     }
@@ -1025,10 +1026,10 @@ export class InvoiceService extends BaseService {
         intuitApi,
       })
       if (!mappedInvoice) {
-        console.info(
-          'InvoiceService#webhookInvoiceVoided | Invoice not found in QBO either. Skipping.',
+        throw new APIError(
+          httpStatus.NOT_FOUND,
+          `Invoice not found in sync table or QBO for void event. Invoice number: ${payload.number}. Likely preceded by a failed CREATE sync.`,
         )
-        return
       }
       invoiceSync = mappedInvoice
     }
@@ -1116,11 +1117,59 @@ export class InvoiceService extends BaseService {
       'invoiceNumber',
     ])
 
+    // Check QBO for the invoice up front. QBO is the source of truth for whether
+    // there's anything to delete; the local sync table is just a cache of the mapping.
+    const intuitApi = new IntuitAPI(qbTokenInfo)
+    const qbInvoice = await intuitApi.getInvoice(payload.number)
+
+    if (!qbInvoice) {
+      // Invoice doesn't exist in QBO (never synced or manually deleted there).
+      // Soft-delete any prior sync logs, mark the local mapping (if any) as DELETED,
+      // and record the DELETED event as pre-soft-deleted for audit.
+      console.info(
+        'InvoiceService#handleInvoiceDeleted | Invoice absent from QBO. Soft-deleting logs, marking local mapping as DELETED, and recording pre-soft-deleted DELETED event.',
+      )
+      try {
+        await this.db.transaction(async (tx) => {
+          this.setTransaction(tx)
+          this.syncLogService.setTransaction(tx)
+          const now = new Date()
+          await this.syncLogService.softDeleteLogsByCopilotId(
+            payload.id,
+            EntityType.INVOICE,
+            now,
+          )
+          if (syncedInvoice) {
+            await this.updateQBInvoice(
+              { status: InvoiceStatus.DELETED },
+              eq(QBInvoiceSync.id, syncedInvoice.id),
+              ['id'],
+            )
+          }
+          await this.syncLogService.updateOrCreateQBSyncLog({
+            portalId: this.user.workspaceId,
+            entityType: EntityType.INVOICE,
+            eventType: EventType.DELETED,
+            status: LogStatus.SUCCESS,
+            copilotId: payload.id,
+            invoiceNumber: payload.number,
+            amount: payload.total ? payload.total.toFixed(2) : undefined,
+            syncAt: now,
+            deletedAt: now,
+          })
+        })
+      } finally {
+        this.unsetTransaction()
+        this.syncLogService.unsetTransaction()
+      }
+      return
+    }
+
+    // QBO has the invoice. Ensure we have a local mapping before deleting.
     if (!syncedInvoice) {
       console.info(
-        'InvoiceService#handleInvoiceDeleted | Invoice not found in sync table. Attempting find-or-map from QBO...',
+        'InvoiceService#handleInvoiceDeleted | Invoice in QBO but not in sync table. Mapping before delete.',
       )
-      const intuitApi = new IntuitAPI(qbTokenInfo)
       const mappedInvoice = await this.findOrMapInvoiceFromQBO({
         invoiceNumber: payload.number,
         copilotInvoiceId: payload.id,
@@ -1129,12 +1178,13 @@ export class InvoiceService extends BaseService {
         status: InvoiceStatus.VOID,
         total: payload.total,
         intuitApi,
+        qbInvoice,
       })
       if (!mappedInvoice) {
-        console.info(
-          'InvoiceService#handleInvoiceDeleted | Invoice not found in QBO either. Skipping.',
+        throw new APIError(
+          httpStatus.INTERNAL_SERVER_ERROR,
+          `Failed to map QBO invoice for delete. Invoice number: ${payload.number}`,
         )
-        return
       }
       syncedInvoice = mappedInvoice
     }
@@ -1161,7 +1211,6 @@ export class InvoiceService extends BaseService {
       throw new Error('Invoice sync log not found')
     }
 
-    const intuitApi = new IntuitAPI(qbTokenInfo)
     const deletePayload = {
       Id: syncedInvoice.qbInvoiceId,
       SyncToken: syncedInvoice.qbSyncToken,
@@ -1284,6 +1333,8 @@ export class InvoiceService extends BaseService {
     total?: number
     taxAmount?: number | null
     intuitApi: IntuitAPI
+    // Pre-fetched QBO invoice; when provided, skips the internal getInvoice lookup.
+    qbInvoice?: Awaited<ReturnType<IntuitAPI['getInvoice']>>
   }) {
     const {
       invoiceNumber,
@@ -1296,8 +1347,9 @@ export class InvoiceService extends BaseService {
       intuitApi,
     } = params
 
-    // 1. Query QBO for the invoice by DocNumber
-    const qbInvoice = await intuitApi.getInvoice(invoiceNumber)
+    // 1. Query QBO for the invoice by DocNumber (unless caller already fetched it)
+    const qbInvoice =
+      params.qbInvoice ?? (await intuitApi.getInvoice(invoiceNumber))
     if (!qbInvoice) {
       console.info(
         'InvoiceService#findOrMapInvoiceFromQBO | Invoice not found in QBO',
@@ -1356,7 +1408,7 @@ export class InvoiceService extends BaseService {
       },
       EventType.CREATED,
       {
-        amount: total ? (total * 100).toFixed(2) : undefined,
+        amount: total ? total.toFixed(2) : undefined,
         taxAmount: taxAmount ? taxAmount.toFixed(2) : '0',
         customerName: recipientInfo.displayName,
         customerEmail: recipientInfo.email,
