@@ -20,9 +20,9 @@ import postgres from 'postgres'
  * - Stop the container on teardown
  *
  * Env var propagation: Vitest spawns worker processes AFTER globalSetup resolves,
- * so process.env set here is inherited by workers. Combined with singleFork=true
- * in vitest.config.ts, this gives us one container shared across all integration
- * test files.
+ * so process.env set here is inherited by workers. Combined with `pool: 'forks'`
+ * and `fileParallelism: false` in vitest.config.ts, this gives us one container
+ * shared across all integration test files.
  */
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -52,8 +52,11 @@ export default async function globalSetup() {
   console.info('[globalSetup] Running Drizzle migrations...')
   const migrationClient = postgres(url, { max: 1, prepare: false })
   const migrationDb = drizzle(migrationClient)
-  await migrate(migrationDb, { migrationsFolder: MIGRATIONS_FOLDER })
-  await migrationClient.end()
+  try {
+    await migrate(migrationDb, { migrationsFolder: MIGRATIONS_FOLDER })
+  } finally {
+    await migrationClient.end()
+  }
 
   console.info(`[globalSetup] Ready: ${url}`)
 
