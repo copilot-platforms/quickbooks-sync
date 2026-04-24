@@ -7,6 +7,19 @@ import {
   TEST_PORTAL_ID,
 } from './seed'
 
+// Restricts override keys to the actual method names of the underlying class
+// so typos produce a compile-time error. The Mock value type intentionally
+// stays loose — tests routinely return shapes that don't match the real
+// Promise return type.
+type MockMethodOverrides<T> = {
+  [K in keyof T as T[K] extends (...args: never[]) => unknown
+    ? K
+    : never]?: Mock
+}
+
+type CopilotAPIOverrides = MockMethodOverrides<CopilotAPI>
+type IntuitAPIOverrides = MockMethodOverrides<IntuitAPI>
+
 /**
  * Factory for a mocked CopilotAPI instance.
  *
@@ -14,9 +27,7 @@ import {
  * wire each `new CopilotAPI(token)` call to an object produced by this factory.
  * Override any method via the `overrides` arg to tailor behavior per test.
  */
-export function createMockCopilotAPI(
-  overrides: Partial<Record<string, Mock>> = {},
-) {
+export function createMockCopilotAPI(overrides: CopilotAPIOverrides = {}) {
   return {
     getTokenPayload: vi.fn().mockResolvedValue({
       workspaceId: TEST_PORTAL_ID,
@@ -42,9 +53,7 @@ export function createMockCopilotAPI(
  *  - getAnAccount returns an active income account matching the seeded ref
  *  - createItem returns a freshly-created QB item
  */
-export function createMockIntuitAPI(
-  overrides: Partial<Record<string, Mock>> = {},
-) {
+export function createMockIntuitAPI(overrides: IntuitAPIOverrides = {}) {
   return {
     getAnItem: vi.fn().mockResolvedValue(undefined),
     getAnAccount: vi.fn().mockResolvedValue({
