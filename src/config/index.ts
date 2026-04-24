@@ -2,7 +2,12 @@
 import { EnvironmentType } from 'intuit-oauth'
 import dotenv from 'dotenv'
 
-dotenv.config()
+// Skip loading .env under Vitest so test runs can't silently inherit developer
+// creds from the local .env file. Test envs are loaded explicitly by
+// test/integration/globalSetup.ts from .env.test.
+if (process.env.NODE_ENV !== 'test') {
+  dotenv.config()
+}
 
 export const copilotDashboardUrl =
   process.env.NEXT_PUBLIC_COPILOT_DASHBOARD_URL || ''
