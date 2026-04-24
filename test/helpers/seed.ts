@@ -31,6 +31,8 @@ const basePortalConnection: z.infer<typeof QBPortalConnectionCreateSchema> = {
   intuitRealmId: TEST_REALM_ID,
   accessToken: TEST_ACCESS_TOKEN,
   refreshToken: TEST_REFRESH_TOKEN,
+  // Keeps `isTokenFresh` true so tests don't trigger a real Intuit OAuth call.
+  tokenSetTime: new Date(),
   expiresIn: 3600,
   XRefreshTokenExpiresIn: 8_726_400,
   intiatedBy: TEST_INTERNAL_USER_ID,
