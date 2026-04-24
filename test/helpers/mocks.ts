@@ -95,10 +95,12 @@ export type MockIntuitAPI = ReturnType<typeof createMockIntuitAPI>
  * both sites touch would reflect the sum of both call sites. Same applies to
  * IntuitAPI if/when it gets instantiated more than once per request.
  */
-export function installMockApis(opts: {
-  copilot?: MockCopilotAPI
-  intuit?: MockIntuitAPI
-} = {}): { copilot: MockCopilotAPI; intuit: MockIntuitAPI } {
+export function installMockApis(
+  opts: {
+    copilot?: MockCopilotAPI
+    intuit?: MockIntuitAPI
+  } = {},
+): { copilot: MockCopilotAPI; intuit: MockIntuitAPI } {
   const copilot = opts.copilot ?? createMockCopilotAPI()
   const intuit = opts.intuit ?? createMockIntuitAPI()
 
@@ -108,9 +110,7 @@ export function installMockApis(opts: {
     return copilot as unknown as CopilotAPI
   } as unknown as typeof CopilotAPI)
 
-  vi.mocked(IntuitAPI).mockImplementation(function (
-    this: unknown,
-  ): IntuitAPI {
+  vi.mocked(IntuitAPI).mockImplementation(function (this: unknown): IntuitAPI {
     return intuit as unknown as IntuitAPI
   } as unknown as typeof IntuitAPI)
 
