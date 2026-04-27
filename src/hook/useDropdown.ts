@@ -7,7 +7,7 @@ export function useDropdownPosition(
   dropdownRef: React.RefObject<HTMLElement | null>,
 ) {
   useEffect(() => {
-    Object.entries(openDropdowns).forEach(([index, isOpen]) => {
+    Object.entries(openDropdowns).forEach(([_index, isOpen]) => {
       if (isOpen) {
         const dropdown = dropdownRef.current
         if (dropdown) {

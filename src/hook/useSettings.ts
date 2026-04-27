@@ -8,10 +8,7 @@ import {
 } from '@/type/dto/api.dto'
 import { getTimeInterval } from '@/utils/common'
 import { QBO_ITEM_NAME_MAX_LENGTH } from '@/utils/string'
-import {
-  ProductMappingItemArraySchema,
-  ProductMappingItemType,
-} from '@/db/schema/qbProductSync'
+import { ProductMappingItemType } from '@/db/schema/qbProductSync'
 import { postFetcher } from '@/helper/fetch.helper'
 import { mutate } from 'swr'
 import equal from 'deep-equal'
