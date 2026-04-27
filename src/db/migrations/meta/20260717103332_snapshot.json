@@ -1,6 +1,6 @@
 {
-  "id": "9eb854f3-0544-46b9-8b4f-6ad7457aaac9",
-  "prevId": "1c9fbc27-72b3-4a6e-860c-6e3f247135d5",
+  "id": "428656f4-55ad-419c-bdc9-79f46d8a8aee",
+  "prevId": "911cb534-9808-40fa-840f-e90da62522d0",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -281,7 +281,30 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "uq_qb_invoice_sync_portal_id_invoice_number_active_idx": {
+          "name": "uq_qb_invoice_sync_portal_id_invoice_number_active_idx",
+          "columns": [
+            {
+              "expression": "portal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "invoice_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"qb_invoice_sync\".\"deleted_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "qb_invoice_sync_customer_id_qb_customers_id_fk": {
           "name": "qb_invoice_sync_customer_id_qb_customers_id_fk",
@@ -960,7 +983,8 @@
         "deleted",
         "succeeded",
         "mapped",
-        "unmapped"
+        "unmapped",
+        "deposited"
       ]
     },
     "public.failed_record_category_types": {

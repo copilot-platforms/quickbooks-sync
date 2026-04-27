@@ -76,11 +76,14 @@ export class SyncLogService extends BaseService {
     eventType: EventType
     entityType: EntityType
   }) {
+    // Excludes soft-deleted rows so updateOrCreateQBSyncLog can't accidentally
+    // revive a previously soft-deleted log by updating it in place.
     const conditions = [
       eq(QBSyncLog.portalId, this.user.workspaceId),
       eq(QBSyncLog.copilotId, copilotId),
       eq(QBSyncLog.eventType, eventType),
       eq(QBSyncLog.entityType, entityType),
+      isNull(QBSyncLog.deletedAt),
     ]
 
     const query = this.db.query.QBSyncLog.findFirst({
@@ -107,9 +110,12 @@ export class SyncLogService extends BaseService {
     let existingLog
 
     if (conditions) {
+      // Exclude soft-deleted rows so a previously soft-deleted log isn't
+      // revived by an in-place update.
       const sqlConditions = and(
         ...[conditions],
         eq(QBSyncLog.entityType, payload.entityType),
+        isNull(QBSyncLog.deletedAt),
       ) as WhereClause
       existingLog = await this.getOne(sqlConditions)
     } else {

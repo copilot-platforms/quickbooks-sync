@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "uq_qb_invoice_sync_portal_id_invoice_number_active_idx" ON "qb_invoice_sync" USING btree ("portal_id","invoice_number") WHERE "qb_invoice_sync"."deleted_at" is null;

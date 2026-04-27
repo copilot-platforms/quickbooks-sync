@@ -78,7 +78,17 @@ export class InvoiceService extends BaseService {
     returningFields?: (keyof typeof QBInvoiceSync)[],
   ) {
     const parsedInsertPayload = QBInvoiceCreateSchema.parse(payload)
-    const query = this.db.insert(QBInvoiceSync).values(parsedInsertPayload)
+    // Concurrent webhook deliveries for the same invoice can race past the
+    // app-level existence checks; the partial unique index on
+    // (portal_id, invoice_number) WHERE deleted_at IS NULL is the durable
+    // guard. Swallow conflicts here so the loser of the race no-ops.
+    const query = this.db
+      .insert(QBInvoiceSync)
+      .values(parsedInsertPayload)
+      .onConflictDoNothing({
+        target: [QBInvoiceSync.portalId, QBInvoiceSync.invoiceNumber],
+        where: isNull(QBInvoiceSync.deletedAt),
+      })
 
     const [invoiceSync] = returningFields?.length
       ? await query.returning(
@@ -1357,6 +1367,18 @@ export class InvoiceService extends BaseService {
       return null
     }
 
+    // 2. Re-check the local mapping. A concurrent webhook delivery may have
+    // inserted the row while we were fetching from QBO; short-circuit to
+    // avoid wasted customer/mapping work. The partial unique index closes
+    // the remaining window between this check and the INSERT below.
+    const alreadyMapped = await this.getInvoiceByNumber(invoiceNumber)
+    if (alreadyMapped) {
+      console.info(
+        'InvoiceService#findOrMapInvoiceFromQBO | Mapping already exists, skipping',
+      )
+      return alreadyMapped
+    }
+
     // 3. Resolve customer mapping (reuse existing pattern from webhookInvoiceCreated)
     const customerService = new CustomerService(this.user)
     const { recipientInfo, companyInfo } =
@@ -1389,15 +1411,25 @@ export class InvoiceService extends BaseService {
     }
 
     // 4. Create the qb_invoice_sync mapping row
-    await this.createQBInvoice({
-      portalId: this.user.workspaceId,
-      invoiceNumber,
-      qbInvoiceId: qbInvoice.Id,
-      qbSyncToken: qbInvoice.SyncToken,
-      recipientId: recipientInfo.recipientId,
-      customerId: customerMapId,
-      status,
-    })
+    const inserted = await this.createQBInvoice(
+      {
+        portalId: this.user.workspaceId,
+        invoiceNumber,
+        qbInvoiceId: qbInvoice.Id,
+        qbSyncToken: qbInvoice.SyncToken,
+        recipientId: recipientInfo.recipientId,
+        customerId: customerMapId,
+        status,
+      },
+      ['id'],
+    )
+
+    // If onConflictDoNothing skipped the insert, a concurrent delivery won
+    // the race. Skip re-logging (the winner already wrote the sync log) and
+    // return the existing mapping.
+    if (!inserted) {
+      return await this.getInvoiceByNumber(invoiceNumber)
+    }
 
     // 5. Create the sync log entry
     await this.logSync(

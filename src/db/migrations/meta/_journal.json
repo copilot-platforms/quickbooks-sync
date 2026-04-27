@@ -117,8 +117,15 @@
     {
       "idx": 16,
       "version": "7",
-      "when": 1776675852536,
-      "tag": "20260420090412_add_bank_deposit_fee_column",
+      "when": 1777269232971,
+      "tag": "20260427055352_add_unique_index_with_portal_id_and_invoice_number_in_qb_invoice_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1784284412584,
+      "tag": "20260717103332_add_bank_deposit_fee_column",
       "breakpoints": true
     }
   ]

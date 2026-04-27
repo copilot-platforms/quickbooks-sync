@@ -2,7 +2,7 @@ import { InvoiceStatus } from '@/app/api/core/types/invoice'
 import { timestamps } from '@/db/helper/column.helper'
 import { enumToPgEnum } from '@/db/helper/drizzle.helper'
 import { QBCustomers } from '@/db/schema/qbCustomers'
-import { relations } from 'drizzle-orm'
+import { isNull, relations } from 'drizzle-orm'
 import { pgTable as table } from 'drizzle-orm/pg-core'
 import * as t from 'drizzle-orm/pg-core'
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
@@ -13,20 +13,29 @@ export const invoiceStatusEnum = t.pgEnum(
   enumToPgEnum(InvoiceStatus),
 )
 
-export const QBInvoiceSync = table('qb_invoice_sync', {
-  id: t.uuid().defaultRandom().primaryKey(),
-  portalId: t.varchar('portal_id', { length: 255 }).notNull(),
-  customerId: t.uuid('customer_id').references(() => QBCustomers.id, {
-    onDelete: 'cascade',
-    onUpdate: 'cascade',
-  }),
-  invoiceNumber: t.varchar('invoice_number').notNull(),
-  qbInvoiceId: t.varchar('qb_invoice_id'),
-  qbSyncToken: t.varchar('qb_sync_token', { length: 100 }),
-  recipientId: t.uuid('recipient_id'),
-  status: invoiceStatusEnum('status').default(InvoiceStatus.OPEN).notNull(),
-  ...timestamps,
-})
+export const QBInvoiceSync = table(
+  'qb_invoice_sync',
+  {
+    id: t.uuid().defaultRandom().primaryKey(),
+    portalId: t.varchar('portal_id', { length: 255 }).notNull(),
+    customerId: t.uuid('customer_id').references(() => QBCustomers.id, {
+      onDelete: 'cascade',
+      onUpdate: 'cascade',
+    }),
+    invoiceNumber: t.varchar('invoice_number').notNull(),
+    qbInvoiceId: t.varchar('qb_invoice_id'),
+    qbSyncToken: t.varchar('qb_sync_token', { length: 100 }),
+    recipientId: t.uuid('recipient_id'),
+    status: invoiceStatusEnum('status').default(InvoiceStatus.OPEN).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    t
+      .uniqueIndex('uq_qb_invoice_sync_portal_id_invoice_number_active_idx')
+      .on(table.portalId, table.invoiceNumber)
+      .where(isNull(table.deletedAt)),
+  ],
+)
 
 export const QBInvoiceSyncRelations = relations(QBInvoiceSync, ({ one }) => ({
   customer: one(QBCustomers, {
