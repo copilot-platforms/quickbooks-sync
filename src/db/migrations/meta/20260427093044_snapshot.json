@@ -1,5 +1,5 @@
 {
-  "id": "d729909e-8641-49ac-bdd7-a1a6040b17eb",
+  "id": "e9f34bf8-0fc5-41b0-ab35-28b4f91906b5",
   "prevId": "911cb534-9808-40fa-840f-e90da62522d0",
   "version": "7",
   "dialect": "postgresql",
@@ -920,7 +920,64 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "idx_qb_sync_logs_lookup_active": {
+          "name": "idx_qb_sync_logs_lookup_active",
+          "columns": [
+            {
+              "expression": "portal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "copilot_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "entity_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "event_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"qb_sync_logs\".\"deleted_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_qb_sync_logs_pending_reaper": {
+          "name": "idx_qb_sync_logs_pending_reaper",
+          "columns": [
+            {
+              "expression": "portal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"qb_sync_logs\".\"status\" = $1 AND \"qb_sync_logs\".\"deleted_at\" IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},

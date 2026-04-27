@@ -6,6 +6,7 @@ import {
 } from '@/app/api/core/types/log'
 import { timestamps } from '@/db/helper/column.helper'
 import { enumToPgEnum } from '@/db/helper/drizzle.helper'
+import { isNull, sql } from 'drizzle-orm'
 import { pgTable as table } from 'drizzle-orm/pg-core'
 import * as t from 'drizzle-orm/pg-core'
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
@@ -20,35 +21,55 @@ export const FailedCategoryEnum = t.pgEnum(
   enumToPgEnum(FailedRecordCategoryType),
 )
 
-export const QBSyncLog = table('qb_sync_logs', {
-  id: t.uuid().defaultRandom().primaryKey(),
-  portalId: t.varchar('portal_id', { length: 255 }).notNull(),
-  entityType: EntityTypeEnum('entity_type')
-    .default(EntityType.INVOICE)
-    .notNull(),
-  eventType: EventTypeEnum('event_type').default(EventType.CREATED).notNull(),
-  status: StatusEnum('status').default(LogStatus.SUCCESS).notNull(),
-  syncAt: t.timestamp('sync_at'),
-  copilotId: t.varchar('copilot_id', { length: 100 }).notNull(),
-  quickbooksId: t.varchar('quickbooks_id', { length: 100 }),
-  invoiceNumber: t.varchar('invoice_number', { length: 100 }),
-  amount: t.decimal('amount'),
-  remark: t.varchar('remark'),
-  customerName: t.varchar('customer_name', { length: 100 }),
-  customerEmail: t.varchar('customer_email', { length: 100 }),
-  taxAmount: t.decimal('tax_amount'),
-  feeAmount: t.decimal('fee_amount'),
-  productName: t.varchar('product_name'),
-  productPrice: t.decimal('product_price'),
-  qbItemName: t.varchar('qb_item_name', { length: 100 }),
-  copilotPriceId: t.varchar('copilot_price_id', { length: 100 }),
-  errorMessage: t.text('error_message'),
-  category: FailedCategoryEnum('category')
-    .default(FailedRecordCategoryType.OTHERS)
-    .notNull(),
-  attempt: t.integer('attempt').default(0).notNull(),
-  ...timestamps,
-})
+export const QBSyncLog = table(
+  'qb_sync_logs',
+  {
+    id: t.uuid().defaultRandom().primaryKey(),
+    portalId: t.varchar('portal_id', { length: 255 }).notNull(),
+    entityType: EntityTypeEnum('entity_type')
+      .default(EntityType.INVOICE)
+      .notNull(),
+    eventType: EventTypeEnum('event_type').default(EventType.CREATED).notNull(),
+    status: StatusEnum('status').default(LogStatus.SUCCESS).notNull(),
+    syncAt: t.timestamp('sync_at'),
+    copilotId: t.varchar('copilot_id', { length: 100 }).notNull(),
+    quickbooksId: t.varchar('quickbooks_id', { length: 100 }),
+    invoiceNumber: t.varchar('invoice_number', { length: 100 }),
+    amount: t.decimal('amount'),
+    remark: t.varchar('remark'),
+    customerName: t.varchar('customer_name', { length: 100 }),
+    customerEmail: t.varchar('customer_email', { length: 100 }),
+    taxAmount: t.decimal('tax_amount'),
+    feeAmount: t.decimal('fee_amount'),
+    productName: t.varchar('product_name'),
+    productPrice: t.decimal('product_price'),
+    qbItemName: t.varchar('qb_item_name', { length: 100 }),
+    copilotPriceId: t.varchar('copilot_price_id', { length: 100 }),
+    errorMessage: t.text('error_message'),
+    category: FailedCategoryEnum('category')
+      .default(FailedRecordCategoryType.OTHERS)
+      .notNull(),
+    attempt: t.integer('attempt').default(0).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    // Hot path: claimWebhookEvent / getOneByCopilotIdAndEventType lookup
+    // on every webhook entry. Non-unique because production has historical
+    // duplicates; uniqueness enforcement was descoped to avoid blocking
+    // index creation.
+    t
+      .index('idx_qb_sync_logs_lookup_active')
+      .on(table.portalId, table.copilotId, table.entityType, table.eventType)
+      .where(isNull(table.deletedAt)),
+    // Cold path: stale-PENDING reaper at the start of syncFailedRecords.
+    t
+      .index('idx_qb_sync_logs_pending_reaper')
+      .on(table.portalId, table.createdAt)
+      .where(
+        sql`${table.status} = ${LogStatus.PENDING} AND ${table.deletedAt} IS NULL`,
+      ),
+  ],
+)
 
 export const QBSyncLogCreateSchema = createInsertSchema(QBSyncLog)
 export type QBSyncLogCreateSchemaType = z.infer<typeof QBSyncLogCreateSchema>

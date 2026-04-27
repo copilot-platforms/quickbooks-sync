@@ -124,8 +124,8 @@
     {
       "idx": 17,
       "version": "7",
-      "when": 1777277873164,
-      "tag": "20260427081753_update_log_status_enum_with_pending_values",
+      "when": 1777282244025,
+      "tag": "20260427093044_update_qb_sync_logs_table_with_indexes_status_enum",
       "breakpoints": true
     },
     {
