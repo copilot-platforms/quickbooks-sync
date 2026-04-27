@@ -785,7 +785,20 @@ export class InvoiceService extends BaseService {
       customerId: existingCustomerMapId, // foreign key to customer mapping
       status: invoiceResource.status,
     }
-    await this.createQBInvoice(invoicePayload)
+    const inserted = await this.createQBInvoice(invoicePayload, ['id'])
+
+    // If onConflictDoNothing skipped the insert, a concurrent delivery won
+    // the race. Skip logSync (the winner already wrote the CREATED log;
+    // overwriting it would point quickbooks_id at this losing webhook's
+    // orphaned QBO invoice) and skip the paid-path payment creation.
+    // Note: the duplicate QBO invoice from createInvoice above is the
+    // dual-create issue tracked separately in OUT-3655.
+    if (!inserted) {
+      console.info(
+        'InvoiceService#webhookInvoiceCreated | Mapping already exists (race loss), skipping logSync and payment',
+      )
+      return
+    }
 
     // update/ create the record in sync log table
     const totalWithTax = actualTotalAmount + totalTax
