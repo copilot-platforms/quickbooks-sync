@@ -495,6 +495,12 @@ export class SyncService extends BaseService {
         message: 'SyncService#syncFailedRecords | Start re-sync process',
         obj: { workspaceId: this.user.workspaceId },
       })
+
+      // 0. Reap stale PENDING claims (worker likely died before completing)
+      // by flipping them to FAILED so the existing failed-resync flow below
+      // picks them up.
+      await this.syncLogService.flipStalePendingToFailed()
+
       // 1. get all failed sync logs group by the entity type
       const failedSyncLogs =
         await this.syncLogService.getAllFailedLogsForWorkspace(includeDeleted)

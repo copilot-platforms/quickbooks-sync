@@ -124,8 +124,15 @@
     {
       "idx": 17,
       "version": "7",
-      "when": 1784284412584,
-      "tag": "20260717103332_add_bank_deposit_fee_column",
+      "when": 1777277873164,
+      "tag": "20260427081753_update_log_status_enum_with_pending_values",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1784284617002,
+      "tag": "20260717103656_add_bank_deposit_fee_column",
       "breakpoints": true
     }
   ]

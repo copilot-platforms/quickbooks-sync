@@ -1,5 +1,10 @@
 import { BaseService } from '@/app/api/core/services/base.service'
-import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
+import {
+  EntityType,
+  EventType,
+  FailedRecordCategoryType,
+  LogStatus,
+} from '@/app/api/core/types/log'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
 import {
   QBSyncLog,
@@ -13,8 +18,10 @@ import {
 import { WhereClause } from '@/type/common'
 import { orderMap } from '@/utils/drizzle'
 import dayjs from 'dayjs'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull, lt } from 'drizzle-orm'
 import { json2csv } from 'json-2-csv'
+
+export const STALE_PENDING_THRESHOLD_MINUTES = 15
 
 export type CustomSyncLogRecordType = {
   copilotId: string
@@ -131,6 +138,78 @@ export class SyncLogService extends BaseService {
     } else {
       await this.createQBSyncLog(payload)
     }
+  }
+
+  /**
+   * Atomic-ish idempotency claim for webhook entry. Returns `claimed: true` if
+   * we successfully wrote a new PENDING row for this (portal, copilot, entity,
+   * event) tuple, or `claimed: false` if a row already exists for that tuple
+   * — meaning another delivery has handled or is handling it.
+   *
+   * Without a unique constraint on `qb_sync_logs` (descoped due to historical
+   * production duplicates), the read-then-insert has a sub-millisecond TOCTOU
+   * window. In practice this closes the dominant `invoice.created` +
+   * `invoice.updated` race because the existing `sleep(10000)` already
+   * serialises those events.
+   *
+   * Stale claims (PENDING older than `STALE_PENDING_THRESHOLD_MINUTES`) are
+   * recovered by `flipStalePendingToFailed` during the next resync cycle.
+   */
+  async claimWebhookEvent({
+    copilotId,
+    entityType,
+    eventType,
+    invoiceNumber,
+  }: {
+    copilotId: string
+    entityType: EntityType
+    eventType: EventType
+    invoiceNumber?: string
+  }): Promise<{ claimed: boolean }> {
+    const existing = await this.getOneByCopilotIdAndEventType({
+      copilotId,
+      eventType,
+      entityType,
+    })
+    if (existing) {
+      return { claimed: false }
+    }
+
+    await this.createQBSyncLog({
+      portalId: this.user.workspaceId,
+      copilotId,
+      entityType,
+      eventType,
+      status: LogStatus.PENDING,
+      invoiceNumber,
+    })
+    return { claimed: true }
+  }
+
+  /**
+   * Flips PENDING claim rows older than `STALE_PENDING_THRESHOLD_MINUTES` to
+   * FAILED so they get picked up by the existing failed-resync flow. Treats
+   * a stale PENDING as evidence that the worker died before completing.
+   */
+  async flipStalePendingToFailed(): Promise<void> {
+    const threshold = dayjs()
+      .subtract(STALE_PENDING_THRESHOLD_MINUTES, 'minutes')
+      .toDate()
+    await this.db
+      .update(QBSyncLog)
+      .set({
+        status: LogStatus.FAILED,
+        errorMessage: 'Stale PENDING claim — worker did not finalise in time',
+        category: FailedRecordCategoryType.OTHERS,
+      })
+      .where(
+        and(
+          eq(QBSyncLog.portalId, this.user.workspaceId),
+          eq(QBSyncLog.status, LogStatus.PENDING),
+          lt(QBSyncLog.createdAt, threshold),
+          isNull(QBSyncLog.deletedAt),
+        ),
+      )
   }
 
   async deleteQBSyncLog(id: string): Promise<void> {

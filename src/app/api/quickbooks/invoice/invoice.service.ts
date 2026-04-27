@@ -938,11 +938,15 @@ export class InvoiceService extends BaseService {
       entityType: EntityType.INVOICE,
     })
 
-    if (!invoiceLog) {
+    if (!invoiceLog || invoiceLog.status === LogStatus.PENDING) {
+      // PENDING means the CREATED webhook claim was written but the handler
+      // hasn't finalised yet (or died mid-flight). amount/taxAmount are null
+      // on a claim row, so we can't proceed. Fail this PAID event so resync
+      // retries it once CREATED has resolved.
       console.error(
-        'InvoiceService#webhookInvoicePaid | Invoice sync log not found',
+        'InvoiceService#webhookInvoicePaid | Invoice sync log not found or still pending',
       )
-      throw Error('Invoice sync log not found')
+      throw Error('Invoice sync log not found or still pending')
     }
 
     const invoiceAmount = Number(z.string().parse(invoiceLog.amount)) / 100
@@ -1071,11 +1075,11 @@ export class InvoiceService extends BaseService {
       entityType: EntityType.INVOICE,
     })
 
-    if (!invoiceLog) {
+    if (!invoiceLog || invoiceLog.status === LogStatus.PENDING) {
       console.error(
-        'InvoiceService#webhookInvoicePaid | Invoice sync log not found',
+        'InvoiceService#webhookInvoiceVoided | Invoice sync log not found or still pending',
       )
-      throw Error('Invoice sync log not found')
+      throw Error('Invoice sync log not found or still pending')
     }
 
     // only implement void if invoice has open status
@@ -1227,11 +1231,11 @@ export class InvoiceService extends BaseService {
       entityType: EntityType.INVOICE,
     })
 
-    if (!invoiceLog) {
+    if (!invoiceLog || invoiceLog.status === LogStatus.PENDING) {
       console.error(
-        'InvoiceService#webhookInvoicePaid | Invoice sync log not found',
+        'InvoiceService#handleInvoiceDeleted | Invoice sync log not found or still pending',
       )
-      throw new Error('Invoice sync log not found')
+      throw new Error('Invoice sync log not found or still pending')
     }
 
     const deletePayload = {

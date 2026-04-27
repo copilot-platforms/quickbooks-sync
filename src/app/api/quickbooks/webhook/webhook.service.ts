@@ -77,6 +77,13 @@ export class WebhookService extends BaseService {
       }
     }
 
+    // The historical sleeps for INVOICE_UPDATED / INVOICE_VOIDED /
+    // PAYMENT_SUCCEEDED give a companion event (e.g. invoice.created) time
+    // to claim first. The sleeps are passed *into* the handler and run
+    // *before* the claim check, so when this handler wakes and runs its
+    // SELECT, the companion's INSERT is already committed and visible —
+    // closing the sub-millisecond race that an after-claim sleep would
+    // leave open.
     switch (payload.eventType) {
       case WebhookEvents.INVOICE_CREATED:
         return await this.handleInvoiceCreated(payload, qbTokenInfo)
@@ -94,15 +101,19 @@ export class WebhookService extends BaseService {
         return await this.handleInvoicePaid(payload, qbTokenInfo)
 
       case WebhookEvents.INVOICE_VOIDED:
-        await sleep(14000) // invoice.updated event is triggered even when invoice created
-        return await this.handleInvoiceVoided(payload, qbTokenInfo)
+        return await this.handleInvoiceVoided(payload, qbTokenInfo, {
+          delayMs: 14000,
+        })
 
       case WebhookEvents.INVOICE_UPDATED:
-        await sleep(10000) // invoice.updated event is triggered even when invoice created
-        return await this.handleInvoiceCreated(payload, qbTokenInfo)
+        return await this.handleInvoiceCreated(payload, qbTokenInfo, {
+          delayMs: 10000,
+        })
 
       case WebhookEvents.PAYMENT_SUCCEEDED:
-        return await this.handlePaymentSucceeded(payload, qbTokenInfo)
+        return await this.handlePaymentSucceeded(payload, qbTokenInfo, {
+          delayMs: 7000,
+        })
 
       default:
         console.error('WebhookService#handleWebhookEvent | Unknown event type')
@@ -136,6 +147,7 @@ export class WebhookService extends BaseService {
   private async handleInvoiceCreated(
     payload: unknown,
     qbTokenInfo: IntuitAPITokensType,
+    opts: { delayMs?: number } = {},
   ) {
     console.info('###### INVOICE CREATED ######')
     const parsedPayload = InvoiceCreatedResponseSchema.safeParse(payload)
@@ -151,6 +163,22 @@ export class WebhookService extends BaseService {
     if (parsedInvoiceResource.data.status === InvoiceStatus.DRAFT) {
       console.info(
         'WebhookService#handleWebhookEvent#draft | Invoice is in draft status',
+      )
+      return
+    }
+
+    if (opts.delayMs) await sleep(opts.delayMs)
+
+    const syncLogService = new SyncLogService(this.user)
+    const { claimed } = await syncLogService.claimWebhookEvent({
+      copilotId: parsedInvoiceResource.data.id,
+      entityType: EntityType.INVOICE,
+      eventType: EventType.CREATED,
+      invoiceNumber: parsedInvoiceResource.data.number,
+    })
+    if (!claimed) {
+      console.info(
+        `WebhookService#handleInvoiceCreated | Already claimed (invoice/${EventType.CREATED}, copilotId=${parsedInvoiceResource.data.id}), skipping`,
       )
       return
     }
@@ -181,6 +209,7 @@ export class WebhookService extends BaseService {
   private async handleInvoiceVoided(
     payload: unknown,
     qbTokenInfo: IntuitAPITokensType,
+    opts: { delayMs?: number } = {},
   ) {
     console.info('###### INVOICE VOIDED ######')
     const parsedVoidedInvoice = InvoiceResponseSchema.safeParse(payload)
@@ -191,6 +220,22 @@ export class WebhookService extends BaseService {
       return
     }
     const parsedVoidedInvoiceResource = parsedVoidedInvoice.data
+
+    if (opts.delayMs) await sleep(opts.delayMs)
+
+    const syncLogService = new SyncLogService(this.user)
+    const { claimed } = await syncLogService.claimWebhookEvent({
+      copilotId: parsedVoidedInvoiceResource.data.id,
+      entityType: EntityType.INVOICE,
+      eventType: EventType.VOIDED,
+      invoiceNumber: parsedVoidedInvoiceResource.data.number,
+    })
+    if (!claimed) {
+      console.info(
+        `WebhookService#handleInvoiceVoided | Already claimed (invoice/${EventType.VOIDED}, copilotId=${parsedVoidedInvoiceResource.data.id}), skipping`,
+      )
+      return
+    }
 
     try {
       validateAccessToken(qbTokenInfo)
@@ -228,6 +273,21 @@ export class WebhookService extends BaseService {
     }
 
     const deletePayload = parsedPayload.data
+
+    const syncLogService = new SyncLogService(this.user)
+    const { claimed } = await syncLogService.claimWebhookEvent({
+      copilotId: deletePayload.id,
+      entityType: EntityType.INVOICE,
+      eventType: EventType.DELETED,
+      invoiceNumber: deletePayload.number,
+    })
+    if (!claimed) {
+      console.info(
+        `WebhookService#handleInvoiceDeleted | Already claimed (invoice/${EventType.DELETED}, copilotId=${deletePayload.id}), skipping`,
+      )
+      return
+    }
+
     try {
       validateAccessToken(qbTokenInfo)
       const invoiceService = new InvoiceService(this.user)
@@ -261,6 +321,21 @@ export class WebhookService extends BaseService {
       return
     }
     const parsedPaidInvoiceResource = parsedPaidInvoice.data
+
+    const syncLogService = new SyncLogService(this.user)
+    const { claimed } = await syncLogService.claimWebhookEvent({
+      copilotId: parsedPaidInvoiceResource.data.id,
+      entityType: EntityType.INVOICE,
+      eventType: EventType.PAID,
+      invoiceNumber: parsedPaidInvoiceResource.data.number,
+    })
+    if (!claimed) {
+      console.info(
+        `WebhookService#handleInvoicePaid | Already claimed (invoice/${EventType.PAID}, copilotId=${parsedPaidInvoiceResource.data.id}), skipping`,
+      )
+      return
+    }
+
     try {
       validateAccessToken(qbTokenInfo)
       const invService = new InvoiceService(this.user)
@@ -270,7 +345,6 @@ export class WebhookService extends BaseService {
       )
     } catch (error: unknown) {
       CustomLogger.error({ message: 'Webhook handler failed', obj: error })
-      const syncLogService = new SyncLogService(this.user)
       const errorWithCode = getMessageAndCodeFromError(error)
       const errorMessage = errorWithCode.message
 
@@ -398,6 +472,7 @@ export class WebhookService extends BaseService {
   private async handlePaymentSucceeded(
     payload: unknown,
     qbTokenInfo: IntuitAPITokensType,
+    opts: { delayMs?: number } = {},
   ) {
     await sleep(20000) // Payment succeed event can sometimes trigger before invoice created.
 
@@ -428,20 +503,22 @@ export class WebhookService extends BaseService {
         return
       }
 
+      if (opts.delayMs) await sleep(opts.delayMs)
+
       const useBankDepositFlow = setting.bankDepositFeeFlag
       const idempotencyEventType = useBankDepositFlow
         ? EventType.DEPOSITED
         : EventType.SUCCEEDED
 
       const syncLogService = new SyncLogService(this.user)
-      const syncLog = await syncLogService.getOneByCopilotIdAndEventType({
+      const { claimed } = await syncLogService.claimWebhookEvent({
         copilotId: parsedPaymentSucceedResource.data.id,
         eventType: idempotencyEventType,
         entityType: EntityType.PAYMENT,
       })
-      if (syncLog?.status === LogStatus.SUCCESS) {
+      if (!claimed) {
         console.info(
-          'WebhookService#webhookPaymentSucceeded | Payment already succeeded',
+          `WebhookService#handlePaymentSucceeded | Already claimed (payment/${EventType.SUCCEEDED}, copilotId=${parsedPaymentSucceedResource.data.id}), skipping`,
         )
         return
       }

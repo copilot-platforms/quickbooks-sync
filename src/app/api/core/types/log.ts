@@ -8,6 +8,7 @@ export enum LogStatus {
   SUCCESS = 'success',
   FAILED = 'failed',
   INFO = 'info',
+  PENDING = 'pending',
 }
 
 export enum EventType {
