@@ -66,7 +66,7 @@ export const QBSyncLog = table(
       .index('idx_qb_sync_logs_pending_reaper')
       .on(table.portalId, table.createdAt)
       .where(
-        sql`${table.status} = ${LogStatus.PENDING} AND ${table.deletedAt} IS NULL`,
+        sql`${table.status} = ${sql.raw(`'${LogStatus.PENDING}'`)} AND ${table.deletedAt} IS NULL`,
       ),
   ],
 )
