@@ -131,8 +131,8 @@
     {
       "idx": 18,
       "version": "7",
-      "when": 1777283378087,
-      "tag": "20260427094938_add_unique_indexes_in_qb_sync_logs_table",
+      "when": 1777284208082,
+      "tag": "20260427100328_add_unique_indexes_in_qb_sync_logs_table",
       "breakpoints": true
     },
     {

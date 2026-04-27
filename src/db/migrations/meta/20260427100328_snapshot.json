@@ -1,5 +1,5 @@
 {
-  "id": "4405a359-4a2a-45de-be51-c0b01eb82722",
+  "id": "4407e100-64fd-4a94-a638-4be325ce7d5c",
   "prevId": "3f112fb2-747e-4af5-adb5-f6eb5668d069",
   "version": "7",
   "dialect": "postgresql",
@@ -965,6 +965,12 @@
               "nulls": "last"
             },
             {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
               "expression": "created_at",
               "isExpression": false,
               "asc": true,
@@ -972,7 +978,7 @@
             }
           ],
           "isUnique": false,
-          "where": "\"qb_sync_logs\".\"status\" = $1 AND \"qb_sync_logs\".\"deleted_at\" IS NULL",
+          "where": "\"qb_sync_logs\".\"deleted_at\" is null",
           "concurrently": false,
           "method": "btree",
           "with": {}

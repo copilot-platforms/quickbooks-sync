@@ -1,2 +1,2 @@
 CREATE INDEX IF NOT EXISTS "idx_qb_sync_logs_lookup_active" ON "qb_sync_logs" USING btree ("portal_id","copilot_id","entity_type","event_type") WHERE "qb_sync_logs"."deleted_at" is null;--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "idx_qb_sync_logs_pending_reaper" ON "qb_sync_logs" USING btree ("portal_id","created_at") WHERE "qb_sync_logs"."status" = 'pending' AND "qb_sync_logs"."deleted_at" IS NULL;
+CREATE INDEX IF NOT EXISTS "idx_qb_sync_logs_pending_reaper" ON "qb_sync_logs" USING btree ("portal_id","status","created_at") WHERE "qb_sync_logs"."deleted_at" is null;

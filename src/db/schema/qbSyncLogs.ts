@@ -64,10 +64,8 @@ export const QBSyncLog = table(
     // Cold path: stale-PENDING reaper at the start of syncFailedRecords.
     t
       .index('idx_qb_sync_logs_pending_reaper')
-      .on(table.portalId, table.createdAt)
-      .where(
-        sql`${table.status} = ${sql.raw(`'${LogStatus.PENDING}'`)} AND ${table.deletedAt} IS NULL`,
-      ),
+      .on(table.portalId, table.status, table.createdAt)
+      .where(isNull(table.deletedAt)),
   ],
 )
 
