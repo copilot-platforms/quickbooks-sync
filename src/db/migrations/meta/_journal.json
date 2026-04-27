@@ -124,8 +124,15 @@
     {
       "idx": 17,
       "version": "7",
-      "when": 1777282244025,
-      "tag": "20260427093044_update_qb_sync_logs_table_with_indexes_status_enum",
+      "when": 1777283329115,
+      "tag": "20260427094849_update_log_status_enum_with_pending_values",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1777283378087,
+      "tag": "20260427094938_add_unique_indexes_in_qb_sync_logs_table",
       "breakpoints": true
     },
     {
