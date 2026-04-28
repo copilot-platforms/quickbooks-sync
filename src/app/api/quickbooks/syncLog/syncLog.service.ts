@@ -5,6 +5,8 @@ import {
   FailedRecordCategoryType,
   LogStatus,
 } from '@/app/api/core/types/log'
+import { afterIfAvailable } from '@/app/api/core/utils/afterIfAvailable'
+import { SyncErrorNotifier } from '@/app/api/quickbooks/syncLog/syncErrorNotifier'
 import { ConnectionStatus } from '@/db/schema/qbConnectionLogs'
 import {
   QBSyncLog,
@@ -17,8 +19,10 @@ import {
 } from '@/db/schema/qbSyncLogs'
 import { WhereClause } from '@/type/common'
 import { orderMap } from '@/utils/drizzle'
+import CustomLogger from '@/utils/logger'
 import dayjs from 'dayjs'
 import { and, eq, isNull, lt, sql } from 'drizzle-orm'
+import { captureException } from '@sentry/nextjs'
 import { json2csv } from 'json-2-csv'
 
 export const STALE_PENDING_THRESHOLD_MINUTES = 15
@@ -53,17 +57,87 @@ export class SyncLogService extends BaseService {
       .returning()
 
     console.info('SyncLogService#createQBSyncLog | Sync log complete')
+    this.scheduleFailureNotification(log)
     return log
   }
 
   /**
-   * Creates the sync log
+   * Schedules a sync-failure notification when a sync log row enters the
+   * FAILED state. Errors are swallowed and reported to Sentry — a failed
+   * notification must never propagate up and undo the sync log write.
+   *
+   * Hooked at two sites:
+   *  - `createQBSyncLog`, for the rare path that writes a row directly as
+   *    FAILED (legacy / non-claim flows).
+   *  - `updateQBSyncLog`, for the dominant flow today: webhook entry inserts
+   *    a PENDING claim, then a handler updates it to SUCCESS or FAILED.
+   *
+   * The update site passes `priorStatus` so we only fire on a *transition*
+   * into FAILED. FAILED→FAILED retry replays don't re-page IUs.
+   *
+   * `flipStalePendingToFailed` writes FAILED rows without an `errorCode`;
+   * those naturally no-op inside the notifier (`getActionForErrorCode(null)`
+   * returns null) so we don't need to filter them here.
+   */
+  private scheduleFailureNotification(log: QBSyncLogSelectSchemaType): void {
+    if (log.status !== LogStatus.FAILED) return
+
+    // Defer dispatch until after the request scope (and any enclosing
+    // transaction) commits, so the notification can never undo the sync log
+    // write and never reads an uncommitted row. Errors are caller-suppressed
+    // — surface to Sentry and continue.
+    const user = this.user
+    afterIfAvailable(async () => {
+      try {
+        const notifier = new SyncErrorNotifier(user)
+        await notifier.notify(log)
+      } catch (error) {
+        CustomLogger.error({
+          message:
+            'SyncLogService#scheduleFailureNotification | Notifier failed',
+          obj: { error, logId: log.id },
+        })
+        captureException(error, {
+          tags: {
+            key: 'syncFailureNotifierError',
+            portalId: log.portalId,
+            entityType: log.entityType,
+            errorCode: log.errorCode ?? 'unknown',
+          },
+          extra: { logId: log.id, errorMessage: log.errorMessage },
+        })
+      }
+    })
+  }
+
+  /**
+   * Updates an existing sync log row. When the update transitions the row
+   * INTO the FAILED state (i.e. its prior status was not FAILED), schedules
+   * the IU sync-failure notification. Callers that already know the prior
+   * status (e.g. `updateOrCreateQBSyncLog`) can pass it to skip the lookup;
+   * otherwise we fetch it before applying the update so retry replays
+   * (FAILED→FAILED) don't re-notify.
    */
   async updateQBSyncLog(
     payload: QBSyncLogUpdateSchemaType,
     conditions: WhereClause,
+    priorStatus?: LogStatus,
   ): Promise<QBSyncLogSelectSchemaType> {
     const parsedPayload = QBSyncLogUpdateSchema.parse(payload)
+    // Only consider notifying when this update is *actively* setting status to
+    // FAILED. Partial updates that don't touch status (e.g. attempt counter
+    // bumps in `checkAndUpdateAttempt`) leave a FAILED row FAILED — they are
+    // not transitions and must not re-page IUs.
+    const settingFailed = parsedPayload.status === LogStatus.FAILED
+
+    if (priorStatus === undefined && settingFailed) {
+      const existing = await this.db.query.QBSyncLog.findFirst({
+        where: conditions,
+        columns: { status: true },
+      })
+      priorStatus = existing?.status as LogStatus | undefined
+    }
+
     const [log] = await this.db
       .update(QBSyncLog)
       .set(parsedPayload)
@@ -71,6 +145,11 @@ export class SyncLogService extends BaseService {
       .returning()
 
     console.info('SyncLogService#updateQBSyncLog | Sync log updated')
+
+    if (settingFailed && log && priorStatus !== LogStatus.FAILED) {
+      this.scheduleFailureNotification(log)
+    }
+
     return log
   }
 
@@ -134,7 +213,11 @@ export class SyncLogService extends BaseService {
     }
 
     if (existingLog) {
-      await this.updateQBSyncLog(payload, eq(QBSyncLog.id, existingLog.id))
+      await this.updateQBSyncLog(
+        payload,
+        eq(QBSyncLog.id, existingLog.id),
+        existingLog.status as LogStatus,
+      )
     } else {
       await this.createQBSyncLog(payload)
     }
@@ -317,6 +400,7 @@ export class SyncLogService extends BaseService {
           ? parseFloat(log.productPrice) / 100
           : null,
         qb_item_name: log.qbItemName,
+        error_code: log.errorCode,
         error_message: log.errorMessage,
       }
     })
