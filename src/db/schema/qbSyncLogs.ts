@@ -46,6 +46,11 @@ export const QBSyncLog = table(
     qbItemName: t.varchar('qb_item_name', { length: 100 }),
     copilotPriceId: t.varchar('copilot_price_id', { length: 100 }),
     errorMessage: t.text('error_message'),
+    // QBO error code (e.g. '6140', '6210') captured from intuit Fault payloads
+    // when status is FAILED. Used by SyncErrorNotifier to route + throttle
+    // user-actionable failure notifications. Nullable because non-Intuit
+    // failures (validation, mapping_not_found, etc.) don't carry one.
+    errorCode: t.varchar('error_code', { length: 50 }),
     category: FailedCategoryEnum('category')
       .default(FailedRecordCategoryType.OTHERS)
       .notNull(),
