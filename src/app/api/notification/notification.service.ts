@@ -1,12 +1,25 @@
 import { BaseService } from '@/app/api/core/services/base.service'
-import { NotificationActions } from '@/app/api/core/types/notification'
 import {
+  NotificationActions,
+  NotificationContext,
+} from '@/app/api/core/types/notification'
+import {
+  NotificationCopy,
   getIEmailNotificationDetail,
   getInProductNotificationDetail,
 } from '@/app/api/notification/notification.helper'
 import { InternalUsersResponse } from '@/type/common'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import CustomLogger from '@/utils/logger'
+import { captureException, captureMessage } from '@sentry/nextjs'
+
+// Notification actions whose recipients are the workspace's IUs. Derived
+// directly from the keys of NotificationCopy so a new action can't accidentally
+// be added to the helper without an IU recipient set — getAllParties returns
+// `null` for any action missing here, which short-circuits dispatch.
+const IU_RECIPIENT_ACTIONS = new Set<NotificationActions>(
+  Object.keys(NotificationCopy) as NotificationActions[],
+)
 
 export class NotificationService extends BaseService {
   async createBulkNotification(
@@ -15,10 +28,12 @@ export class NotificationService extends BaseService {
       disableEmail = false,
       disableInProduct = false,
       senderId,
+      context,
     }: {
       disableEmail?: boolean
       disableInProduct?: boolean
       senderId: string
+      context?: NotificationContext
     },
   ): Promise<void> {
     console.info(
@@ -33,11 +48,11 @@ export class NotificationService extends BaseService {
       if (parties) {
         const inProduct = disableInProduct
           ? undefined
-          : getInProductNotificationDetail()[action]
+          : getInProductNotificationDetail(action, context)
 
         const email = disableEmail
           ? undefined
-          : getIEmailNotificationDetail()[action]
+          : getIEmailNotificationDetail(action, context)
 
         for (const party of parties.data) {
           CustomLogger.info({
@@ -56,12 +71,32 @@ export class NotificationService extends BaseService {
             console.error(
               `Failed to trigger notification for IUID: ${party.id}`,
             )
+            captureMessage(
+              `NotificationService#createBulkNotification | Copilot returned no notification`,
+              {
+                level: 'error',
+                tags: {
+                  key: 'notificationDispatchFailed',
+                  action,
+                  portalId: this.user.workspaceId,
+                },
+                extra: { recipientId: party.id, senderId },
+              },
+            )
           }
         }
       }
     } catch (error) {
       console.error(`Failed to send notification for action: ${action}`, {
         error,
+      })
+      captureException(error, {
+        tags: {
+          key: 'notificationDispatchFailed',
+          action,
+          portalId: this.user.workspaceId,
+        },
+        extra: { senderId },
       })
     }
   }
@@ -70,18 +105,17 @@ export class NotificationService extends BaseService {
     copilot: CopilotAPI,
     action: NotificationActions,
   ): Promise<InternalUsersResponse | null> {
-    switch (action) {
-      case NotificationActions.AUTH_RECONNECT:
-        return await copilot.getInternalUsers()
-      default:
-        return null
+    if (IU_RECIPIENT_ACTIONS.has(action)) {
+      return await copilot.getInternalUsers()
     }
+    return null
   }
 
   async sendNotificationToIU(
     senderId: string,
     action: NotificationActions,
+    context?: NotificationContext,
   ): Promise<void> {
-    await this.createBulkNotification(action, { senderId })
+    await this.createBulkNotification(action, { senderId, context })
   }
 }
