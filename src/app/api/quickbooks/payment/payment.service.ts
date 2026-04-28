@@ -142,6 +142,7 @@ export class PaymentService extends BaseService {
           customerName: recipientInfo.displayName,
           customerEmail: recipientInfo.email,
           errorMessage,
+          errorCode: errorWithCode.code?.toString(),
           category: getCategory(errorWithCode),
           deletedAt: getDeletedAtForAuthAccountCategoryLog(errorWithCode),
         },
@@ -365,6 +366,7 @@ export class PaymentService extends BaseService {
       remark?: string
       qbItemName?: string
       errorMessage?: string
+      errorCode?: string
       category?: FailedRecordCategoryType
       deletedAt?: Date
     },

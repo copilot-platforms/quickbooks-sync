@@ -14,8 +14,8 @@ import { ZodError } from 'zod'
 export type IntuitErrorType = {
   Message: string
   Detail: string
-  Code: string
-  Element?: string
+  code: string
+  element?: string
 }
 
 export type ErrorMessageAndCode = {
@@ -49,14 +49,17 @@ export const getMessageAndCodeFromError = (
     }
   } else if (error instanceof APIError) {
     let errorMessage = error.message || message
+    let statusCode = error.status
+
     const isIntuitError = error.message.includes(IntuitAPIErrorMessage)
     if (isIntuitError) {
       const firstFault = error.errors?.[0] as QBFaultErrorSchemaType | undefined
       errorMessage = firstFault?.Detail ?? errorMessage
+      statusCode = firstFault?.code ?? statusCode
     }
     return {
       message: errorMessage,
-      code: error.status,
+      code: statusCode,
       source: isIntuitError ? 'intuit' : 'unknown',
     }
   } else if (isIntuitOAuthError(error)) {
