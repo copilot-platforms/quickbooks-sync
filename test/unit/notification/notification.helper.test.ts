@@ -8,18 +8,11 @@ import {
   getInProductNotificationDetail,
 } from '@/app/api/notification/notification.helper'
 
-const SYNC_FAILURE_ACTIONS = [
-  NotificationActions.QB_DUPLICATE_DOC_NUMBER,
-  NotificationActions.QB_DUPLICATE_NAME,
-  NotificationActions.QB_CLOSED_PERIOD,
-  NotificationActions.QB_DEPOSITED_TXN_LOCKED,
-  NotificationActions.QB_INACTIVE_REFERENCE,
-  NotificationActions.QB_SUBSCRIPTION_INVALID,
-  NotificationActions.QB_VALIDATION_FAILED,
-  NotificationActions.QB_STALE_OBJECT,
-  NotificationActions.QB_TXN_LINK_FAILED,
-  NotificationActions.QB_ITEM_INCOME_ACCOUNT_MISSING,
-] as const
+// Derived from the enum so a new NotificationActions value is auto-covered
+// by the smoke tests below — no risk of silently missing a new template.
+// AUTH_RECONNECT also runs through the smoke loop (its dedicated
+// byte-fidelity test still runs separately).
+const ALL_ACTIONS = Object.values(NotificationActions)
 
 describe('getInProductNotificationDetail', () => {
   it('returns the existing AUTH_RECONNECT copy unchanged when called without context', () => {
@@ -33,7 +26,7 @@ describe('getInProductNotificationDetail', () => {
     expect(detail.ctaParams).toEqual({ type: 'reconnect' })
   })
 
-  it.each(SYNC_FAILURE_ACTIONS)(
+  it.each(ALL_ACTIONS)(
     'returns a non-empty title and body for %s',
     (action) => {
       const detail = getInProductNotificationDetail(action)
@@ -130,7 +123,7 @@ describe('getIEmailNotificationDetail', () => {
     expect(detail.ctaParams).toEqual({ type: 'reconnect' })
   })
 
-  it.each(SYNC_FAILURE_ACTIONS)(
+  it.each(ALL_ACTIONS)(
     'returns non-empty subject/header/body for %s',
     (action) => {
       const detail = getIEmailNotificationDetail(action)

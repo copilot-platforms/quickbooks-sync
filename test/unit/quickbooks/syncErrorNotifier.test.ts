@@ -41,6 +41,7 @@ import {
   getActionForErrorCode,
   getEntityKey,
 } from '@/app/api/quickbooks/syncLog/syncErrorNotifier'
+import { UserActionableErrorCodes } from '@/constant/intuitErrorCode'
 
 const baseLog: QBSyncLogSelectSchemaType = {
   id: 'log-1',
@@ -72,29 +73,15 @@ const baseLog: QBSyncLogSelectSchemaType = {
 }
 
 describe('getActionForErrorCode', () => {
-  it('returns the mapped action for a known QBO error code', () => {
-    expect(getActionForErrorCode('6140')).toBe(
-      NotificationActions.QB_DUPLICATE_DOC_NUMBER,
-    )
-    expect(getActionForErrorCode('6210')).toBe(
-      NotificationActions.QB_CLOSED_PERIOD,
-    )
-    expect(getActionForErrorCode('610')).toBe(
-      NotificationActions.QB_INACTIVE_REFERENCE,
-    )
-    expect(getActionForErrorCode('2500')).toBe(
-      NotificationActions.QB_INACTIVE_REFERENCE,
-    )
-    expect(getActionForErrorCode('5010')).toBe(
-      NotificationActions.QB_STALE_OBJECT,
-    )
-    expect(getActionForErrorCode('620')).toBe(
-      NotificationActions.QB_TXN_LINK_FAILED,
-    )
-    expect(getActionForErrorCode('2390')).toBe(
-      NotificationActions.QB_ITEM_INCOME_ACCOUNT_MISSING,
-    )
-  })
+  // Iterating Object.entries makes this test self-extending — any new code
+  // added to UserActionableErrorCodes is automatically asserted, and any
+  // mapping change here will fail this test loudly.
+  it.each(Object.entries(UserActionableErrorCodes))(
+    'maps registry code %s to action %s',
+    (code, expectedAction) => {
+      expect(getActionForErrorCode(code)).toBe(expectedAction)
+    },
+  )
 
   it('returns null for unknown / transient / auth codes', () => {
     expect(getActionForErrorCode('429')).toBeNull()
