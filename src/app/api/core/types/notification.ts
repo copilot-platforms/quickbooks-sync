@@ -10,6 +10,7 @@ export enum NotificationActions {
   QB_STALE_OBJECT = 'qb_stale_object',
   QB_TXN_LINK_FAILED = 'qb_txn_link_failed',
   QB_ITEM_INCOME_ACCOUNT_MISSING = 'qb_item_income_account_missing',
+  QB_INVALID_ACCOUNT_TYPE = 'qb_invalid_account_type',
 }
 
 /**

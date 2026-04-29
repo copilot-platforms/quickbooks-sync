@@ -41,4 +41,5 @@ export const UserActionableErrorCodes: Record<string, NotificationActions> = {
   '5010': NotificationActions.QB_STALE_OBJECT,
   '620': NotificationActions.QB_TXN_LINK_FAILED,
   '2390': NotificationActions.QB_ITEM_INCOME_ACCOUNT_MISSING,
+  '6430': NotificationActions.QB_INVALID_ACCOUNT_TYPE,
 }

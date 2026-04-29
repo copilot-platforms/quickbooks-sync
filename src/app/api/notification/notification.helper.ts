@@ -244,6 +244,17 @@ export const NotificationCopy: Record<
     emailBody: (ref) =>
       `A sync failed${ref} because a QuickBooks item has no income account assigned. This usually happens when the item was created in QuickBooks without an income account, or the account was removed afterwards. Open Products and Services in QuickBooks, edit the item, and set its income account. The next scheduled retry (within a few hours) will pick it up automatically.`,
   },
+
+  [NotificationActions.QB_INVALID_ACCOUNT_TYPE]: {
+    title:
+      'QuickBooks sync failed: account type is invalid for this transaction',
+    body: (ref) =>
+      `A sync failed${ref} because the QuickBooks account selected for this transaction has the wrong type. This usually happens when an account configured in this app's settings (for example the Expense or Income account) was changed to a different account type in QuickBooks. Update the account in QuickBooks so its type matches what the transaction needs; the next scheduled retry will pick it up. ${MANUAL_EDIT_NOTE}`,
+    emailSubject:
+      'QuickBooks sync failed: account type is invalid for this transaction',
+    emailBody: (ref) =>
+      `A sync failed${ref} because the QuickBooks account selected for this transaction has the wrong type. This usually happens when an account configured in this app's settings (for example the Expense or Income account) was changed to a different account type in QuickBooks. Update the account in QuickBooks so its type matches what the transaction needs. The next scheduled retry (within a few hours) will pick it up automatically. ${MANUAL_EDIT_NOTE}`,
+  },
 }
 
 export const getInProductNotificationDetail = (
