@@ -54,9 +54,17 @@ interface NotificationActionEntry {
  * "invoice creation" or "product update". Used to tell IUs *which* sync
  * action triggered the failure (e.g. 5010 during invoice void vs invoice
  * paid). Falls back to '' when either dimension is missing.
+ *
+ * Special-cased pairs describe what we *actually do* in QuickBooks rather
+ * than the raw Copilot event name — e.g. payment.succeeded triggers a
+ * Fee/Purchase creation, so we render it as "fee create" instead of
+ * "payment completion".
  */
 const describeAction = (entityType?: string, eventType?: string): string => {
   if (!entityType || !eventType) return ''
+  if (entityType === 'payment' && eventType === 'succeeded') {
+    return 'invoice fees creation'
+  }
   const eventNoun =
     (
       {

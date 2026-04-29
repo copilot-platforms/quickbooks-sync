@@ -68,6 +68,20 @@ describe('getInProductNotificationDetail', () => {
     expect(detail.body).toContain('during product update, ref Widget A')
   })
 
+  it('renders payment.succeeded as "invoice fees creation" — matches the QBO operation we actually run', () => {
+    const ctx: NotificationContext = {
+      entityType: 'payment',
+      eventType: 'succeeded',
+      entityKey: 'PUR-1001',
+    }
+    const detail = getInProductNotificationDetail(
+      NotificationActions.QB_DEPOSITED_TXN_LOCKED,
+      ctx,
+    )
+    expect(detail.body).toContain('during invoice fees creation, ref PUR-1001')
+    expect(detail.body).not.toContain('payment completion')
+  })
+
   it('5010 (invoice-only after suppression) warns that the failure is final', () => {
     const ctx: NotificationContext = {
       entityType: 'invoice',
