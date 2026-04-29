@@ -76,9 +76,12 @@ const describeAction = (entityType?: string, eventType?: string): string => {
 /**
  * Builds the parenthetical reference clause for a sync-failure notification
  * body, e.g. " (during invoice void, ref INV-9)". Returns '' when called
- * without context (AUTH_RECONNECT path). Sync-failure ctx always carries
- * entityType + eventType (NOT NULL on qb_sync_logs) and one of the id fields,
- * so we always render the full clause when ctx is present.
+ * without context (AUTH_RECONNECT path).
+ *
+ * Sync-failure ctx normally carries entityType + eventType (NOT NULL on
+ * qb_sync_logs) and one of the id fields. The segment guards below defend
+ * against future callers passing partial context — a missing dimension
+ * drops its segment rather than rendering "(during , ref X)".
  */
 const buildEntityReference = (ctx?: NotificationContext): string => {
   if (!ctx) return ''
@@ -89,7 +92,11 @@ const buildEntityReference = (ctx?: NotificationContext): string => {
     ctx.productName ||
     ctx.customerName ||
     ctx.entityKey
-  return ` (during ${action}, ref ${id})`
+  const segments: string[] = []
+  if (action) segments.push(`during ${action}`)
+  if (id) segments.push(`ref ${id}`)
+  if (segments.length === 0) return ''
+  return ` (${segments.join(', ')})`
 }
 
 /**

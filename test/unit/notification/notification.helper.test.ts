@@ -111,6 +111,39 @@ describe('getInProductNotificationDetail', () => {
     )
     expect(detail.body).toContain('20 numbered variations')
   })
+
+  it('drops the "during ..." segment when entityType/eventType is missing', () => {
+    // Partial ctx — schema says this can't happen on real sync log rows, but
+    // guard against future callers passing context without action dimensions.
+    const ctx: NotificationContext = { invoiceNumber: 'INV-001' }
+    const detail = getInProductNotificationDetail(
+      NotificationActions.QB_DUPLICATE_DOC_NUMBER,
+      ctx,
+    )
+    expect(detail.body).toContain('(ref INV-001)')
+    expect(detail.body).not.toMatch(/during ,|during\s*\)/)
+  })
+
+  it('drops the "ref ..." segment when no identifier is present', () => {
+    const ctx: NotificationContext = {
+      entityType: 'invoice',
+      eventType: 'created',
+    }
+    const detail = getInProductNotificationDetail(
+      NotificationActions.QB_DUPLICATE_DOC_NUMBER,
+      ctx,
+    )
+    expect(detail.body).toContain('(during invoice creation)')
+    expect(detail.body).not.toMatch(/ref ,|ref undefined|ref \)/)
+  })
+
+  it('omits the parenthetical entirely when ctx has neither action nor id', () => {
+    const detail = getInProductNotificationDetail(
+      NotificationActions.QB_DUPLICATE_DOC_NUMBER,
+      {},
+    )
+    expect(detail.body).not.toMatch(/\(during|\(ref/)
+  })
 })
 
 describe('getIEmailNotificationDetail', () => {
