@@ -20,11 +20,13 @@ export const REFRESH_TOKEN_LEAD_DAYS = 14
 
 /**
  * Per-run cap. Sized for the non-Fluid-Compute 300 s function budget on
- * Vercel: each refresh is ~1–2 s (Intuit call + DB write), so 150 fits with
- * comfortable margin. Any portal not reached today gets picked up tomorrow —
- * the lead window absorbs the deferral.
+ * Vercel with real-world latency in mind: a flaky/rate-limited Intuit can push
+ * a single refresh to 5+ s after `withRetry` backoff. 120 finishes in ~120 s
+ * at the typical 1 s/portal and leaves headroom (~60 portals at 5 s/portal)
+ * before timeout. Any portal not reached today gets picked up tomorrow — the
+ * 14-day lead window absorbs the deferral without any token actually expiring.
  */
-export const REFRESH_TOKEN_BATCH_LIMIT = 150
+export const REFRESH_TOKEN_BATCH_LIMIT = 120
 
 export type RefreshTokensSummary = {
   scanned: number
