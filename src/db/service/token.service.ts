@@ -1,11 +1,15 @@
 'use server'
 import { db } from '@/db'
-import { PortalConnectionWithSettingType } from '@/db/schema/qbPortalConnections'
-import { QBSettingsSelectSchemaType } from '@/db/schema/qbSettings'
+import {
+  PortalConnectionWithSettingType,
+  QBPortalConnection,
+  QBPortalConnectionSelectSchemaType,
+} from '@/db/schema/qbPortalConnections'
+import { QBSetting, QBSettingsSelectSchemaType } from '@/db/schema/qbSettings'
 import { WorkspaceResponse } from '@/type/common'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import { IntuitAPITokensType } from '@/utils/intuitAPI'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, asc, eq, isNotNull, isNull, sql } from 'drizzle-orm'
 
 export const getPortalConnection = async (
   portalId: string,
@@ -39,6 +43,42 @@ export const getAllActivePortalConnections = async (): Promise<
   })
 
   return portals
+}
+
+/**
+ * Returns portals whose refresh token will expire within `daysRemaining` days
+ * AND have `qb_settings.sync_flag = true`, ordered by the soonest-to-expire
+ * first and capped at `limit`. Powers the daily refresh-token cron.
+ *
+ * Inner-joined on `qb_settings` so portals without a settings row (sync never
+ * configured) are skipped. Filtering is done in SQL — not JS — so the LIMIT
+ * is meaningful: we always tackle the most-urgent rows first when the backlog
+ * exceeds capacity.
+ */
+export const getPortalsWithExpiringRefreshTokens = async (
+  daysRemaining: number,
+  limit: number,
+): Promise<QBPortalConnectionSelectSchemaType[]> => {
+  const rows = await db
+    .select({ portal: QBPortalConnection })
+    .from(QBPortalConnection)
+    .innerJoin(QBSetting, eq(QBSetting.portalId, QBPortalConnection.portalId))
+    .where(
+      and(
+        isNull(QBPortalConnection.deletedAt),
+        // `isSuspended` intentionally not filtered: that column is dead code
+        // today (no path writes `true`). Revisit if/when suspension is wired
+        // up, alongside the matching change in `getAllActivePortalConnections`.
+        isNotNull(QBPortalConnection.tokenSetTime),
+        eq(QBSetting.syncFlag, true),
+        sql`${QBPortalConnection.tokenSetTime} + (${QBPortalConnection.XRefreshTokenExpiresIn} || ' seconds')::interval
+            < now() + (${daysRemaining} || ' days')::interval`,
+      ),
+    )
+    .orderBy(asc(QBPortalConnection.tokenSetTime))
+    .limit(limit)
+
+  return rows.map((r) => r.portal)
 }
 
 export const getPortalSettings = async (
