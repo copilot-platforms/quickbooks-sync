@@ -1,16 +1,11 @@
 'use client'
+import Loading from '@/app/(home)/loading'
 import SettingAccordion from '@/components/dashboard/settings/SettingAccordion'
 import { CalloutVariant } from '@/components/type/callout'
 import Divider from '@/components/ui/Divider'
 import { useDashboardMain } from '@/hook/useDashboard'
 
-import {
-  ButtonProps,
-  Callout,
-  Heading,
-  IconType,
-  Spinner,
-} from 'copilot-design-system'
+import { ButtonProps, Callout, Heading, IconType } from 'copilot-design-system'
 import LastSyncAt from '@/components/dashboard/LastSyncAt'
 import { SilentError } from '@/components/template/SilentError'
 import { useApp } from '@/app/context/AppContext'
@@ -85,9 +80,7 @@ export const Main = () => {
   return (
     <>
       {isLoading ? (
-        <div className="loading-spinner h-screen flex items-center justify-center">
-          <Spinner size={10} />
-        </div>
+        <Loading />
       ) : (
         <main className="main-section px-8 sm:px-[100px] lg:px-[220px] pb-[54px] pt-6">
           {nonUsCompany && (

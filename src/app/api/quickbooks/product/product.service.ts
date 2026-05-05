@@ -12,9 +12,8 @@ import {
   ProductChangedItemReferenceType,
   ProductMappingSchemaType,
 } from '@/db/schema/qbProductSync'
-import { ProductResponse, WhereClause } from '@/type/common'
+import { PriceResponse, WhereClause } from '@/type/common'
 import { ProductFlattenArrayResponseType } from '@/type/dto/api.dto'
-import { bottleneck } from '@/utils/bottleneck'
 import { QBItemFullUpdatePayloadType } from '@/type/dto/intuitAPI.dto'
 import {
   PriceCreatedResponseType,
@@ -41,6 +40,7 @@ import {
 } from '@/utils/string'
 import { AccountTypeObj } from '@/constant/qbConnection'
 import { TokenService } from '@/app/api/quickbooks/token/token.service'
+import { MAX_PRODUCT_LIST_LIMIT } from '@/app/api/core/constants/limit'
 
 export type ProductSyncTokenResponse = {
   id: string
@@ -319,47 +319,68 @@ export class ProductService extends BaseService {
     return await intuitApi.createItem(qbItemPayload)
   }
 
-  async getFlatMapforAProduct(product: ProductResponse, copilot: CopilotAPI) {
-    const prices = await copilot.getPrices(product.id)
-    return (prices?.data ?? [])
-      .map((price) => ({
-        ...product,
-        description: convert(product.description),
-        priceId: price.id,
-        amount: price.amount,
-        type: price.type,
-        interval: price.interval,
-        intervalCount: price.intervalCount,
-        currency: price.currency,
-      }))
-      .sort((a, b) => a.amount - b.amount) // sort by amount in asc order
-  }
-
   async getFlattenProductList(
     limit: number,
     nextToken?: string,
   ): Promise<ProductFlattenArrayResponseType> {
-    // get all the products from copilot
     const copilot = new CopilotAPI(this.user.token)
-    const products = await copilot.getProducts(undefined, nextToken, limit)
-    let flattenProductsPrice: ProductFlattenArrayResponseType = {
-      products: [],
-    }
-    const flatmapProductPrice = []
-    if (products?.data) {
-      for (const product of products.data) {
-        flatmapProductPrice.push(
-          bottleneck.schedule(() => {
-            return this.getFlatMapforAProduct(product, copilot)
-          }),
-        )
-      }
-      flattenProductsPrice = {
-        products: (await Promise.all(flatmapProductPrice)).flat(),
-      }
-    }
 
-    return flattenProductsPrice
+    const [products, pricesByProduct] = await Promise.all([
+      copilot.getProducts(undefined, nextToken, limit),
+      this.fetchAllPricesGroupedByProduct(copilot),
+    ])
+
+    const flattened = (products?.data ?? []).flatMap((product) => {
+      const prices = pricesByProduct.get(product.id) ?? []
+      const productDescription = convert(product.description)
+      return prices
+        .map((price) => ({
+          ...product,
+          description: productDescription,
+          priceId: price.id,
+          amount: price.amount,
+          type: price.type,
+          interval: price.interval,
+          intervalCount: price.intervalCount,
+          currency: price.currency,
+        }))
+        .sort((a, b) => a.amount - b.amount) // sort by amount in asc order
+    })
+
+    return { products: flattened }
+  }
+
+  private async fetchAllPricesGroupedByProduct(
+    copilot: CopilotAPI,
+  ): Promise<Map<string, PriceResponse[]>> {
+    const grouped = new Map<string, PriceResponse[]>()
+    let nextToken: string | undefined
+    do {
+      const page = await copilot.getPrices(
+        undefined,
+        nextToken,
+        MAX_PRODUCT_LIST_LIMIT.toString(),
+      )
+      if (!page) {
+        // Transient SDK failure: bail rather than silently dropping every
+        // product on the page from the flattened response.
+        console.warn(
+          'fetchAllPricesGroupedByProduct | getPrices returned undefined; aborting pagination',
+        )
+        break
+      }
+      for (const price of page.data ?? []) {
+        const list = grouped.get(price.productId)
+        if (list) {
+          list.push(price)
+        } else {
+          grouped.set(price.productId, [price])
+        }
+      }
+      nextToken = page.nextToken
+    } while (nextToken)
+
+    return grouped
   }
 
   /**

@@ -2,11 +2,7 @@
 
 import { AuthStatus } from '@/app/api/core/types/auth'
 import { PortalConnectionWithSettingType } from '@/db/schema/qbPortalConnections'
-import { QBSettingsSelectSchemaType } from '@/db/schema/qbSettings'
-import {
-  getPortalConnection,
-  getPortalSettings,
-} from '@/db/service/token.service'
+import { getPortalConnection } from '@/db/service/token.service'
 import IntuitAPI from '@/utils/intuitAPI'
 import CustomLogger from '@/utils/logger'
 import {
@@ -23,17 +19,6 @@ export async function checkPortalConnection(
   } catch (err) {
     console.error('checkPortalConnection#getPortalConnection | Error =', err)
     return null
-  }
-}
-
-export async function checkSyncStatus(portalId: string): Promise<boolean> {
-  try {
-    const syncedPortal: QBSettingsSelectSchemaType | null =
-      await getPortalSettings(portalId)
-    return syncedPortal?.syncFlag || false
-  } catch (err) {
-    console.error('checkSyncStatus#getPortalSettings | Error =', err)
-    return false
   }
 }
 
