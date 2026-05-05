@@ -42,7 +42,10 @@ export default async function Main({
   const [portalConnection, workspace, latestSuccessLog] = await Promise.all([
     checkPortalConnection(tokenPayload.workspaceId),
     getWorkspaceInfo(token),
-    syncLogService.getLatestSyncSuccessLog(),
+    syncLogService.getLatestSyncSuccessLog().catch((err) => {
+      console.error('Home#getLatestSyncSuccessLog | Error =', err)
+      return null
+    }),
   ])
 
   const portalConnectionStatus = !!(

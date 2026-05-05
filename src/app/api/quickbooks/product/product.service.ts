@@ -319,14 +319,11 @@ export class ProductService extends BaseService {
     return await intuitApi.createItem(qbItemPayload)
   }
 
-  async getFlattenProductList(
-    limit: number,
-    nextToken?: string,
-  ): Promise<ProductFlattenArrayResponseType> {
+  async getFlattenProductList(): Promise<ProductFlattenArrayResponseType> {
     const copilot = new CopilotAPI(this.user.token)
 
     const [products, pricesByProduct] = await Promise.all([
-      copilot.getProducts(undefined, nextToken, limit),
+      copilot.getProducts(undefined, undefined, MAX_PRODUCT_LIST_LIMIT),
       this.fetchAllPricesGroupedByProduct(copilot),
     ])
 
@@ -350,6 +347,14 @@ export class ProductService extends BaseService {
     return { products: flattened }
   }
 
+  /**
+   * Walks every page of the workspace's /prices endpoint and groups by
+   * productId. Replaces the prior bottleneck-throttled N+1 per-product fetch
+   * with ceil(totalPrices / MAX_PRODUCT_LIST_LIMIT) sequential calls, which is
+   * dramatically faster for the single-page workload getFlattenProductList
+   * actually serves. If product pagination is ever reintroduced, revisit:
+   * caller would repeat this full walk per page with no cross-call cache.
+   */
   private async fetchAllPricesGroupedByProduct(
     copilot: CopilotAPI,
   ): Promise<Map<string, PriceResponse[]>> {
