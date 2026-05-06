@@ -356,6 +356,22 @@ describe('IntuitAPI#getCustomerByEmail', () => {
     expect(query).toMatch(/Active IN \(true, false\)/)
   })
 
+  it('emits ORDERBY Id ASC so the cursor is stable across pages', async () => {
+    // Without an explicit order, QBO sorts by MetaData.LastUpdatedTime DESC.
+    // A customer updated between page fetches shifts under that ordering and
+    // can be skipped near a STARTPOSITION boundary. Id is monotonic and
+    // immutable, so concurrent updates do not move rows and concurrent
+    // creates always land at the end of the cursor.
+    const { api, customQuery } = makeApi([
+      { Customer: [row('1', 'alice@example.com')] },
+    ])
+
+    await api.getCustomerByEmail('alice@example.com', undefined)
+
+    const query = customQuery.mock.calls[0][0] as string
+    expect(query).toMatch(/ORDERBY Id ASC/)
+  })
+
   // Company-aware matching: a Copilot client can be enrolled in multiple
   // companies, so the same email may exist on multiple QBO customers — only
   // the one whose CompanyName matches the recipient's company is the right

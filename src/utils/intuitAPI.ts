@@ -308,6 +308,18 @@ export default class IntuitAPI {
   // companies (one Copilot client can be enrolled in multiple companies). The
   // CompanyName comparison uses the same `(value || undefined)` normalisation
   // as the post-filter in customer.service.ts so the two layers cannot disagree.
+  //
+  // ORDERBY Id ASC pins the cursor to a stable, append-only key. QBO's default
+  // ordering is MetaData.LastUpdatedTime DESC — under that ordering, a customer
+  // updated mid-walk shifts to the front and can push an unscanned row past
+  // our STARTPOSITION cursor (false negative). Id is monotonic and immutable,
+  // so concurrent updates do not move rows and any customer created during the
+  // walk lands at the end of the cursor where we'll still encounter it.
+  //
+  // Tradeoff vs. CreateTime DESC: newly-created customers land on the LAST
+  // page rather than page 1, so drift recovery for a fresh customer in a 10k
+  // realm walks all pages (~5s) instead of hitting on page 1 (~500ms). The
+  // perf cost is bounded and acceptable; full stability is the priority.
   async _getCustomerByEmail(
     email: string,
     sanitizedCompanyName: string | undefined,
@@ -324,7 +336,7 @@ export default class IntuitAPI {
     let startPosition = 1
 
     while (true) {
-      const customerQuery = `SELECT Id, SyncToken, Active, CompanyName, PrimaryEmailAddr FROM Customer WHERE Active IN (true, false) STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
+      const customerQuery = `SELECT Id, SyncToken, Active, CompanyName, PrimaryEmailAddr FROM Customer WHERE Active IN (true, false) ORDERBY Id ASC STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
       const qbCustomers = await this.customQuery(customerQuery)
       const customers = qbCustomers?.Customer ?? []
       if (customers.length === 0) return
