@@ -5,10 +5,10 @@ import { ProductService } from '@/app/api/quickbooks/product/product.service'
 import { ProductMappingSchema } from '@/db/schema/qbProductSync'
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function getFlattenProducts(req: NextRequest) {
+export async function getProductsWithPrices(req: NextRequest) {
   const user = await authenticate(req)
   const productService = new ProductService(user)
-  const products = await productService.getFlattenProductList()
+  const products = await productService.getProductsWithPrices()
   return NextResponse.json(products)
 }
 
