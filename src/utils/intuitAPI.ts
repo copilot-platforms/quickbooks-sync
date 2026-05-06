@@ -298,20 +298,49 @@ export default class IntuitAPI {
     return CustomerQueryResponseSchema.parse(qbCustomers.Customer[0])
   }
 
+  // QBO's query parser silently mishandles certain special characters (confirmed
+  // for '+', and '=' / 'LIKE' literal both fail) when filtering on
+  // PrimaryEmailAddr, returning 0 results even when a matching customer exists.
+  // To stay correct for any RFC-legal email, we never put the email in the WHERE
+  // clause: page through customers and match client-side instead.
+  //
+  // sanitizedCompanyName disambiguates customers sharing the same email across
+  // companies (one Copilot client can be enrolled in multiple companies). The
+  // CompanyName comparison uses the same `(value || undefined)` normalisation
+  // as the post-filter in customer.service.ts so the two layers cannot disagree.
   async _getCustomerByEmail(
     email: string,
+    sanitizedCompanyName: string | undefined,
   ): Promise<CustomerQueryResponseType | undefined> {
+    const needle = email.trim().toLowerCase()
+    if (!needle) return
+
     CustomLogger.info({
-      obj: { email },
+      obj: { email, sanitizedCompanyName },
       message: `IntuitAPI#getCustomerByEmail | Customer query start for realmId: ${this.tokens.intuitRealmId}. Email: ${email}`,
     })
-    const customerQuery = `SELECT Id, SyncToken, Active, CompanyName, PrimaryEmailAddr FROM Customer WHERE PrimaryEmailAddr = '${escapeForQBQuery(email)}' AND Active in (true, false)`
-    const qbCustomers = await this.customQuery(customerQuery)
 
-    if (!qbCustomers) return
+    const pageSize = 1000
+    let startPosition = 1
 
-    if (!qbCustomers.Customer) return
-    return CustomerQueryResponseSchema.parse(qbCustomers.Customer[0])
+    while (true) {
+      const customerQuery = `SELECT Id, SyncToken, Active, CompanyName, PrimaryEmailAddr FROM Customer WHERE Active IN (true, false) STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
+      const qbCustomers = await this.customQuery(customerQuery)
+      const customers = qbCustomers?.Customer ?? []
+      if (customers.length === 0) return
+
+      const match = customers.find((c: CustomerQueryResponseType) => {
+        const addr = c.PrimaryEmailAddr?.Address
+        if (typeof addr !== 'string') return false
+        if (addr.trim().toLowerCase() !== needle) return false
+        if ((c.CompanyName || undefined) !== sanitizedCompanyName) return false
+        return true
+      })
+      if (match) return CustomerQueryResponseSchema.parse(match)
+
+      if (customers.length < pageSize) return
+      startPosition += pageSize
+    }
   }
 
   /**
@@ -948,7 +977,10 @@ export default class IntuitAPI {
       includeInactive?: boolean,
     ): Promise<CustomerQueryResponseType>
   } = this.wrapWithRetry(this._getACustomer) as any
-  getCustomerByEmail = this.wrapWithRetry(this._getCustomerByEmail)
+  // Intentionally NOT wrapped in wrapWithRetry — a transient 429 mid-walk would
+  // replay from page 1 and amplify rate-limit pressure. The inner customQuery
+  // calls already retry on 429 (same reasoning as resolveUniqueCustomerName).
+  getCustomerByEmail = this._getCustomerByEmail.bind(this)
   getAnItem: {
     (
       name: string,

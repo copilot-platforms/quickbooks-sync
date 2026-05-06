@@ -346,25 +346,21 @@ export class CustomerService extends BaseService {
     invoiceResource: InvoiceCreatedResponseType['data']
   }) {
     const displayName = recipientInfo.displayName
+    const sanitizedCompanyName = recipientInfo.companyName
+      ? replaceSpecialCharsForQB(recipientInfo.companyName)
+      : undefined
+
     // 2.1. search client in qb using recipient's email or display name
     let customer = recipientInfo.email
-      ? await intuitApiService.getCustomerByEmail(recipientInfo.email)
+      ? await intuitApiService.getCustomerByEmail(
+          recipientInfo.email,
+          sanitizedCompanyName,
+        )
       : await intuitApiService.getACustomer(
           replaceSpecialCharsForQB(recipientInfo.displayName),
           undefined,
           true,
         )
-
-    // 2.2. verify the matched customer has the same company name. This is needed because a single customer with same email can be part of multiple companies
-    const sanitizedCompanyName = recipientInfo.companyName
-      ? replaceSpecialCharsForQB(recipientInfo.companyName)
-      : undefined
-    if (
-      customer &&
-      (customer.CompanyName || undefined) !== sanitizedCompanyName
-    ) {
-      customer = undefined
-    }
 
     addSyncBreadcrumb('Customer search in QBO', {
       found: !!customer,
