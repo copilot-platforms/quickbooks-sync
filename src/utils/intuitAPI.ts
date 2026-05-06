@@ -322,7 +322,7 @@ export default class IntuitAPI {
   // perf cost is bounded and acceptable; full stability is the priority.
   async _getCustomerByEmail(
     email: string,
-    sanitizedCompanyName: string | undefined,
+    sanitizedCompanyName?: string,
   ): Promise<CustomerQueryResponseType | undefined> {
     const needle = email.trim().toLowerCase()
     if (!needle) return
