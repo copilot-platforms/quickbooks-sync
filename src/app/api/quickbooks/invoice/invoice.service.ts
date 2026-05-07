@@ -572,24 +572,6 @@ export class InvoiceService extends BaseService {
     }
 
     const intuitApiService = new IntuitAPI(qbTokenInfo)
-
-    // Check if invoice already exists in QBO (e.g. manually created) and map it if so
-    const mappedFromQBO = await this.findOrMapInvoiceFromQBO({
-      invoiceNumber: invoiceResource.number,
-      copilotInvoiceId: invoiceResource.id,
-      clientId: invoiceResource.clientId,
-      companyId: invoiceResource.companyId,
-      status: invoiceResource.status,
-      total: invoiceResource.total,
-      taxAmount: invoiceResource.taxAmount,
-      intuitApi: intuitApiService,
-    })
-    if (mappedFromQBO) {
-      console.info(
-        'InvoiceService#webhookInvoiceCreated | Invoice found in QBO and mapped. Skipping creation.',
-      )
-      return
-    }
     const incomeAccRef = await this.handleIncomeAccountRef(
       qbTokenInfo,
       intuitApiService,
@@ -864,7 +846,7 @@ export class InvoiceService extends BaseService {
       invoiceNumber: payload.data.number,
     })
     // 1. check if the status of invoice is already paid in sync table
-    let invoiceSync = await this.getInvoiceByNumber(payload.data.number, [
+    const invoiceSync = await this.getInvoiceByNumber(payload.data.number, [
       'id',
       'qbInvoiceId',
       'status',
@@ -872,27 +854,12 @@ export class InvoiceService extends BaseService {
     ])
 
     if (!invoiceSync) {
-      console.info(
-        'InvoiceService#webhookInvoicePaid | Invoice not found in sync table. Attempting find-or-map from QBO...',
+      // Throw so the webhook-level catch writes a FAILED PAID log; the
+      // resync cron will retry once a CREATED resync establishes the mapping.
+      throw new APIError(
+        httpStatus.NOT_FOUND,
+        `Invoice not found in sync table for paid event. Invoice number: ${payload.data.number}. Likely preceded by a failed CREATE sync.`,
       )
-      const intuitApi = new IntuitAPI(qbTokenInfo)
-      const mappedInvoice = await this.findOrMapInvoiceFromQBO({
-        invoiceNumber: payload.data.number,
-        copilotInvoiceId: payload.data.id,
-        clientId: payload.data.clientId,
-        companyId: payload.data.companyId,
-        status: payload.data.status,
-        total: payload.data.total,
-        taxAmount: payload.data.taxAmount,
-        intuitApi,
-      })
-      if (!mappedInvoice) {
-        throw new APIError(
-          httpStatus.NOT_FOUND,
-          `Invoice not found in sync table or QBO for paid event. Invoice number: ${payload.data.number}. Likely preceded by a failed CREATE sync.`,
-        )
-      }
-      invoiceSync = mappedInvoice
     }
 
     // check if the entity invoice has successful event paid
@@ -1030,7 +997,7 @@ export class InvoiceService extends BaseService {
       invoiceNumber: payload.number,
     })
     // 1. check if the status of invoice is already paid in sync table
-    let invoiceSync = await this.getInvoiceByNumber(payload.number, [
+    const invoiceSync = await this.getInvoiceByNumber(payload.number, [
       'id',
       'qbInvoiceId',
       'status',
@@ -1039,26 +1006,12 @@ export class InvoiceService extends BaseService {
     ])
 
     if (!invoiceSync) {
-      console.info(
-        'InvoiceService#webhookInvoiceVoided | Invoice not found in sync table. Attempting find-or-map from QBO...',
+      // Throw so the webhook-level catch writes a FAILED VOIDED log; the
+      // resync cron will retry once a CREATED resync establishes the mapping.
+      throw new APIError(
+        httpStatus.NOT_FOUND,
+        `Invoice not found in sync table for void event. Invoice number: ${payload.number}. Likely preceded by a failed CREATE sync.`,
       )
-      const intuitApi = new IntuitAPI(qbTokenInfo)
-      const mappedInvoice = await this.findOrMapInvoiceFromQBO({
-        invoiceNumber: payload.number,
-        copilotInvoiceId: payload.id,
-        clientId: payload.clientId,
-        companyId: payload.companyId,
-        status: InvoiceStatus.OPEN,
-        total: payload.total,
-        intuitApi,
-      })
-      if (!mappedInvoice) {
-        throw new APIError(
-          httpStatus.NOT_FOUND,
-          `Invoice not found in sync table or QBO for void event. Invoice number: ${payload.number}. Likely preceded by a failed CREATE sync.`,
-        )
-      }
-      invoiceSync = mappedInvoice
     }
 
     if (invoiceSync.status !== InvoiceStatus.OPEN) {
@@ -1136,7 +1089,7 @@ export class InvoiceService extends BaseService {
       invoiceNumber: payload.number,
     })
 
-    let syncedInvoice = await this.getInvoiceByNumber(payload.number, [
+    const syncedInvoice = await this.getInvoiceByNumber(payload.number, [
       'id',
       'qbInvoiceId',
       'status',
@@ -1192,28 +1145,14 @@ export class InvoiceService extends BaseService {
       return
     }
 
-    // QBO has the invoice. Ensure we have a local mapping before deleting.
+    // QBO has the invoice but we have no local mapping. Throw so the
+    // webhook-level catch writes a FAILED DELETED log; the resync cron will
+    // retry once a CREATED resync establishes the mapping.
     if (!syncedInvoice) {
-      console.info(
-        'InvoiceService#handleInvoiceDeleted | Invoice in QBO but not in sync table. Mapping before delete.',
+      throw new APIError(
+        httpStatus.NOT_FOUND,
+        `Invoice not found in sync table for delete event. Invoice number: ${payload.number}. Likely preceded by a failed CREATE sync.`,
       )
-      const mappedInvoice = await this.findOrMapInvoiceFromQBO({
-        invoiceNumber: payload.number,
-        copilotInvoiceId: payload.id,
-        clientId: payload.clientId,
-        companyId: payload.companyId,
-        status: InvoiceStatus.VOID,
-        total: payload.total,
-        intuitApi,
-        qbInvoice,
-      })
-      if (!mappedInvoice) {
-        throw new APIError(
-          httpStatus.INTERNAL_SERVER_ERROR,
-          `Failed to map QBO invoice for delete. Invoice number: ${payload.number}`,
-        )
-      }
-      syncedInvoice = mappedInvoice
     }
 
     // Copilot doesn't allow to delete invoice that are not voided. So, just log an error about possible edge cases without returning an error
@@ -1360,8 +1299,6 @@ export class InvoiceService extends BaseService {
     total?: number
     taxAmount?: number | null
     intuitApi: IntuitAPI
-    // Pre-fetched QBO invoice; when provided, skips the internal getInvoice lookup.
-    qbInvoice?: Awaited<ReturnType<IntuitAPI['getInvoice']>>
   }) {
     const {
       invoiceNumber,
@@ -1374,9 +1311,8 @@ export class InvoiceService extends BaseService {
       intuitApi,
     } = params
 
-    // 1. Query QBO for the invoice by DocNumber (unless caller already fetched it)
-    const qbInvoice =
-      params.qbInvoice ?? (await intuitApi.getInvoice(invoiceNumber))
+    // 1. Query QBO for the invoice by DocNumber
+    const qbInvoice = await intuitApi.getInvoice(invoiceNumber)
     if (!qbInvoice) {
       console.info(
         'InvoiceService#findOrMapInvoiceFromQBO | Invoice not found in QBO',
