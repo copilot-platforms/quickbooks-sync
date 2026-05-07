@@ -298,28 +298,11 @@ export default class IntuitAPI {
     return CustomerQueryResponseSchema.parse(qbCustomers.Customer[0])
   }
 
-  // QBO's query parser silently mishandles certain special characters (confirmed
-  // for '+', and '=' / 'LIKE' literal both fail) when filtering on
-  // PrimaryEmailAddr, returning 0 results even when a matching customer exists.
-  // To stay correct for any RFC-legal email, we never put the email in the WHERE
-  // clause: page through customers and match client-side instead.
-  //
-  // sanitizedCompanyName disambiguates customers sharing the same email across
-  // companies (one Copilot client can be enrolled in multiple companies). The
-  // CompanyName comparison uses the same `(value || undefined)` normalisation
-  // as the post-filter in customer.service.ts so the two layers cannot disagree.
-  //
-  // ORDERBY Id ASC pins the cursor to a stable, append-only key. QBO's default
-  // ordering is MetaData.LastUpdatedTime DESC — under that ordering, a customer
-  // updated mid-walk shifts to the front and can push an unscanned row past
-  // our STARTPOSITION cursor (false negative). Id is monotonic and immutable,
-  // so concurrent updates do not move rows and any customer created during the
-  // walk lands at the end of the cursor where we'll still encounter it.
-  //
-  // Tradeoff vs. CreateTime DESC: newly-created customers land on the LAST
-  // page rather than page 1, so drift recovery for a fresh customer in a 10k
-  // realm walks all pages (~5s) instead of hitting on page 1 (~500ms). The
-  // perf cost is bounded and acceptable; full stability is the priority.
+  // QBO's parser mishandles special chars on PrimaryEmailAddr filters, so we
+  // page and match client-side. sanitizedCompanyName disambiguates the same
+  // email across companies; normalisation matches customer.service.ts.
+  // ORDERBY Id ASC pins a stable cursor — QBO's default (LastUpdatedTime DESC)
+  // lets a mid-walk update shift a row past STARTPOSITION (false negative).
   async _getCustomerByEmail(
     email: string,
     sanitizedCompanyName?: string,
