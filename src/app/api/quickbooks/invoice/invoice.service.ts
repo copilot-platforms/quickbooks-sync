@@ -1290,6 +1290,24 @@ export class InvoiceService extends BaseService {
     return { exists: mapping !== null }
   }
 
+  /**
+   * Looks up an invoice in QBO by DocNumber and, if present, lazily writes
+   * the local `qb_invoice_sync` mapping plus a CREATED sync log so downstream
+   * code can treat the invoice as already synced.
+   *
+   * Deliberately NOT called from the invoice created/paid/voided/deleted
+   * webhook handlers. An operator can create an unrelated invoice directly
+   * in QBO that happens to share a DocNumber with a Copilot invoice; if this
+   * helper ran on the webhook path it would bind the Copilot invoice to that
+   * unrelated QBO record, producing an inaccurate mapping that corrupts
+   * every subsequent paid/voided/deleted event for the same number. The
+   * webhook handlers therefore throw on missing mapping and let the resync
+   * cron retry once a CREATED resync establishes the correct mapping.
+   *
+   * Sole caller is `checkIfInvoiceExistsInQBO`, used by the
+   * `syncMissedInvoices` cron — a deliberate batch reconciliation where
+   * mapping-on-find is the explicit goal.
+   */
   async findOrMapInvoiceFromQBO(params: {
     invoiceNumber: string
     copilotInvoiceId: string
