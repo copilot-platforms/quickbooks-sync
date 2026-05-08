@@ -92,7 +92,9 @@ export function createMockIntuitAPI(overrides: IntuitAPIOverrides = {}) {
     // --- invoice.created defaults (OUT-3708) ---
     getACustomer: vi.fn().mockResolvedValue(undefined),
     getCustomerByEmail: vi.fn().mockResolvedValue(undefined),
-    resolveUniqueCustomerName: vi.fn().mockImplementation(async (n: string) => n),
+    resolveUniqueCustomerName: vi
+      .fn()
+      .mockImplementation(async (n: string) => n),
     createCustomer: vi.fn().mockResolvedValue({
       Id: 'qb-cust-1',
       SyncToken: '0',
