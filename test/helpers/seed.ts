@@ -7,6 +7,9 @@ import {
 } from '@/db/schema/qbPortalConnections'
 import { QBProductSync } from '@/db/schema/qbProductSync'
 import { QBSetting, QBSettingCreateSchema } from '@/db/schema/qbSettings'
+import { QBCustomers } from '@/db/schema/qbCustomers'
+import { QBInvoiceSync } from '@/db/schema/qbInvoiceSync'
+import { InvoiceStatus } from '@/app/api/core/types/invoice'
 
 export const TEST_PORTAL_ID = 'test-portal-00000001'
 export const TEST_REALM_ID = 'test-realm-123'
@@ -100,4 +103,56 @@ export async function seedHealthyPortal(
   const portal = await seedPortalConnection(opts.portal)
   const setting = await seedSetting(opts.setting)
   return { portal, setting }
+}
+
+export const TEST_CLIENT_ID = '11111111-1111-1111-1111-111111111111'
+export const TEST_COMPANY_ID = '22222222-2222-2222-2222-222222222222'
+export const TEST_QB_CUSTOMER_ID = 'qb-cust-1'
+export const TEST_QB_INVOICE_ID = 'qb-inv-1'
+export const TEST_INVOICE_NUMBER = 'INV-0001'
+export const TEST_COPILOT_INVOICE_ID = 'inv-cop-0001'
+
+type CustomerOverrides = Partial<InferInsertModel<typeof QBCustomers>>
+type InvoiceSyncOverrides = Partial<InferInsertModel<typeof QBInvoiceSync>>
+
+const baseCustomer: InferInsertModel<typeof QBCustomers> = {
+  portalId: TEST_PORTAL_ID,
+  customerId: TEST_CLIENT_ID,
+  clientCompanyId: TEST_CLIENT_ID,
+  clientId: TEST_CLIENT_ID,
+  companyId: null,
+  givenName: 'Jane',
+  familyName: 'Doe',
+  displayName: 'Jane Doe',
+  email: 'jane@example.com',
+  companyName: null,
+  customerType: 'client',
+  qbSyncToken: '0',
+  qbCustomerId: TEST_QB_CUSTOMER_ID,
+}
+
+export async function seedQBCustomer(overrides: CustomerOverrides = {}) {
+  const [row] = await db
+    .insert(QBCustomers)
+    .values({ ...baseCustomer, ...overrides })
+    .returning()
+  return row
+}
+
+const baseInvoiceSync: InferInsertModel<typeof QBInvoiceSync> = {
+  portalId: TEST_PORTAL_ID,
+  customerId: null,
+  invoiceNumber: TEST_INVOICE_NUMBER,
+  qbInvoiceId: TEST_QB_INVOICE_ID,
+  qbSyncToken: '0',
+  recipientId: TEST_CLIENT_ID,
+  status: InvoiceStatus.OPEN,
+}
+
+export async function seedQBInvoiceSync(overrides: InvoiceSyncOverrides = {}) {
+  const [row] = await db
+    .insert(QBInvoiceSync)
+    .values({ ...baseInvoiceSync, ...overrides })
+    .returning()
+  return row
 }
