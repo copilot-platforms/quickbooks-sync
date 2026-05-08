@@ -25,6 +25,46 @@ vi.mock('@/utils/intuitAPI', () => ({
   IntuitAPIErrorMessage: '#IntuitAPIErrorMessage#',
 }))
 
+// `@/utils/intuit` is the OAuth wrapper (separate from `@/utils/intuitAPI`,
+// the QBO REST client). It must be mocked here — not per-file — because the
+// integration project runs with `pool: 'forks' + fileParallelism: false +
+// isolate: false`, which means the module registry is shared across files.
+// Once any earlier test transitively loads the real `@/utils/intuit` (via
+// `auth.service.ts:20`), a per-file `vi.mock(...)` in a later file no longer
+// applies. Tests configure per-test behavior via
+// `vi.mocked(Intuit.getInstance).mockReturnValue(...)` in beforeEach.
+//
+// Why pin the mock on `globalThis`: this `setupFiles` is evaluated more than
+// once per run when separate test files trigger fresh module-graph contexts
+// (observed under pool:forks + isolate:false on this branch — see commit
+// message). A naive `vi.mock('@/utils/intuit', () => ({ default: { getInstance:
+// vi.fn() } }))` would produce a *different* `vi.fn()` per factory invocation:
+// `tokenRefresh.ts` (transitively imported by webhook tests early in the run)
+// would close over the first instance, while a later test file that imports
+// `Intuit` directly would wire `vi.mocked(...)` against the second — and the
+// per-test mockReturnValue would never be visible to the production call
+// site. Stashing the singleton on `globalThis` (one process, since
+// fileParallelism is false) makes every factory invocation hand back the
+// same `getInstance` mock, so any test's beforeEach wiring is what the
+// runtime sees.
+const INTUIT_MOCK_GLOBAL_KEY = '__qbsync_intuit_mock_singleton__'
+type IntuitMockSingleton = {
+  default: { getInstance: ReturnType<typeof vi.fn> }
+}
+const globalRef = globalThis as unknown as Record<
+  string,
+  IntuitMockSingleton | undefined
+>
+if (!globalRef[INTUIT_MOCK_GLOBAL_KEY]) {
+  globalRef[INTUIT_MOCK_GLOBAL_KEY] = {
+    default: { getInstance: vi.fn() },
+  }
+}
+vi.mock(
+  '@/utils/intuit',
+  () => globalRef[INTUIT_MOCK_GLOBAL_KEY] as IntuitMockSingleton,
+)
+
 vi.mock('@sentry/nextjs', () => ({
   withScope: vi.fn((cb: (scope: unknown) => void) =>
     cb({

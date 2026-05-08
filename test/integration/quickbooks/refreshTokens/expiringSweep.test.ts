@@ -21,18 +21,17 @@ import { testApiHandler } from 'next-test-api-route-handler'
 import { db } from '@/db'
 import { QBPortalConnection } from '@/db/schema/qbPortalConnections'
 import * as appHandler from '@/app/api/quickbooks/refresh-tokens/route'
+import Intuit from '@/utils/intuit'
 
 import { truncateAllTestTables } from '@test/helpers/testDb'
 import { seedPortalConnection, seedSetting } from '@test/helpers/seed'
 
-// `@/utils/intuit` (the OAuth wrapper) isn't part of the shared integration
-// `setup.ts` mocks, so we install it here. A real refresh would hit the
-// Intuit sandbox and rotate the seeded refresh token, which would make the
-// DB-write assertions non-deterministic.
+// The `@/utils/intuit` module mock lives in `test/integration/setup.ts` so
+// it's installed before any test-file imports run — necessary because the
+// integration project runs with isolate:false + a shared module registry.
+// We wire per-test behavior via `vi.mocked(Intuit.getInstance)` in
+// beforeEach below.
 const getRefreshedQBToken = vi.fn()
-vi.mock('@/utils/intuit', () => ({
-  default: { getInstance: () => ({ getRefreshedQBToken }) },
-}))
 
 const CRON_AUTH = `Bearer ${process.env.CRON_SECRET}`
 
@@ -61,6 +60,12 @@ describe('GET /api/quickbooks/refresh-tokens', () => {
   beforeEach(async () => {
     await truncateAllTestTables()
     vi.clearAllMocks()
+    // Wire the shared @/utils/intuit mock (declared in
+    // test/integration/setup.ts) to return our local fn. Must run AFTER
+    // vi.clearAllMocks() because that resets mockReturnValue.
+    vi.mocked(Intuit.getInstance).mockReturnValue({
+      getRefreshedQBToken,
+    } as unknown as ReturnType<typeof Intuit.getInstance>)
     getRefreshedQBToken.mockResolvedValue({
       access_token: 'fresh-access',
       refresh_token: 'fresh-refresh',
