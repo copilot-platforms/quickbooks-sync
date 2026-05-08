@@ -41,6 +41,26 @@ export function createMockCopilotAPI(overrides: CopilotAPIOverrides = {}) {
       createdAt: '2024-09-11T13:59:58.845233992Z',
       updatedAt: '2024-09-11T13:59:58.845233992Z',
     }),
+    // --- invoice.created defaults (OUT-3708) ---
+    getClient: vi.fn().mockResolvedValue({
+      id: '11111111-1111-1111-1111-111111111111',
+      givenName: 'Jane',
+      familyName: 'Doe',
+      email: 'jane@example.com',
+      companyId: '',
+      status: 'active',
+    }),
+    getCompany: vi.fn().mockResolvedValue(undefined),
+    getClients: vi.fn().mockResolvedValue({ data: [] }),
+    getPrice: vi.fn().mockResolvedValue({
+      id: 'C-wch-eSg',
+      productId: '2cf93cf0-45fa-485f-b584-03c2c38a3999',
+      amount: 60000,
+      currency: 'usd',
+      type: 'recurring',
+    }),
+    getPayments: vi.fn().mockResolvedValue({ data: [] }),
+    getInvoice: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   }
 }
@@ -68,6 +88,30 @@ export function createMockIntuitAPI(overrides: IntuitAPIOverrides = {}) {
       Name: 'Test Product',
       SyncToken: '0',
       UnitPrice: 600,
+    }),
+    // --- invoice.created defaults (OUT-3708) ---
+    getACustomer: vi.fn().mockResolvedValue(undefined),
+    getCustomerByEmail: vi.fn().mockResolvedValue(undefined),
+    resolveUniqueCustomerName: vi.fn().mockImplementation(async (n: string) => n),
+    createCustomer: vi.fn().mockResolvedValue({
+      Id: 'qb-cust-1',
+      SyncToken: '0',
+      DisplayName: 'Jane Doe',
+      PrimaryEmailAddr: { Address: 'jane@example.com' },
+      Active: true,
+    }),
+    customerSparseUpdate: vi.fn().mockResolvedValue({
+      Id: 'qb-cust-1',
+      SyncToken: '1',
+      DisplayName: 'Jane Doe',
+      PrimaryEmailAddr: { Address: 'jane@example.com' },
+      Active: true,
+    }),
+    createInvoice: vi.fn().mockResolvedValue({
+      Invoice: { Id: 'qb-inv-1', SyncToken: '0' },
+    }),
+    createPayment: vi.fn().mockResolvedValue({
+      Payment: { Id: 'qb-pay-1', SyncToken: '0' },
     }),
     ...overrides,
   }
