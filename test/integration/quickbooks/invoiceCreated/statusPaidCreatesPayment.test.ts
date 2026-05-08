@@ -4,7 +4,11 @@ import { db } from '@/db'
 import { QBInvoiceSync } from '@/db/schema/qbInvoiceSync'
 
 import invoiceCreatedPayload from '@test/fixtures/invoiceCreated.webhook.json'
-import { seedHealthyPortal, seedProductSync, TEST_QB_INVOICE_ID } from '@test/helpers/seed'
+import {
+  seedHealthyPortal,
+  seedProductSync,
+  TEST_QB_INVOICE_ID,
+} from '@test/helpers/seed'
 import { setupInvoiceCreatedTest } from '@test/helpers/invoiceCreatedTestSetup'
 import { postWebhook } from '@test/helpers/webhook'
 
