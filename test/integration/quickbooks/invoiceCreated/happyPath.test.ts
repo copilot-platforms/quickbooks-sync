@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 
 import { db } from '@/db'
@@ -17,11 +17,28 @@ import {
   TEST_INVOICE_NUMBER,
   TEST_COPILOT_INVOICE_ID,
 } from '@test/helpers/seed'
+import { createMockIntuitAPI } from '@test/helpers/mocks'
 import { setupInvoiceCreatedTest } from '@test/helpers/invoiceCreatedTestSetup'
 import { postWebhook } from '@test/helpers/webhook'
 
 describe('POST /api/quickbooks/webhook — invoice.created (happy path)', () => {
-  const apis = setupInvoiceCreatedTest()
+  const apis = setupInvoiceCreatedTest(() => ({
+    intuit: createMockIntuitAPI({
+      // Override getAnItem so the product-mapping path returns a real item
+      // when queried by id (default mock returns undefined for every call,
+      // which collapses both branches of getInvoiceItemRef into the
+      // Assembly Service one-off — see docs/superpowers/specs/2026-05-08...).
+      // Tests want to pin the mapped-product branch, not the fallback.
+      getAnItem: vi
+        .fn()
+        .mockImplementation(async (name?: string, id?: string) => {
+          if (id === '999') {
+            return { Id: '999', SyncToken: '0', Active: true }
+          }
+          return undefined // 'Assembly Service' lookup → triggers manageServiceItemRef
+        }),
+    }),
+  }))
 
   it('creates QB customer + invoice, writes mappings, logs SUCCESS', async () => {
     await seedHealthyPortal()
@@ -68,6 +85,14 @@ describe('POST /api/quickbooks/webhook — invoice.created (happy path)', () => 
     )
     expect(apis.intuit.createCustomer).toHaveBeenCalledTimes(1)
     expect(apis.intuit.createInvoice).toHaveBeenCalledTimes(1)
+    // Product was already mapped — createItem must not be invoked for the
+    // mapped product. handleServiceItem still creates the 'Assembly Service'
+    // one-off item (because seedHealthyPortal does not set serviceItemRef),
+    // so the only allowed createItem call is the Assembly Service one.
+    const createItemNames = apis.intuit.createItem.mock.calls.map(
+      ([payload]) => payload?.Name,
+    )
+    expect(createItemNames).toEqual(['Assembly Service'])
     const [invoicePayload] = apis.intuit.createInvoice.mock.calls[0]
     expect(invoicePayload).toMatchObject({
       DocNumber: TEST_INVOICE_NUMBER,
@@ -76,5 +101,10 @@ describe('POST /api/quickbooks/webhook — invoice.created (happy path)', () => 
     expect(invoicePayload.Line[0].SalesItemLineDetail.ItemRef).toEqual({
       value: '999',
     })
+    // Mapped-product branch sets Description from copilot.getProduct (not the
+    // payload's lineItem.description). The fallback path leaves
+    // productDescription undefined, which would surface 'Test product line'
+    // here. This pins the mapped branch.
+    expect(invoicePayload.Line[0].Description).toBe('Test product description')
   })
 })

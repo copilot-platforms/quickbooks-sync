@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 import { db } from '@/db'
+import { QBCustomers } from '@/db/schema/qbCustomers'
 import { QBInvoiceSync } from '@/db/schema/qbInvoiceSync'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import { LogStatus } from '@/app/api/core/types/log'
@@ -40,9 +41,10 @@ describe('POST /api/quickbooks/webhook — invoice.created (invoice already exis
     expect(logs).toHaveLength(1)
     expect(logs[0].status).toBe(LogStatus.PENDING)
 
-    // Customer flow still ran (existence check sits AFTER customer resolution
-    // in webhookInvoiceCreated, currently). Pin negatively only on the
-    // final QB call to avoid over-coupling the test to internal call order.
+    // The existence check sits at the TOP of webhookInvoiceCreated — before
+    // customer resolution. When a sync row is pre-seeded, the handler returns
+    // immediately; no Copilot or Intuit calls are made beyond the claim.
     expect(apis.intuit.createInvoice).not.toHaveBeenCalled()
+    expect(await db.select().from(QBCustomers)).toHaveLength(0)
   })
 })
