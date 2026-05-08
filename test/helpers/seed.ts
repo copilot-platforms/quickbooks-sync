@@ -118,6 +118,8 @@ type InvoiceSyncOverrides = Partial<InferInsertModel<typeof QBInvoiceSync>>
 const baseCustomer: InferInsertModel<typeof QBCustomers> = {
   portalId: TEST_PORTAL_ID,
   customerId: TEST_CLIENT_ID,
+  // clientCompanyId = clientId alone: production composeClientCompanyById
+  // returns just the clientId when the invoice has no companyId.
   clientCompanyId: TEST_CLIENT_ID,
   clientId: TEST_CLIENT_ID,
   companyId: null,
