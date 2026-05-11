@@ -121,6 +121,7 @@ export const useProductMappingSettings = () => {
       `/api/quickbooks/product/map?token=${token}`,
       {},
       { mappingItems, changedItemReference },
+      { timeoutMs: null },
     )
   }
 
@@ -129,6 +130,7 @@ export const useProductMappingSettings = () => {
       `/api/quickbooks/setting?type=${SettingType.PRODUCT}&token=${token}`,
       {},
       { ...productSetting, type: SettingType.PRODUCT },
+      { timeoutMs: null },
     )
   }
 
@@ -138,23 +140,16 @@ export const useProductMappingSettings = () => {
       showProductConfirm: false,
     }))
     setSettingShowConfirm(false)
-    const [tableRes, settingRes] = await Promise.all([
-      tableMappingSubmit(),
-      settingSubmit(),
-    ])
-
-    if (tableRes && settingRes) {
+    try {
+      await Promise.all([tableMappingSubmit(), settingSubmit()])
       mutate(`/api/quickbooks/product/map?token=${token}`)
       mutate(
         `/api/quickbooks/setting?type=${SettingType.PRODUCT}&token=${token}`,
       )
       setChangedItemReference([])
-    } else {
+    } catch (err) {
       setSettingShowConfirm(true) // show the update settings button if error
-      console.error('Error submitting product settings', {
-        tableRes,
-        settingRes,
-      })
+      console.error('Error submitting product settings', err)
     }
   }
 
@@ -559,16 +554,17 @@ export const useInvoiceDetailSettings = () => {
 
   const submitInvoiceSettings = async () => {
     setShowButton(false)
-    const res = await postFetcher(
-      `/api/quickbooks/setting?type=${SettingType.INVOICE}&token=${token}`,
-      {},
-      { ...settingState, type: SettingType.INVOICE },
-    )
-    if (!res || res?.error) {
-      setShowButton(true) // show the update settings button if error
-      console.error('Error submitting Invoice settings', { res })
-    } else {
+    try {
+      await postFetcher(
+        `/api/quickbooks/setting?type=${SettingType.INVOICE}&token=${token}`,
+        {},
+        { ...settingState, type: SettingType.INVOICE },
+        { timeoutMs: null },
+      )
       mutate(`/api/quickbooks/setting?type=invoice&token=${token}`)
+    } catch (err) {
+      setShowButton(true) // show the update settings button if error
+      console.error('Error submitting Invoice settings', err)
     }
   }
 

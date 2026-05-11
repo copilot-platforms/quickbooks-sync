@@ -1,7 +1,9 @@
 import { getFetcher } from '@/helper/fetch.helper'
 import useSWR, { SWRConfiguration } from 'swr'
 
-const fetcher = (url: string) => getFetcher(url, {})
+// In-app SWR fetches against this app's own routes — no client-side timeout.
+// SWR handles its own error-retry; aborts here would just produce false negatives.
+const fetcher = (url: string) => getFetcher(url, {}, { timeoutMs: null })
 
 export const useSwrHelper = (key: any, opts: SWRConfiguration = {}) =>
   useSWR(key, fetcher, {

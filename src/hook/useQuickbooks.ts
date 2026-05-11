@@ -289,7 +289,11 @@ export const useAppBridge = ({
       enable: false,
     }
     const url = `/api/quickbooks/token/change-enable-status?token=${token}`
-    await postFetcher(url, {}, payload)
+    try {
+      await postFetcher(url, {}, payload, { timeoutMs: null })
+    } catch (err) {
+      console.error('Error disconnecting QuickBooks account', err)
+    }
   }
 
   const downloadCsvAction = async () => {
