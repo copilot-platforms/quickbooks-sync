@@ -199,7 +199,6 @@ export class SyncLogService extends BaseService {
       .update(QBSyncLog)
       .set({
         status: LogStatus.FAILED,
-        errorMessage: 'Stale PENDING claim — worker did not finalise in time',
         category: FailedRecordCategoryType.OTHERS,
       })
       .where(
