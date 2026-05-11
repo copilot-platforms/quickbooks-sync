@@ -849,12 +849,9 @@ export default class IntuitAPI {
     return (...args: Args): Promise<R> => withRetry(fn.bind(this), args)
   }
 
-  // Wrap convention: `customQuery` and writes (create*/update*/delete*/void*/
-  // *SparseUpdate) are wrapped here so a single retry layer protects the
-  // network call. Read methods (get*) compose `customQuery` internally and are
-  // therefore left unwrapped — wrapping them would nest `withRetry` and
-  // amplify the worst-case attempts past the 300s webhook budget. See
-  // src/app/api/core/utils/withRetry.ts JSDoc for the underlying rule.
+  // Wrap convention: writes + customQuery are wrapped here. Read methods
+  // (get*) compose customQuery and stay unwrapped to avoid nested withRetry
+  // (see withRetry.ts).
   customQuery = this.wrapWithRetry(this._customQuery)
   createInvoice = this.wrapWithRetry(this._createInvoice)
   createCustomer = this.wrapWithRetry(this._createCustomer)

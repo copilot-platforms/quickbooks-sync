@@ -64,17 +64,8 @@ export const getMessageAndCodeFromError = (
         : error.error
     return { message, code: httpStatus.BAD_REQUEST, source: 'intuit' }
   } else if (error instanceof HttpFetchError) {
-    // Transport-layer failure (non-2xx response from QBO/Copilot). Surface
-    // the real upstream status so qb_sync_logs records 503 as 503 instead of
-    // bucketing every transport failure as a generic 500.
-    //
-    // Source is inferred from a substring match on the request URL. Expected
-    // hostnames at time of writing:
-    //   intuit:  quickbooks.api.intuit.com (prod) / sandbox-quickbooks.api.intuit.com
-    //   copilot: api.copilot.app (prod) / api.copilot-staging.app
-    // If either vendor migrates to a domain that omits these substrings (e.g.
-    // a future `api.assembly.com`), revisit this heuristic — `unknown` would
-    // mislabel qb_sync_logs.source and skew the reaper/retry buckets.
+    // Surface real upstream status to qb_sync_logs. Source inferred by URL
+    // substring (intuit.com / copilot.app); revisit if either host migrates.
     const source: 'intuit' | 'copilot' | 'unknown' = error.url.includes(
       'intuit',
     )
