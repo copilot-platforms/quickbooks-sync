@@ -42,12 +42,13 @@ const RETRYABLE_ERROR_NAMES: ReadonlySet<string> = new Set([
  *   - Top-level `error.code` is checked defensively for legacy Node
  *     error paths; in current Node fetch the code lives under `.cause`.
  *
- * Retry-nesting note: several call sites wrap an inner retried call
- * (e.g. `IntuitAPI.getInvoice → customQuery`, both `withRetry`-wrapped;
- * `authenticate.ts` → `copilotClient.getTokenPayload`). With the broadened
- * retry set, worst-case wait is `outer_attempts × inner_attempts × per_call_timeout`.
- * Inner wrappers should throw `new RetryableError(status, msg, false)` when
- * they exhaust their own attempts so outer wrappers do not re-amplify them.
+ * Retry-nesting hazard: do not call a `withRetry`-wrapped function from
+ * inside another `withRetry`-wrapped function. With the broadened retry
+ * set, worst-case wait is `outer × inner × per_call_timeout`, which can
+ * blow past the 300s webhook execution budget. Inside `IntuitAPI._*`
+ * methods that are themselves wrapped at the public level (see exports
+ * at the bottom of `src/utils/intuitAPI.ts`), call the unwrapped `_*`
+ * counterparts directly (e.g. `this._customQuery`, not `this.customQuery`).
  */
 export const isRetryableError = (error: unknown): boolean => {
   if (error instanceof RetryableError) return error.retry

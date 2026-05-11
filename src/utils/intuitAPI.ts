@@ -30,7 +30,6 @@ import {
   SingleIdAndTokenResponseSchema,
 } from '@/type/dto/intuitAPI.dto'
 import { escapeForQBQuery, getNameAsCustomer } from '@/utils/string'
-import { RetryableError } from '@/utils/error'
 import CustomLogger from '@/utils/logger'
 import httpStatus from 'http-status'
 
@@ -814,11 +813,7 @@ export default class IntuitAPI {
     const companyInfo = await this.customQuery(query)
 
     if (!companyInfo)
-      throw new RetryableError(
-        httpStatus.NOT_FOUND,
-        'No company info found',
-        true,
-      )
+      throw new APIError(httpStatus.NOT_FOUND, 'No company info found')
 
     const parsedCompanyInfo = CompanyInfoSchema.parse(companyInfo)
     return parsedCompanyInfo.CompanyInfo[0]
@@ -854,11 +849,17 @@ export default class IntuitAPI {
     return (...args: Args): Promise<R> => withRetry(fn.bind(this), args)
   }
 
+  // Wrap convention: `customQuery` and writes (create*/update*/delete*/void*/
+  // *SparseUpdate) are wrapped here so a single retry layer protects the
+  // network call. Read methods (get*) compose `customQuery` internally and are
+  // therefore left unwrapped — wrapping them would nest `withRetry` and
+  // amplify the worst-case attempts past the 300s webhook budget. See
+  // src/app/api/core/utils/withRetry.ts JSDoc for the underlying rule.
   customQuery = this.wrapWithRetry(this._customQuery)
   createInvoice = this.wrapWithRetry(this._createInvoice)
   createCustomer = this.wrapWithRetry(this._createCustomer)
   createItem = this.wrapWithRetry(this._createItem)
-  getSingleIncomeAccount = this.wrapWithRetry(this._getSingleIncomeAccount)
+  getSingleIncomeAccount = this._getSingleIncomeAccount.bind(this)
   getACustomer: {
     (
       displayName: string,
@@ -875,10 +876,10 @@ export default class IntuitAPI {
       id: string,
       includeInactive?: boolean,
     ): Promise<CustomerQueryResponseType>
-  } = this.wrapWithRetry(this._getACustomer) as any
-  // Intentionally NOT wrapped in wrapWithRetry — a transient 429 mid-walk would
-  // replay from page 1 and amplify rate-limit pressure. The inner customQuery
-  // calls already retry on 429 (same reasoning as resolveUniqueCustomerName).
+  } = this._getACustomer.bind(this) as any
+  // Additional rationale beyond the wrap convention: a transient 429 mid-walk
+  // would replay from page 1 and amplify rate-limit pressure (same reasoning
+  // as resolveUniqueCustomerName).
   getCustomerByEmail = this._getCustomerByEmail.bind(this)
   getAnItem: {
     (
@@ -896,13 +897,13 @@ export default class IntuitAPI {
       id: string,
       includeInactive?: boolean,
     ): Promise<ItemResponseType>
-  } = this.wrapWithRetry(this._getAnItem) as any
-  getAllItems = this.wrapWithRetry(this._getAllItems)
+  } = this._getAnItem.bind(this) as any
+  getAllItems = this._getAllItems.bind(this)
   invoiceSparseUpdate = this.wrapWithRetry(this._invoiceSparseUpdate)
   customerSparseUpdate = this.wrapWithRetry(this._customerSparseUpdate)
   itemFullUpdate = this.wrapWithRetry(this._itemFullUpdate)
   createPayment = this.wrapWithRetry(this._createPayment)
-  getInvoice = this.wrapWithRetry(this._getInvoice)
+  getInvoice = this._getInvoice.bind(this)
   voidInvoice = this.wrapWithRetry(this._voidInvoice)
   deleteInvoice = this.wrapWithRetry(this._deleteInvoice)
   getAnAccount: {
@@ -921,12 +922,12 @@ export default class IntuitAPI {
       id: string,
       includeInactive?: boolean,
     ): Promise<AccountResponseType>
-  } = this.wrapWithRetry(this._getAnAccount) as any
+  } = this._getAnAccount.bind(this) as any
   createAccount = this.wrapWithRetry(this._createAccount)
   updateAccount = this.wrapWithRetry(this._updateAccount)
   createPurchase = this.wrapWithRetry(this._createPurchase)
   createDeposit = this.wrapWithRetry(this._createDeposit)
   deletePayment = this.wrapWithRetry(this._deletePayment)
   deletePurchase = this.wrapWithRetry(this._deletePurchase)
-  getCompanyInfo = this.wrapWithRetry(this._getCompanyInfo)
+  getCompanyInfo = this._getCompanyInfo.bind(this)
 }
