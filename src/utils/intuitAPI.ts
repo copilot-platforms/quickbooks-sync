@@ -1,5 +1,5 @@
 import APIError from '@/app/api/core/exceptions/api'
-import { withRetry } from '@/app/api/core/utils/withRetry'
+import { RetryOptions, withRetry } from '@/app/api/core/utils/withRetry'
 import { intuitApiMinorVersion, intuitBaseUrl } from '@/config'
 import { QBPortalConnectionSelectSchemaType } from '@/db/schema/qbPortalConnections'
 import { getFetcher, postFetcher } from '@/helper/fetch.helper'
@@ -845,14 +845,17 @@ export default class IntuitAPI {
 
   private wrapWithRetry<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
+    options?: RetryOptions,
   ): (...args: Args) => Promise<R> {
-    return (...args: Args): Promise<R> => withRetry(fn.bind(this), args)
+    return (...args: Args): Promise<R> =>
+      withRetry(fn.bind(this), args, { idempotent: false, ...options })
   }
 
-  // Wrap convention: writes + customQuery are wrapped here. Read methods
-  // (get*) compose customQuery and stay unwrapped to avoid nested withRetry
-  // (see withRetry.ts).
-  customQuery = this.wrapWithRetry(this._customQuery)
+  // Writes default to `idempotent: false` (no QBO request-key dedupe — a
+  // post-commit retry would duplicate). `customQuery` is the one read in
+  // this set and opts back into broad retry. `get*` stay unwrapped and
+  // inherit retry via `customQuery` (see withRetry.ts on nesting).
+  customQuery = this.wrapWithRetry(this._customQuery, { idempotent: true })
   createInvoice = this.wrapWithRetry(this._createInvoice)
   createCustomer = this.wrapWithRetry(this._createCustomer)
   createItem = this.wrapWithRetry(this._createItem)

@@ -2,12 +2,17 @@ import pRetry, { FailedAttemptError } from 'p-retry'
 import * as Sentry from '@sentry/nextjs'
 import { RetryableError } from '@/utils/error'
 
-const RETRYABLE_HTTP_STATUSES: ReadonlySet<number> = new Set([
-  429, // rate limit
-  500, // internal server error (often transient at QBO)
-  502, // bad gateway (upstream proxy hiccup)
-  503, // service unavailable
-  504, // gateway timeout
+// 429 means the server explicitly rejected the request without processing it,
+// so retrying is always safe regardless of idempotency.
+const ALWAYS_RETRY_STATUSES: ReadonlySet<number> = new Set([429])
+
+// 5xx and network/timeout errors straddle "did not commit" and "committed but
+// response dropped." Safe to replay on idempotent reads; on non-idempotent
+// writes lacking a server-side request-key primitive, a retry after the upstream
+// committed would duplicate the write — so the classifier returns false for
+// these in `idempotent: false` mode.
+const IDEMPOTENT_ONLY_RETRY_STATUSES: ReadonlySet<number> = new Set([
+  500, 502, 503, 504,
 ])
 
 const RETRYABLE_NETWORK_CODES: ReadonlySet<string> = new Set([
@@ -23,36 +28,34 @@ const RETRYABLE_ERROR_NAMES: ReadonlySet<string> = new Set([
   // AbortController.abort() and retrying would defeat the cancellation.
 ])
 
+export type RetryOptions = {
+  /**
+   * False for non-idempotent writes (QBO create/update/void/delete) whose
+   * upstream has no request-key dedupe. In strict mode the classifier
+   * retries only on 429 and explicit `RetryableError.retry === true`;
+   * 5xx, network errors, and AbortSignal timeouts all bubble. Defaults
+   * to true (safe-to-replay reads).
+   */
+  idempotent?: boolean
+}
+
 /**
- * Centralized classifier for whether an error should trigger a retry.
- * Exported so it can be unit-tested independent of pRetry's timer plumbing.
+ * Classifies whether an error should trigger a retry. 429 and explicit
+ * `RetryableError.retry === true` retry in both modes. Strict mode
+ * (`options.idempotent === false`) short-circuits past 429: 5xx, network
+ * codes, AbortSignal timeouts, and undici fetch-failed envelopes are all
+ * treated as possibly-after-commit and never replayed.
  *
- * The error shapes inspected here come from different layers; a single
- * unified type doesn't exist, which is why the input is `unknown` and
- * each field is checked defensively:
- *
- *   - `RetryableError` (ours, src/utils/error.ts) — explicit retry flag.
- *   - `HttpFetchError` (ours) and Copilot SDK's `StatusableError` —
- *     `status: number` set after a non-2xx response was received.
- *   - undici (Node fetch) network failures — thrown as
- *     `TypeError: fetch failed` with the underlying error on `.cause`
- *     (e.g. `{ code: 'ECONNRESET' }`). No HTTP response was ever built,
- *     so there is no status to inspect.
- *   - `AbortSignal.timeout()` rejects with a `DOMException` whose
- *     `name` is `'TimeoutError'` (retryable). `AbortController.abort()`
- *     produces `'AbortError'` and is NOT retried (deliberate cancellation).
- *   - Top-level `error.code` is checked defensively for legacy Node
- *     error paths; in current Node fetch the code lives under `.cause`.
- *
- * Retry-nesting hazard: do not call a `withRetry`-wrapped function from
- * inside another `withRetry`-wrapped function. With the broadened retry
- * set, worst-case wait is `outer × inner × per_call_timeout`, which can
- * blow past the 300s webhook execution budget. Inside `IntuitAPI._*`
- * methods that are themselves wrapped at the public level (see exports
- * at the bottom of `src/utils/intuitAPI.ts`), call the unwrapped `_*`
- * counterparts directly (e.g. `this._customQuery`, not `this.customQuery`).
+ * Retry-nesting hazard: don't call a wrapped function from inside another.
+ * Inside `IntuitAPI._*` methods call the unwrapped `_*` counterparts
+ * (e.g. `this._customQuery`, not `this.customQuery`).
  */
-export const isRetryableError = (error: unknown): boolean => {
+export const isRetryableError = (
+  error: unknown,
+  options: RetryOptions = {},
+): boolean => {
+  const { idempotent = true } = options
+
   if (error instanceof RetryableError) return error.retry
 
   if (typeof error !== 'object' || error === null) return false
@@ -65,7 +68,16 @@ export const isRetryableError = (error: unknown): boolean => {
     cause?: unknown
   }
 
-  if (typeof err.status === 'number' && RETRYABLE_HTTP_STATUSES.has(err.status))
+  if (typeof err.status === 'number' && ALWAYS_RETRY_STATUSES.has(err.status))
+    return true
+
+  // Strict mode: nothing past this point is post-commit-safe.
+  if (!idempotent) return false
+
+  if (
+    typeof err.status === 'number' &&
+    IDEMPOTENT_ONLY_RETRY_STATUSES.has(err.status)
+  )
     return true
 
   if (typeof err.name === 'string' && RETRYABLE_ERROR_NAMES.has(err.name))
@@ -104,6 +116,7 @@ export const isRetryableError = (error: unknown): boolean => {
 export const withRetry = async <T>(
   fn: (...args: any[]) => Promise<T>,
   args: any[],
+  options: RetryOptions = {},
 ): Promise<T> => {
   let isEventProcessorRegistered = false
 
@@ -150,7 +163,7 @@ export const withRetry = async <T>(
           error,
         )
       },
-      shouldRetry: (error: unknown) => isRetryableError(error),
+      shouldRetry: (error: unknown) => isRetryableError(error, options),
     },
   )
 }

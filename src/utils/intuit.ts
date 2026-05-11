@@ -1,5 +1,5 @@
 import { IntuitOAuthError } from '@/app/api/core/exceptions/custom'
-import { withRetry } from '@/app/api/core/utils/withRetry'
+import { RetryOptions, withRetry } from '@/app/api/core/utils/withRetry'
 import {
   intuitClientId,
   intuitClientSecret,
@@ -79,10 +79,16 @@ export default class Intuit {
     return tokenInfo
   }
 
+  // `createToken` / `refreshAccessToken` consume single-use credentials with
+  // no Intuit-side dedupe; a post-commit retry sees `invalid_grant` and
+  // would be misdiagnosed as revocation by `tokenRefresh.handleInvalidGrant`.
+  // So the wrapper defaults to strict, same as `IntuitAPI.wrapWithRetry`.
   private wrapWithRetry<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
+    options?: RetryOptions,
   ): (...args: Args) => Promise<R> {
-    return (...args: Args): Promise<R> => withRetry(fn.bind(this), args)
+    return (...args: Args): Promise<R> =>
+      withRetry(fn.bind(this), args, { idempotent: false, ...options })
   }
 
   authorizeUri = this.wrapWithRetry(this._authorizeUri)
