@@ -123,12 +123,6 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/query?query=${encodeURIComponent(query)}&minorversion=${intuitApiMinorVersion}`
     const res = await this.getFetchWithHeader(url)
 
-    if (!res)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#customQuery | message = no response',
-      )
-
     if (res?.Fault) {
       CustomLogger.error({ obj: res.Fault?.Error, message: 'Error: ' })
       throw new APIError(
@@ -147,12 +141,6 @@ export default class IntuitAPI {
     })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
-
-    if (!invoice)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#createInvoice | message = no response',
-      )
 
     if (invoice?.Fault) {
       CustomLogger.error({ obj: invoice.Fault?.Error, message: 'Error: ' })
@@ -180,12 +168,6 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/customer?minorversion=${intuitApiMinorVersion}`
     const customer = await this.postFetchWithHeaders(url, payload)
 
-    if (!customer)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#createCustomer | message = no response',
-      )
-
     if (customer?.Fault) {
       CustomLogger.error({ obj: customer.Fault?.Error, message: 'Error: ' })
       throw new APIError(
@@ -209,12 +191,6 @@ export default class IntuitAPI {
     })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/item?minorversion=${intuitApiMinorVersion}`
     const item = await this.postFetchWithHeaders(url, payload)
-
-    if (!item)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#createItem | message = no response',
-      )
 
     if (item?.Fault) {
       CustomLogger.error({ obj: item.Fault?.Error, message: 'Error: ' })
@@ -348,9 +324,10 @@ export default class IntuitAPI {
    * Inactive records are intentionally excluded: QBO auto-suffixes their
    * DisplayName with " (deleted)" when deactivated, freeing the original name.
    *
-   * Intentionally NOT wrapped in wrapWithRetry — the inner customQuery calls
-   * already retry on 429; re-wrapping would amplify rate-limit bursts (worst
-   * case 4 × 3 × 4 = 48 requests) and make recovery worse.
+   * Intentionally NOT wrapped in wrapWithRetry — each of the three inner
+   * customQuery calls is already retried by withRetry (up to 5 attempts on
+   * 429/5xx/transient network). Re-wrapping would amplify rate-limit bursts
+   * (worst case 5 × 3 × 5 = 75 requests) and make recovery worse.
    *
    * Throws if every candidate is taken.
    */
@@ -473,12 +450,6 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
-    if (!invoice)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#InvoiceSparseUpdate | message = no response',
-      )
-
     if (invoice?.Fault) {
       CustomLogger.error({ obj: invoice.Fault?.Error, message: 'Error: ' })
       throw new APIError(
@@ -505,12 +476,6 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/customer?minorversion=${intuitApiMinorVersion}`
     const customer = await this.postFetchWithHeaders(url, payload)
 
-    if (!customer)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#customerSparseUpdate | message = no response',
-      )
-
     if (customer?.Fault) {
       CustomLogger.error({ obj: customer.Fault?.Error, message: 'Error: ' })
       throw new APIError(
@@ -536,12 +501,6 @@ export default class IntuitAPI {
     })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/item?minorversion=${intuitApiMinorVersion}`
     const item = await this.postFetchWithHeaders(url, payload)
-
-    if (!item)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#itemFullUpdate | message = no response',
-      )
 
     if (item?.Fault) {
       CustomLogger.error({ obj: item.Fault?.Error, message: 'Error: ' })
@@ -571,12 +530,6 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/account?minorversion=${intuitApiMinorVersion}`
     const account = await this.postFetchWithHeaders(url, payload)
 
-    if (!account)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#updateAccount | message = no response',
-      )
-
     if (account?.Fault) {
       CustomLogger.error({ obj: account.Fault?.Error, message: 'Error: ' })
       throw new APIError(
@@ -603,12 +556,6 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/payment?minorversion=${intuitApiMinorVersion}`
     const payment = await this.postFetchWithHeaders(url, payload)
 
-    if (!payment)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#createPayment | message = no response',
-      )
-
     if (payment?.Fault) {
       CustomLogger.error({ obj: payment.Fault?.Error, message: 'Error: ' })
       throw new APIError(
@@ -633,12 +580,6 @@ export default class IntuitAPI {
     const query = `select Id, SyncToken, DocNumber from Invoice where DocNumber = '${escapeForQBQuery(invoiceNumber)}' maxresults 1`
     const invoice = await this.customQuery(query)
 
-    if (!invoice)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#getInvoice | message = no response',
-      )
-
     if (!invoice.Invoice) return null
 
     CustomLogger.info({
@@ -655,12 +596,6 @@ export default class IntuitAPI {
     })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=void&minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
-
-    if (!invoice)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#voidInvoice | message = no response',
-      )
 
     if (invoice?.Fault) {
       CustomLogger.error({ obj: invoice.Fault?.Error, message: 'Error: ' })
@@ -686,13 +621,6 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=delete&minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
-    if (!invoice) {
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#deleteInvoice | No invoice deletion confirmation was received from Quickbooks API',
-      )
-    }
-
     if (invoice?.Fault) {
       CustomLogger.error({ obj: invoice.Fault?.Error, message: 'Error: ' })
       throw new APIError(
@@ -716,12 +644,6 @@ export default class IntuitAPI {
     })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/payment?operation=delete&minorversion=${intuitApiMinorVersion}`
     const payment = await this.postFetchWithHeaders(url, payload)
-
-    if (!payment)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#deletePayment | message = no response',
-      )
 
     if (payment?.Fault) {
       CustomLogger.error({ obj: payment.Fault?.Error, message: 'Error: ' })
@@ -790,12 +712,6 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/account?minorversion=${intuitApiMinorVersion}`
     const account = await this.postFetchWithHeaders(url, payload)
 
-    if (!account)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#createAccount | message = no response',
-      )
-
     if (account?.Fault) {
       CustomLogger.error({ obj: account.Fault?.Error, message: 'Error: ' })
       throw new APIError(
@@ -819,12 +735,6 @@ export default class IntuitAPI {
     })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/purchase?minorversion=${intuitApiMinorVersion}`
     const purchase = await this.postFetchWithHeaders(url, payload)
-
-    if (!purchase)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#createPurchase | message = no response',
-      )
 
     if (purchase?.Fault) {
       CustomLogger.error({ obj: purchase.Fault?.Error, message: 'Error: ' })
@@ -879,12 +789,6 @@ export default class IntuitAPI {
     })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/purchase?operation=delete&minorversion=${intuitApiMinorVersion}`
     const purchase = await this.postFetchWithHeaders(url, payload)
-
-    if (!purchase)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#deletePurchase | message = no response',
-      )
 
     if (purchase?.Fault) {
       CustomLogger.error({ obj: purchase.Fault?.Error, message: 'Error: ' })
