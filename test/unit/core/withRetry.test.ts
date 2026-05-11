@@ -37,9 +37,9 @@ describe('isRetryableError', () => {
     expect(isRetryableError(err)).toBe(true)
   })
 
-  it('treats AbortError as retryable', () => {
+  it('does NOT retry AbortError — deliberate cancellation should propagate', () => {
     const err = Object.assign(new Error('aborted'), { name: 'AbortError' })
-    expect(isRetryableError(err)).toBe(true)
+    expect(isRetryableError(err)).toBe(false)
   })
 
   it('treats top-level network code as retryable', () => {

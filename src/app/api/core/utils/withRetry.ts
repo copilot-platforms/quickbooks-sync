@@ -18,8 +18,9 @@ const RETRYABLE_NETWORK_CODES: ReadonlySet<string> = new Set([
 ])
 
 const RETRYABLE_ERROR_NAMES: ReadonlySet<string> = new Set([
-  'TimeoutError', // AbortSignal.timeout() rejection
-  'AbortError', // generic AbortController rejection (treat as transient)
+  'TimeoutError', // AbortSignal.timeout() rejection (Node 18+)
+  // 'AbortError' is intentionally excluded — it signals a deliberate
+  // AbortController.abort() and retrying would defeat the cancellation.
 ])
 
 /**
@@ -37,8 +38,9 @@ const RETRYABLE_ERROR_NAMES: ReadonlySet<string> = new Set([
  *     `TypeError: fetch failed` with the underlying error on `.cause`
  *     (e.g. `{ code: 'ECONNRESET' }`). No HTTP response was ever built,
  *     so there is no status to inspect.
- *   - `AbortSignal.timeout()` and `AbortController.abort()` reject with
- *     a `DOMException` whose `name` is `'TimeoutError'` / `'AbortError'`.
+ *   - `AbortSignal.timeout()` rejects with a `DOMException` whose
+ *     `name` is `'TimeoutError'` (retryable). `AbortController.abort()`
+ *     produces `'AbortError'` and is NOT retried (deliberate cancellation).
  *   - Top-level `error.code` is checked defensively for legacy Node
  *     error paths; in current Node fetch the code lives under `.cause`.
  *

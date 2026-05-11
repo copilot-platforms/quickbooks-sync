@@ -156,13 +156,14 @@ describe('fetch.helper', () => {
       vi.useFakeTimers()
       try {
         // Real fetch honors the signal: reject when the signal aborts.
+        // AbortSignal.timeout() produces a TimeoutError (Node 18+).
         ;(fetch as any).mockImplementationOnce(
           (_url: string, init: RequestInit) =>
             new Promise((_resolve, reject) => {
               const signal = init.signal as AbortSignal
               const onAbort = () => {
                 const err = new Error('The operation was aborted')
-                ;(err as any).name = 'AbortError'
+                ;(err as any).name = 'TimeoutError'
                 reject(err)
               }
               if (signal.aborted) onAbort()
@@ -175,14 +176,12 @@ describe('fetch.helper', () => {
           {},
           { timeoutMs: 50 },
         )
-        // Attach a rejection handler synchronously so the unhandled-rejection
-        // path doesn't trip when the timer fires.
         const settled = pending.catch((e) => e)
 
         await vi.advanceTimersByTimeAsync(60)
         const result = await settled
         expect(result).toBeInstanceOf(Error)
-        expect((result as Error).name).toBe('AbortError')
+        expect((result as Error).name).toBe('TimeoutError')
       } finally {
         vi.useRealTimers()
       }
