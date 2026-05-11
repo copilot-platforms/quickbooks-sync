@@ -110,7 +110,7 @@ describe('withRetry', () => {
     expect(fn).toHaveBeenCalledTimes(1)
   })
 
-  it('does not retry on non-429 status errors', async () => {
+  it('does not retry on permanent 4xx responses', async () => {
     const error = Object.assign(new Error('bad request'), { status: 400 })
     const fn = vi.fn().mockRejectedValue(error)
 

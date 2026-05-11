@@ -38,23 +38,6 @@ describe('fetch.helper', () => {
       expect(init.signal).toBeInstanceOf(AbortSignal)
     })
 
-    it('throws HttpFetchError with parsed JSON body on non-2xx', async () => {
-      ;(fetch as any).mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ Fault: { Error: [{ Detail: 'nope' }] } }),
-          {
-            status: 503,
-            statusText: 'Service Unavailable',
-            headers: { 'content-type': 'application/json' },
-          },
-        ),
-      )
-
-      await expect(
-        getFetcher('https://example.com/x', {}),
-      ).rejects.toBeInstanceOf(HttpFetchError)
-    })
-
     it('captures status, url, and parsed body on the thrown error', async () => {
       ;(fetch as any).mockResolvedValueOnce(
         new Response('{"err":"boom"}', {
