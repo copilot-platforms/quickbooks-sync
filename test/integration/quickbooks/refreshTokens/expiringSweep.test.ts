@@ -163,10 +163,12 @@ describe('GET /api/quickbooks/refresh-tokens', () => {
 
     const res = await callCron({ authorization: CRON_AUTH })
     expect(res.status).toBe(200)
-    await expect(res.json()).resolves.toMatchObject({
+    await expect(res.json()).resolves.toEqual({
+      success: true,
       scanned: 0,
       refreshed: 0,
       reconnectRequired: 0,
+      errored: 0,
     })
     expect(getRefreshedQBToken).not.toHaveBeenCalled()
   })
