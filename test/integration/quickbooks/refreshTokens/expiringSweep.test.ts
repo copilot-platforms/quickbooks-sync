@@ -148,6 +148,29 @@ describe('GET /api/quickbooks/refresh-tokens', () => {
     expect(safe[0].refreshToken).toBe('old-safe')
   })
 
+  it('skips portals whose refresh token has already expired', async () => {
+    // Refresh tokens past TTL get `invalid_grant` from Intuit — they need
+    // an IU reconnect, not another refresh attempt. Without this filter
+    // they'd be swept daily, wasting Intuit calls and firing Sentry alerts.
+    // See docs/qb-refresh-token-cron.md.
+    await seedPortalConnection({
+      portalId: 'p-expired',
+      intuitRealmId: 'realm-expired',
+      refreshToken: 'old-expired',
+      tokenSetTime: tokenSetTimeForDaysToExpiry(-1), // 1 day past expiry
+    })
+    await seedSetting({ portalId: 'p-expired', syncFlag: true })
+
+    const res = await callCron({ authorization: CRON_AUTH })
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toMatchObject({
+      scanned: 0,
+      refreshed: 0,
+      reconnectRequired: 0,
+    })
+    expect(getRefreshedQBToken).not.toHaveBeenCalled()
+  })
+
   it('skips soft-deleted portals, portals without settings, and portals with syncFlag=false', async () => {
     // Three exclusion paths the selector enforces:
     //   - soft-deleted rows: off-limits to all background jobs.

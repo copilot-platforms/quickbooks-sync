@@ -73,6 +73,12 @@ export const getPortalsWithExpiringRefreshTokens = async (
         eq(QBSetting.syncFlag, true),
         sql`${QBPortalConnection.tokenSetTime} + (${QBPortalConnection.XRefreshTokenExpiresIn} || ' seconds')::interval
             < now() + (${daysRemaining} || ' days')::interval`,
+        // Lower bound: already-expired tokens get `invalid_grant` from
+        // Intuit and never recover — they need an IU reconnect. Filtering
+        // here (not in the loop) keeps them invisible to ORDER BY and
+        // LIMIT so live portals aren't starved. See docs/qb-refresh-token-cron.md.
+        sql`${QBPortalConnection.tokenSetTime} + (${QBPortalConnection.XRefreshTokenExpiresIn} || ' seconds')::interval
+            > now()`,
       ),
     )
     .orderBy(asc(QBPortalConnection.tokenSetTime))
