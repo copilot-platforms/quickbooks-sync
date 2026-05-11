@@ -13,7 +13,11 @@ import {
   isIntuitOAuthError,
 } from '@/app/api/core/exceptions/custom'
 import * as Sentry from '@sentry/nextjs'
-import { getMessageAndCodeFromError, RetryableError } from '@/utils/error'
+import {
+  getMessageAndCodeFromError,
+  HttpFetchError,
+  RetryableError,
+} from '@/utils/error'
 import { getCategory } from '@/utils/synclog'
 
 type RequestHandler = (req: NextRequest, params: any) => Promise<NextResponse>
@@ -72,6 +76,9 @@ export const withErrorHandler = (handler: RequestHandler): RequestHandler => {
       } else if (error instanceof RetryableError) {
         status = error.status
         message = error.message || message
+      } else if (error instanceof HttpFetchError) {
+        status = error.status
+        message = error.message || message
       } else if (isIntuitOAuthError(error)) {
         message = error.error
         status = httpStatus.BAD_REQUEST
@@ -91,6 +98,7 @@ export const withErrorHandler = (handler: RequestHandler): RequestHandler => {
       } else if (
         error instanceof APIError ||
         error instanceof CopilotApiError ||
+        error instanceof HttpFetchError ||
         isAxiosError(error) ||
         isIntuitOAuthError(error)
       ) {

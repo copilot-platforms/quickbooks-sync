@@ -1,5 +1,10 @@
 import { withRetry } from '@/app/api/core/utils/withRetry'
-import { copilotAPIKey as apiKey, appId } from '@/config'
+import {
+  copilotAPIKey as apiKey,
+  appId,
+  externalFetchTimeoutMs,
+} from '@/config'
+import { buildHttpFetchError } from '@/helper/fetch.helper'
 import {
   ClientRequest,
   ClientResponse,
@@ -82,7 +87,11 @@ export class CopilotAPI {
         'X-API-KEY': workspaceId ? `${workspaceId}/${apiKey}` : apiKey,
         accept: 'application/json',
       },
+      signal: AbortSignal.timeout(externalFetchTimeoutMs),
     })
+
+    if (!resp.ok) throw await buildHttpFetchError(resp, url.toString())
+
     return await resp.json()
   }
 

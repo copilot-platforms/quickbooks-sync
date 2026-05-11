@@ -37,6 +37,22 @@ export const intuitBaseUrl =
 export const intuitApiMinorVersion =
   process.env.INTUIT_API_MINOR_VERSION || '75'
 
+// Default timeout (ms) for outbound fetches to external APIs (QuickBooks,
+// Copilot). Prevents requests from hanging indefinitely against a slow or
+// unresponsive upstream. Per-call overrides are supported by the fetch helpers.
+// Guarded against NaN / non-positive values so a malformed env var doesn't
+// crash `AbortSignal.timeout()` on every external call.
+const parsePositiveMs = (raw: string | undefined, fallback: number): number => {
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
+// Tune EXTERNAL_FETCH_TIMEOUT_MS down (floor ~15s, ceiling ~45s per withRetry budget) once Sentry shows real QBO/Copilot P99 latency.
+export const externalFetchTimeoutMs = parsePositiveMs(
+  process.env.EXTERNAL_FETCH_TIMEOUT_MS,
+  30_000,
+)
+
 // Supabase
 export const supabaseProjectUrl =
   process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL || ''

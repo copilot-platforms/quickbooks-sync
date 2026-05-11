@@ -63,6 +63,26 @@ export const getMessageAndCodeFromError = (
         ? refreshTokenExpireMessage
         : error.error
     return { message, code: httpStatus.BAD_REQUEST, source: 'intuit' }
+  } else if (error instanceof HttpFetchError) {
+    // Transport-layer failure (non-2xx response from QBO/Copilot). Surface
+    // the real upstream status so qb_sync_logs records 503 as 503 instead of
+    // bucketing every transport failure as a generic 500.
+    //
+    // Source is inferred from a substring match on the request URL. Expected
+    // hostnames at time of writing:
+    //   intuit:  quickbooks.api.intuit.com (prod) / sandbox-quickbooks.api.intuit.com
+    //   copilot: api.copilot.app (prod) / api.copilot-staging.app
+    // If either vendor migrates to a domain that omits these substrings (e.g.
+    // a future `api.assembly.com`), revisit this heuristic — `unknown` would
+    // mislabel qb_sync_logs.source and skew the reaper/retry buckets.
+    const source: 'intuit' | 'copilot' | 'unknown' = error.url.includes(
+      'intuit',
+    )
+      ? 'intuit'
+      : error.url.includes('copilot')
+        ? 'copilot'
+        : 'unknown'
+    return { message: error.message, code: error.status, source }
   } else if (error instanceof Error && error.message) {
     return { message: error.message, code, source: 'unknown' }
   } else if (isAxiosError(error)) {
@@ -83,5 +103,30 @@ export class RetryableError extends Error {
     super(message)
     this.retry = retry
     this.status = status
+  }
+}
+
+export class HttpFetchError extends Error {
+  readonly status: number
+  readonly statusText: string
+  readonly url: string
+  readonly body: unknown
+
+  constructor(args: {
+    status: number
+    statusText: string
+    url: string
+    body: unknown
+    message?: string
+  }) {
+    super(
+      args.message ??
+        `HTTP ${args.status} ${args.statusText || ''} from ${args.url}`.trim(),
+    )
+    this.name = 'HttpFetchError'
+    this.status = args.status
+    this.statusText = args.statusText
+    this.url = args.url
+    this.body = args.body
   }
 }

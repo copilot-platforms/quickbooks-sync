@@ -1,10 +1,58 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { RetryableError } from '@/utils/error'
-import { withRetry } from '@/app/api/core/utils/withRetry'
+import { withRetry, isRetryableError } from '@/app/api/core/utils/withRetry'
 
 vi.mock('@sentry/nextjs', () => ({
   withScope: vi.fn(),
 }))
+
+describe('isRetryableError', () => {
+  it('returns the retry flag from RetryableError', () => {
+    expect(isRetryableError(new RetryableError(500, 'x', true))).toBe(true)
+    expect(isRetryableError(new RetryableError(500, 'x', false))).toBe(false)
+  })
+
+  it('treats 429/500/502/503/504 as retryable, others as not', () => {
+    for (const status of [429, 500, 502, 503, 504]) {
+      expect(isRetryableError(Object.assign(new Error(), { status }))).toBe(
+        true,
+      )
+    }
+    for (const status of [400, 401, 404, 501]) {
+      expect(isRetryableError(Object.assign(new Error(), { status }))).toBe(
+        false,
+      )
+    }
+  })
+
+  it('treats undici-style fetch failure with network code on cause as retryable', () => {
+    const err = Object.assign(new TypeError('fetch failed'), {
+      cause: { code: 'ECONNRESET' },
+    })
+    expect(isRetryableError(err)).toBe(true)
+  })
+
+  it('treats AbortSignal.timeout TimeoutError as retryable', () => {
+    const err = Object.assign(new Error('timed out'), { name: 'TimeoutError' })
+    expect(isRetryableError(err)).toBe(true)
+  })
+
+  it('treats AbortError as retryable', () => {
+    const err = Object.assign(new Error('aborted'), { name: 'AbortError' })
+    expect(isRetryableError(err)).toBe(true)
+  })
+
+  it('treats top-level network code as retryable', () => {
+    const err = Object.assign(new Error('boom'), { code: 'ETIMEDOUT' })
+    expect(isRetryableError(err)).toBe(true)
+  })
+
+  it('returns false for non-error inputs', () => {
+    expect(isRetryableError(null)).toBe(false)
+    expect(isRetryableError(undefined)).toBe(false)
+    expect(isRetryableError('oops')).toBe(false)
+  })
+})
 
 describe('withRetry', () => {
   beforeEach(() => {
@@ -70,6 +118,55 @@ describe('withRetry', () => {
     expect(fn).toHaveBeenCalledTimes(1)
   })
 
+  it.each([500, 502, 503, 504])(
+    'retries on transient %i and succeeds',
+    async (status) => {
+      const error = Object.assign(new Error(`transient ${status}`), { status })
+      const fn = vi
+        .fn()
+        .mockRejectedValueOnce(error)
+        .mockResolvedValueOnce('recovered')
+
+      const promise = withRetry(fn, [])
+      await vi.runAllTimersAsync()
+
+      expect(await promise).toBe('recovered')
+      expect(fn).toHaveBeenCalledTimes(2)
+    },
+  )
+
+  it('retries on undici fetch-failed wrapping ECONNRESET and succeeds', async () => {
+    const error = Object.assign(new TypeError('fetch failed'), {
+      cause: { code: 'ECONNRESET' },
+    })
+    const fn = vi
+      .fn()
+      .mockRejectedValueOnce(error)
+      .mockResolvedValueOnce('recovered')
+
+    const promise = withRetry(fn, [])
+    await vi.runAllTimersAsync()
+
+    expect(await promise).toBe('recovered')
+    expect(fn).toHaveBeenCalledTimes(2)
+  })
+
+  it('retries on AbortSignal.timeout TimeoutError and succeeds', async () => {
+    const error = Object.assign(new Error('timed out'), {
+      name: 'TimeoutError',
+    })
+    const fn = vi
+      .fn()
+      .mockRejectedValueOnce(error)
+      .mockResolvedValueOnce('recovered')
+
+    const promise = withRetry(fn, [])
+    await vi.runAllTimersAsync()
+
+    expect(await promise).toBe('recovered')
+    expect(fn).toHaveBeenCalledTimes(2)
+  })
+
   it('exhausts retries and throws on persistent 429', async () => {
     const error = Object.assign(new Error('rate limited'), { status: 429 })
     const fn = vi.fn().mockRejectedValue(error)
@@ -81,7 +178,7 @@ describe('withRetry', () => {
     const result = await promise
     expect(result).toBeInstanceOf(Error)
     expect((result as Error).message).toBe('rate limited')
-    // 1 initial + 3 retries = 4 total
-    expect(fn).toHaveBeenCalledTimes(4)
+    // 1 initial + 4 retries = 5 total
+    expect(fn).toHaveBeenCalledTimes(5)
   })
 })
