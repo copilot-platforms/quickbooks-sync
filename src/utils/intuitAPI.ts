@@ -30,6 +30,7 @@ import {
   CustomerQueryResponseType,
   CustomerQueryResponseSchema,
   QBItemsResponseSchema,
+  QBItemsResponseType,
   QBInvoiceResponseType,
   QBInvoiceResponseSchema,
   QBInvoiceDeleteResponseType,
@@ -182,7 +183,7 @@ export default class IntuitAPI {
     return customer.Customer
   }
 
-  async _createItem(payload: QBItemCreatePayloadType) {
+  async _createItem(payload: QBItemCreatePayloadType): Promise<QBItemRowType> {
     CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#createItem | Item creation start for realmId: ${this.tokens.intuitRealmId}. Payload: `,
@@ -199,11 +200,12 @@ export default class IntuitAPI {
       )
     }
 
+    const parsed = QBItemResponseSchema.parse(item)
     CustomLogger.info({
-      obj: { response: item.Item },
-      message: `IntuitAPI#createItem | item created with Id = ${item?.Item?.Id}. Response: `,
+      obj: { response: parsed.Item },
+      message: `IntuitAPI#createItem | item created with Id = ${parsed.Item?.Id}. Response: `,
     })
-    return item.Item
+    return parsed.Item
   }
 
   async _getSingleIncomeAccount() {
@@ -420,10 +422,14 @@ export default class IntuitAPI {
 
     if (!qbItem) return null
 
-    return qbItem.Item?.[0]
+    const parsed = QBItemQueryResponseSchema.parse(qbItem)
+    return parsed.Item?.[0] ?? null
   }
 
-  async _getAllItems(limit: number, columns: string[] = ['Id']) {
+  async _getAllItems(
+    limit: number,
+    columns: string[] = ['Id'],
+  ): Promise<QBItemsResponseType | null> {
     CustomLogger.info({
       message: `IntuitAPI#getAllItems | Item query start for realmId: ${this.tokens.intuitRealmId}`,
     })
