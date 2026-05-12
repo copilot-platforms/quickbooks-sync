@@ -16,10 +16,13 @@ import {
   QBDepositCreatePayloadType,
   QBDeletePayloadType,
   QBDestructiveInvoicePayloadSchema,
-  QBNameValueSchemaType,
+  QBItemRowType,
+  QBItemQueryResponseSchema,
   QBItemResponseType,
   QBItemResponseSchema,
   QBAccountUpdatePayloadType,
+  QBAccountRowType,
+  QBAccountQueryResponseSchema,
   QBAccountResponseType,
   QBAccountResponseSchema,
   CompanyInfoType,
@@ -27,6 +30,18 @@ import {
   CustomerQueryResponseType,
   CustomerQueryResponseSchema,
   QBItemsResponseSchema,
+  QBInvoiceResponseType,
+  QBInvoiceResponseSchema,
+  QBInvoiceDeleteResponseType,
+  QBInvoiceDeleteResponseSchema,
+  QBPaymentResponseType,
+  QBPaymentResponseSchema,
+  QBPaymentDeleteResponseType,
+  QBPaymentDeleteResponseSchema,
+  QBPurchaseResponseType,
+  QBPurchaseResponseSchema,
+  QBPurchaseDeleteResponseType,
+  QBPurchaseDeleteResponseSchema,
   SingleIdAndTokenResponseSchema,
 } from '@/type/dto/intuitAPI.dto'
 import { escapeForQBQuery, getNameAsCustomer } from '@/utils/string'
@@ -45,22 +60,6 @@ export type IntuitAPITokensType = Pick<
   | 'clientFeeRef'
   | 'bankAccountRef'
 > & { isSuspended?: boolean }
-
-export type BaseResponseType = {
-  Id: string
-  SyncToken: string
-  Active: boolean
-}
-
-export type AccountResponseType = BaseResponseType & {
-  Name: string
-}
-
-export type ItemResponseType = BaseResponseType & {
-  Name: string
-  ClassRef?: QBNameValueSchemaType
-  UnitPrice: number
-}
 
 export const IntuitAPIErrorMessage = '#IntuitAPIErrorMessage#'
 
@@ -388,17 +387,17 @@ export default class IntuitAPI {
     name: string,
     id?: undefined,
     includeInactive?: boolean,
-  ): Promise<ItemResponseType>
+  ): Promise<QBItemRowType>
   async _getAnItem(
     name: undefined,
     id: string,
     includeInactive?: boolean,
-  ): Promise<ItemResponseType>
+  ): Promise<QBItemRowType>
   async _getAnItem(
     name: string,
     id: string,
     includeInactive?: boolean,
-  ): Promise<ItemResponseType>
+  ): Promise<QBItemRowType>
   async _getAnItem(name?: string, id?: string, includeInactive?: boolean) {
     if (!name && !id) {
       throw new APIError(
@@ -667,17 +666,17 @@ export default class IntuitAPI {
     accountName: string,
     id?: undefined,
     includeInactive?: boolean,
-  ): Promise<AccountResponseType>
+  ): Promise<QBAccountRowType>
   async _getAnAccount(
     accountName: undefined,
     id: string,
     includeInactive?: boolean,
-  ): Promise<AccountResponseType>
+  ): Promise<QBAccountRowType>
   async _getAnAccount(
     accountName: string,
     id: string,
     includeInactive?: boolean,
-  ): Promise<AccountResponseType>
+  ): Promise<QBAccountRowType>
   async _getAnAccount(
     accountName?: string,
     id?: string,
@@ -886,17 +885,17 @@ export default class IntuitAPI {
       name: string,
       id?: undefined,
       includeInactive?: boolean,
-    ): Promise<ItemResponseType>
+    ): Promise<QBItemRowType>
     (
       name: undefined,
       id: string,
       includeInactive?: boolean,
-    ): Promise<ItemResponseType>
+    ): Promise<QBItemRowType>
     (
       name: string,
       id: string,
       includeInactive?: boolean,
-    ): Promise<ItemResponseType>
+    ): Promise<QBItemRowType>
   } = this._getAnItem.bind(this) as any
   getAllItems = this._getAllItems.bind(this)
   invoiceSparseUpdate = this.wrapWithRetry(this._invoiceSparseUpdate)
@@ -911,17 +910,17 @@ export default class IntuitAPI {
       accountName: string,
       id?: undefined,
       includeInactive?: boolean,
-    ): Promise<AccountResponseType>
+    ): Promise<QBAccountRowType>
     (
       accountName: undefined,
       id: string,
       includeInactive?: boolean,
-    ): Promise<AccountResponseType>
+    ): Promise<QBAccountRowType>
     (
       accountName: string,
       id: string,
       includeInactive?: boolean,
-    ): Promise<AccountResponseType>
+    ): Promise<QBAccountRowType>
   } = this._getAnAccount.bind(this) as any
   createAccount = this.wrapWithRetry(this._createAccount)
   updateAccount = this.wrapWithRetry(this._updateAccount)
