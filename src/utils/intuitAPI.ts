@@ -208,7 +208,7 @@ export default class IntuitAPI {
     return parsed.Item
   }
 
-  async _getSingleIncomeAccount() {
+  async _getSingleIncomeAccount(): Promise<QBAccountRowType | undefined> {
     CustomLogger.info({
       message: `IntuitAPI#getSingleIncomeAccount | Income account query start for realmId: ${this.tokens.intuitRealmId}`,
     })
@@ -221,7 +221,8 @@ export default class IntuitAPI {
         'IntuitAPI#getSingleIncomeAccount | Income account not found',
       )
 
-    return qbIncomeAccountRefInfo.Account?.[0]
+    const parsed = QBAccountQueryResponseSchema.parse(qbIncomeAccountRefInfo)
+    return parsed.Account?.[0]
   }
 
   /**
@@ -701,14 +702,17 @@ export default class IntuitAPI {
     queryCondition = `${queryCondition} AND Active IN (true${includeInactive ? ', false' : ''})` // By default, QB returns only active items.
 
     const query = `SELECT Id, SyncToken, Active, Name FROM Account where ${queryCondition}`
-    const customQuery = await this.customQuery(query)
+    const customQueryRes = await this.customQuery(query)
 
-    if (!customQuery) return null
+    if (!customQueryRes) return null
 
-    return customQuery.Account?.[0]
+    const parsed = QBAccountQueryResponseSchema.parse(customQueryRes)
+    return parsed.Account?.[0] ?? null
   }
 
-  async _createAccount(payload: QBAccountCreatePayloadType) {
+  async _createAccount(
+    payload: QBAccountCreatePayloadType,
+  ): Promise<QBAccountRowType> {
     CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#createAccount | Account create start for realmId: ${this.tokens.intuitRealmId}. `,
@@ -725,11 +729,12 @@ export default class IntuitAPI {
       )
     }
 
+    const parsed = QBAccountResponseSchema.parse(account)
     CustomLogger.info({
-      obj: { response: account.Account },
-      message: `IntuitAPI#createAccount | Account created with Id = ${account.Account?.Id}. `,
+      obj: { response: parsed.Account },
+      message: `IntuitAPI#createAccount | Account created with Id = ${parsed.Account?.Id}. `,
     })
-    return account.Account
+    return parsed.Account
   }
 
   async _createPurchase(payload: QBPurchaseCreatePayloadType) {
