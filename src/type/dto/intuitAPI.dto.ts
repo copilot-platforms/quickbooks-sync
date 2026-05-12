@@ -289,13 +289,40 @@ export type CustomerQueryResponseType = z.infer<
   typeof CustomerQueryResponseSchema
 >
 
+export const QBInvoiceRowSchema = z
+  .object({
+    Id: z.string(),
+    SyncToken: z.string(),
+    DocNumber: z.string().optional(),
+    Balance: z.number().optional(),
+    TotalAmt: z.number().optional(),
+    TxnDate: z.string().optional(),
+    DueDate: z.string().optional(),
+    PrivateNote: z.string().optional(),
+    CustomerRef: QBNameValueSchema.optional(),
+  })
+  .passthrough()
+export type QBInvoiceRowType = z.infer<typeof QBInvoiceRowSchema>
+
+// Envelope returned by createInvoice / invoiceSparseUpdate / voidInvoice.
 export const QBInvoiceResponseSchema = z.object({
-  Id: z.string(),
-  Balance: z.number(),
-  PrivateNote: z.string().optional(),
-  SyncToken: z.string(),
+  Invoice: QBInvoiceRowSchema,
+  time: z.string().optional(),
 })
 export type QBInvoiceResponseType = z.infer<typeof QBInvoiceResponseSchema>
+
+// Envelope returned by deleteInvoice (no full row, just deletion confirmation).
+export const QBInvoiceDeleteResponseSchema = z.object({
+  Invoice: z.object({
+    Id: z.string(),
+    status: z.string().optional(),
+    domain: z.string().optional(),
+  }),
+  time: z.string().optional(),
+})
+export type QBInvoiceDeleteResponseType = z.infer<
+  typeof QBInvoiceDeleteResponseSchema
+>
 
 export const QBPurchaseResponseSchema = z.object({
   Id: z.string(),
