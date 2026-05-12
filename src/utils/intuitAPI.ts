@@ -562,7 +562,9 @@ export default class IntuitAPI {
     return parsedAccount
   }
 
-  async _createPayment(payload: QBPaymentCreatePayloadType) {
+  async _createPayment(
+    payload: QBPaymentCreatePayloadType,
+  ): Promise<QBPaymentResponseType> {
     CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#createPayment | payment creation start for realmId: ${this.tokens.intuitRealmId}. `,
@@ -579,11 +581,12 @@ export default class IntuitAPI {
       )
     }
 
+    const parsed = QBPaymentResponseSchema.parse(payment)
     CustomLogger.info({
-      obj: { response: payment.Payment },
-      message: `IntuitAPI#createPayment | payment created with Id = ${payment.Payment?.Id}.`,
+      obj: { response: parsed.Payment },
+      message: `IntuitAPI#createPayment | payment created with Id = ${parsed.Payment.Id}.`,
     })
-    return payment
+    return parsed
   }
 
   async _getInvoice(
@@ -659,7 +662,9 @@ export default class IntuitAPI {
     return parsed
   }
 
-  async _deletePayment(payload: QBDeletePayloadType) {
+  async _deletePayment(
+    payload: QBDeletePayloadType,
+  ): Promise<QBPaymentDeleteResponseType> {
     CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#deletePayment | payment delete start for realmId: ${this.tokens.intuitRealmId}. `,
@@ -676,11 +681,12 @@ export default class IntuitAPI {
       )
     }
 
+    const parsed = QBPaymentDeleteResponseSchema.parse(payment)
     CustomLogger.info({
-      obj: { response: payment.Payment },
-      message: `IntuitAPI#deletePayment | payment deleted with Id = ${payment.Payment?.Id}. `,
+      obj: { response: parsed.Payment },
+      message: `IntuitAPI#deletePayment | payment deleted with Id = ${parsed.Payment.Id}. `,
     })
-    return payment
+    return parsed
   }
 
   /**
@@ -754,7 +760,9 @@ export default class IntuitAPI {
     return parsed.Account
   }
 
-  async _createPurchase(payload: QBPurchaseCreatePayloadType) {
+  async _createPurchase(
+    payload: QBPurchaseCreatePayloadType,
+  ): Promise<QBPurchaseResponseType> {
     CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#createPurchase | Purchase create start for realmId: ${this.tokens.intuitRealmId}.`,
@@ -771,11 +779,12 @@ export default class IntuitAPI {
       )
     }
 
+    const parsed = QBPurchaseResponseSchema.parse(purchase)
     CustomLogger.info({
-      obj: { response: purchase.Purchase },
-      message: `IntuitAPI#createPurchase | Purchase created with Id = ${purchase.Purchase?.Id}.`,
+      obj: { response: parsed.Purchase },
+      message: `IntuitAPI#createPurchase | Purchase created with Id = ${parsed.Purchase.Id}.`,
     })
-    return purchase
+    return parsed
   }
 
   async _createDeposit(payload: QBDepositCreatePayloadType) {
@@ -808,7 +817,9 @@ export default class IntuitAPI {
     return deposit
   }
 
-  async _deletePurchase(payload: QBDeletePayloadType) {
+  async _deletePurchase(
+    payload: QBDeletePayloadType,
+  ): Promise<QBPurchaseDeleteResponseType> {
     CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#deletePurchase | purchase delete start for realmId: ${this.tokens.intuitRealmId}.`,
@@ -825,11 +836,12 @@ export default class IntuitAPI {
       )
     }
 
+    const parsed = QBPurchaseDeleteResponseSchema.parse(purchase)
     CustomLogger.info({
-      obj: { response: purchase.Purchase },
-      message: `IntuitAPI#deletePurchase | purchase deleted with Id = ${purchase.Purchase?.Id}. `,
+      obj: { response: parsed.Purchase },
+      message: `IntuitAPI#deletePurchase | purchase deleted with Id = ${parsed.Purchase.Id}. `,
     })
-    return purchase
+    return parsed
   }
 
   async _getCompanyInfo(): Promise<CompanyInfoType['CompanyInfo'][0]> {
