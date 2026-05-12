@@ -96,16 +96,15 @@ export type QBItemFullUpdatePayloadType = z.infer<
   typeof QBItemFullUpdatePayloadSchema
 >
 
-export const QBItemRowSchema = z
-  .object({
-    Id: z.string(),
-    SyncToken: z.string(),
-    Name: z.string(),
-    ClassRef: QBNameValueSchema.optional(),
-    Active: z.boolean(),
-    UnitPrice: z.number(),
-  })
-  .passthrough()
+export const QBItemRowSchema = z.object({
+  Id: z.string(),
+  SyncToken: z.string(),
+  Name: z.string(),
+  ClassRef: QBNameValueSchema.optional(),
+  Active: z.boolean().optional(),
+  UnitPrice: z.number(),
+  Description: z.string().optional(),
+})
 export type QBItemRowType = z.infer<typeof QBItemRowSchema>
 
 export const QBItemResponseSchema = z.object({
@@ -181,14 +180,12 @@ export type QBAccountUpdatePayloadType = z.infer<
   typeof QBAccountUpdatePayloadSchema
 >
 
-export const QBAccountRowSchema = z
-  .object({
-    Id: z.string(),
-    Name: z.string(),
-    SyncToken: z.string(),
-    Active: z.boolean(),
-  })
-  .passthrough()
+export const QBAccountRowSchema = z.object({
+  Id: z.string(),
+  Name: z.string(),
+  SyncToken: z.string(),
+  Active: z.boolean(),
+})
 export type QBAccountRowType = z.infer<typeof QBAccountRowSchema>
 
 export const QBAccountResponseSchema = z.object({
@@ -267,26 +264,24 @@ export type QBDeletePayloadType = z.infer<typeof QBDeletePayloadSchema>
 export const CompanyInfoSchema = z.object({
   CompanyInfo: z.array(
     z.object({
-      Country: z.string(),
+      Country: z.string().optional(),
     }),
   ),
 })
 export type CompanyInfoType = z.infer<typeof CompanyInfoSchema>
 
-export const CustomerQueryResponseSchema = z
-  .object({
-    Id: z.string(),
-    SyncToken: z.string(),
-    Active: z.boolean(),
-    CompanyName: z.string().optional(),
-    FullyQualifiedName: z.string().optional(),
-    PrimaryEmailAddr: z
-      .object({
-        Address: z.string(),
-      })
-      .optional(),
-  })
-  .passthrough()
+export const CustomerQueryResponseSchema = z.object({
+  Id: z.string(),
+  SyncToken: z.string(),
+  Active: z.boolean(),
+  CompanyName: z.string().optional(),
+  FullyQualifiedName: z.string().optional(),
+  PrimaryEmailAddr: z
+    .object({
+      Address: z.string(),
+    })
+    .optional(),
+})
 
 export type CustomerQueryResponseType = z.infer<
   typeof CustomerQueryResponseSchema
@@ -296,21 +291,18 @@ export type CustomerQueryResponseType = z.infer<
 // `unknown` (not `z.string()`) because mid-walk we tolerate QBO returning
 // malformed rows (null/number/missing Address) without failing the whole page;
 // the find() predicate narrows with `typeof addr === 'string'`.
-export const CustomerListRowSchema = z
-  .object({
-    Id: z.string(),
-    SyncToken: z.string(),
-    Active: z.boolean(),
-    CompanyName: z.string().optional(),
-    FullyQualifiedName: z.string().optional(),
-    PrimaryEmailAddr: z
-      .object({
-        Address: z.unknown(),
-      })
-      .passthrough()
-      .optional(),
-  })
-  .passthrough()
+export const CustomerListRowSchema = z.object({
+  Id: z.string(),
+  SyncToken: z.string(),
+  Active: z.boolean(),
+  CompanyName: z.string().optional(),
+  FullyQualifiedName: z.string().optional(),
+  PrimaryEmailAddr: z
+    .object({
+      Address: z.string(),
+    })
+    .optional(),
+})
 export type CustomerListRowType = z.infer<typeof CustomerListRowSchema>
 
 export const CustomerListEnvelopeSchema = z.object({
@@ -320,19 +312,17 @@ export type CustomerListEnvelopeType = z.infer<
   typeof CustomerListEnvelopeSchema
 >
 
-export const QBInvoiceRowSchema = z
-  .object({
-    Id: z.string(),
-    SyncToken: z.string(),
-    DocNumber: z.string().optional(),
-    Balance: z.number().optional(),
-    TotalAmt: z.number().optional(),
-    TxnDate: z.string().optional(),
-    DueDate: z.string().optional(),
-    PrivateNote: z.string().optional(),
-    CustomerRef: QBNameValueSchema.optional(),
-  })
-  .passthrough()
+export const QBInvoiceRowSchema = z.object({
+  Id: z.string(),
+  SyncToken: z.string(),
+  DocNumber: z.string().optional(),
+  Balance: z.number().optional(),
+  TotalAmt: z.number().optional(),
+  TxnDate: z.string().optional(),
+  DueDate: z.string().optional(),
+  PrivateNote: z.string().optional(),
+  CustomerRef: QBNameValueSchema.optional(),
+})
 export type QBInvoiceRowType = z.infer<typeof QBInvoiceRowSchema>
 
 // Envelope returned by createInvoice / invoiceSparseUpdate / voidInvoice.
@@ -364,16 +354,14 @@ export type QBInvoiceDeleteResponseType = z.infer<
   typeof QBInvoiceDeleteResponseSchema
 >
 
-export const QBPurchaseRowSchema = z
-  .object({
-    Id: z.string(),
-    SyncToken: z.string(),
-    TotalAmt: z.number(),
-    TxnDate: z.string().optional(),
-    AccountRef: QBNameValueSchema.optional(),
-    PaymentType: z.string().optional(),
-  })
-  .passthrough()
+export const QBPurchaseRowSchema = z.object({
+  Id: z.string(),
+  SyncToken: z.string(),
+  TotalAmt: z.number(),
+  TxnDate: z.string().optional(),
+  AccountRef: QBNameValueSchema.optional(),
+  PaymentType: z.string().optional(),
+})
 export type QBPurchaseRowType = z.infer<typeof QBPurchaseRowSchema>
 
 export const QBPurchaseResponseSchema = z.object({
@@ -394,30 +382,28 @@ export type QBPurchaseDeleteResponseType = z.infer<
   typeof QBPurchaseDeleteResponseSchema
 >
 
-export const QBPaymentRowSchema = z
-  .object({
-    Id: z.string(),
-    SyncToken: z.string().optional(),
-    TotalAmt: z.number(),
-    TxnDate: z.string().optional(),
-    CustomerRef: QBNameValueSchema.optional(),
-    Line: z
-      .array(
-        z.object({
-          Amount: z.number().optional(),
-          LinkedTxn: z
-            .array(
-              z.object({
-                TxnId: z.string(),
-                TxnType: z.string(),
-              }),
-            )
-            .optional(),
-        }),
-      )
-      .optional(),
-  })
-  .passthrough()
+export const QBPaymentRowSchema = z.object({
+  Id: z.string(),
+  SyncToken: z.string(),
+  TotalAmt: z.number(),
+  TxnDate: z.string().optional(),
+  CustomerRef: QBNameValueSchema.optional(),
+  Line: z
+    .array(
+      z.object({
+        Amount: z.number().optional(),
+        LinkedTxn: z
+          .array(
+            z.object({
+              TxnId: z.string(),
+              TxnType: z.string(),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .optional(),
+})
 export type QBPaymentRowType = z.infer<typeof QBPaymentRowSchema>
 
 export const QBPaymentResponseSchema = z.object({

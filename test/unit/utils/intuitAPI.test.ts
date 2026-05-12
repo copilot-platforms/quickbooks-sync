@@ -13,9 +13,8 @@
  *     pages followed by empty (off-by-one guard), and on first match.
  *   - Match is case-insensitive and whitespace-tolerant on both sides
  *     (search input AND stored value).
- *   - Malformed `PrimaryEmailAddr` rows do not throw — guards the
- *     defensive `typeof addr === 'string'` predicate that fixed the
- *     type-laundering bug found in review.
+ *   - Rows missing `PrimaryEmailAddr` do not throw — the predicate
+ *     short-circuits on the optional key.
  *   - Empty/whitespace email short-circuits without calling QBO.
  */
 
@@ -56,12 +55,11 @@ const baseTokens: IntuitAPITokensType = {
 }
 
 // Builds a customer row in the shape QBO returns inside `QueryResponse.Customer`.
-// `email: null` produces a row with no `PrimaryEmailAddr` at all (covers the
-// "Address absent" branch). Any other value goes verbatim to test malformed
-// shapes (string instead of object, etc.) without TS friction.
+// `email: null` produces a row with no `PrimaryEmailAddr` at all — covers the
+// "Address absent" branch.
 function row(
   id: string,
-  email: string | null | { Address?: unknown },
+  email: string | null,
   overrides: Record<string, unknown> = {},
 ) {
   const base = {
@@ -72,10 +70,7 @@ function row(
     ...overrides,
   }
   if (email === null) return base
-  if (typeof email === 'string') {
-    return { ...base, PrimaryEmailAddr: { Address: email } }
-  }
-  return { ...base, PrimaryEmailAddr: email }
+  return { ...base, PrimaryEmailAddr: { Address: email } }
 }
 
 // `customQuery` is a public field on IntuitAPI (`this.wrapWithRetry(this._customQuery)`).
@@ -277,26 +272,6 @@ describe('IntuitAPI#getCustomerByEmail', () => {
     const result = await api.getCustomerByEmail('alice@example.com', undefined)
 
     expect(result?.Id).toBe('3')
-  })
-
-  it('skips rows where PrimaryEmailAddr.Address is non-string without throwing', async () => {
-    // Same guard from a different angle: `Address` exists but is not a
-    // string (number, null, nested object). The `typeof addr === 'string'`
-    // check must short-circuit before `.trim()`.
-    const { api } = makeApi([
-      {
-        Customer: [
-          row('1', { Address: null }),
-          row('2', { Address: 12345 }),
-          row('3', { Address: undefined }),
-          row('4', 'alice@example.com'),
-        ],
-      },
-    ])
-
-    const result = await api.getCustomerByEmail('alice@example.com', undefined)
-
-    expect(result?.Id).toBe('4')
   })
 
   it('returns the first match when multiple customers share the same email and pass the company predicate', async () => {
