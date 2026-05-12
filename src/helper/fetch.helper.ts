@@ -77,7 +77,7 @@ const resolveSignal = (opts: FetcherOptions): AbortSignal | undefined => {
 export const postFetcher = async (
   url: string,
   headers: Record<string, string>,
-  body: Record<string, any>,
+  body: Record<string, unknown>,
   opts: FetcherOptions = {},
 ) => {
   const response = await fetch(url, {

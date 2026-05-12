@@ -292,6 +292,34 @@ export type CustomerQueryResponseType = z.infer<
   typeof CustomerQueryResponseSchema
 >
 
+// Envelope row used for the paginated email walk. PrimaryEmailAddr.Address is
+// `unknown` (not `z.string()`) because mid-walk we tolerate QBO returning
+// malformed rows (null/number/missing Address) without failing the whole page;
+// the find() predicate narrows with `typeof addr === 'string'`.
+export const CustomerListRowSchema = z
+  .object({
+    Id: z.string(),
+    SyncToken: z.string(),
+    Active: z.boolean(),
+    CompanyName: z.string().optional(),
+    FullyQualifiedName: z.string().optional(),
+    PrimaryEmailAddr: z
+      .object({
+        Address: z.unknown(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough()
+export type CustomerListRowType = z.infer<typeof CustomerListRowSchema>
+
+export const CustomerListEnvelopeSchema = z.object({
+  Customer: z.array(CustomerListRowSchema).optional(),
+})
+export type CustomerListEnvelopeType = z.infer<
+  typeof CustomerListEnvelopeSchema
+>
+
 export const QBInvoiceRowSchema = z
   .object({
     Id: z.string(),
@@ -313,6 +341,15 @@ export const QBInvoiceResponseSchema = z.object({
   time: z.string().optional(),
 })
 export type QBInvoiceResponseType = z.infer<typeof QBInvoiceResponseSchema>
+
+// Envelope returned by customQuery for SELECT ... FROM Invoice. Invoice is
+// optional because QBO omits the key when there are zero results.
+export const QBInvoiceQueryResponseSchema = z.object({
+  Invoice: z.array(QBInvoiceRowSchema).optional(),
+})
+export type QBInvoiceQueryResponseType = z.infer<
+  typeof QBInvoiceQueryResponseSchema
+>
 
 // Envelope returned by deleteInvoice (no full row, just deletion confirmation).
 export const QBInvoiceDeleteResponseSchema = z.object({

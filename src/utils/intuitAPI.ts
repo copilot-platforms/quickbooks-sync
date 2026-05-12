@@ -45,10 +45,13 @@ import {
   QBPurchaseDeleteResponseSchema,
   SingleIdAndTokenResponseSchema,
   SingleIdAndTokenResponseType,
+  QBInvoiceQueryResponseSchema,
+  CustomerListEnvelopeSchema,
 } from '@/type/dto/intuitAPI.dto'
 import { escapeForQBQuery, getNameAsCustomer } from '@/utils/string'
 import CustomLogger from '@/utils/logger'
 import httpStatus from 'http-status'
+import { z } from 'zod'
 
 export type IntuitAPITokensType = Pick<
   QBPortalConnectionSelectSchemaType,
@@ -64,6 +67,56 @@ export type IntuitAPITokensType = Pick<
 > & { isSuspended?: boolean }
 
 export const IntuitAPIErrorMessage = '#IntuitAPIErrorMessage#'
+
+type GetACustomerOverloads = {
+  (
+    displayName: string,
+    id?: undefined,
+    includeInactive?: boolean,
+  ): Promise<CustomerQueryResponseType>
+  (
+    displayName: undefined,
+    id: string,
+    includeInactive?: boolean,
+  ): Promise<CustomerQueryResponseType>
+  (
+    displayName: string,
+    id: string,
+    includeInactive?: boolean,
+  ): Promise<CustomerQueryResponseType>
+}
+
+type GetAnItemOverloads = {
+  (
+    name: string,
+    id?: undefined,
+    includeInactive?: boolean,
+  ): Promise<QBItemRowType>
+  (
+    name: undefined,
+    id: string,
+    includeInactive?: boolean,
+  ): Promise<QBItemRowType>
+  (name: string, id: string, includeInactive?: boolean): Promise<QBItemRowType>
+}
+
+type GetAnAccountOverloads = {
+  (
+    accountName: string,
+    id?: undefined,
+    includeInactive?: boolean,
+  ): Promise<QBAccountRowType>
+  (
+    accountName: undefined,
+    id: string,
+    includeInactive?: boolean,
+  ): Promise<QBAccountRowType>
+  (
+    accountName: string,
+    id: string,
+    includeInactive?: boolean,
+  ): Promise<QBAccountRowType>
+}
 
 // Upper bound on the " (Customer) N" suffix counter when resolving a unique
 // DisplayName. If exceeded, creation is aborted and a human is paged — having
@@ -92,7 +145,7 @@ export default class IntuitAPI {
    */
   private async postFetchWithHeaders(
     url: string,
-    body: Record<string, any>,
+    body: unknown,
     customHeaders?: Record<string, string>,
   ) {
     const headers = {
@@ -118,7 +171,7 @@ export default class IntuitAPI {
     return response
   }
 
-  async _customQuery(query: string) {
+  async _customQuery(query: string): Promise<unknown> {
     CustomLogger.info({ message: 'IntuitAPI#customQuery', obj: { query } })
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/query?query=${encodeURIComponent(query)}&minorversion=${intuitApiMinorVersion}`
     const res = await this.getFetchWithHeader(url)
@@ -276,8 +329,9 @@ export default class IntuitAPI {
 
     if (!qbCustomers) return null
 
-    if (!qbCustomers.Customer) return
-    return CustomerQueryResponseSchema.parse(qbCustomers.Customer[0])
+    const envelope = CustomerListEnvelopeSchema.parse(qbCustomers)
+    if (!envelope.Customer) return
+    return CustomerQueryResponseSchema.parse(envelope.Customer[0])
   }
 
   // QBO's parser mishandles special chars on PrimaryEmailAddr filters, so we
@@ -303,10 +357,11 @@ export default class IntuitAPI {
     while (true) {
       const customerQuery = `SELECT Id, SyncToken, Active, CompanyName, PrimaryEmailAddr FROM Customer WHERE Active IN (true, false) ORDERBY Id ASC STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
       const qbCustomers = await this.customQuery(customerQuery)
-      const customers = qbCustomers?.Customer ?? []
+      const envelope = CustomerListEnvelopeSchema.parse(qbCustomers ?? {})
+      const customers = envelope.Customer ?? []
       if (customers.length === 0) return
 
-      const match = customers.find((c: CustomerQueryResponseType) => {
+      const match = customers.find((c) => {
         const addr = c.PrimaryEmailAddr?.Address
         if (typeof addr !== 'string') return false
         if (addr.trim().toLowerCase() !== needle) return false
@@ -367,13 +422,30 @@ export default class IntuitAPI {
     // Case-insensitive comparison: QBO's DisplayName equality is case-
     // insensitive, so a returned record may differ in case from our candidate.
     const usedNames = new Set<string>()
-    for (const c of customerRes?.Customer ?? []) {
+    const customerNameEnv = z
+      .object({
+        Customer: z.array(z.object({ DisplayName: z.string() })).optional(),
+      })
+      .parse(customerRes ?? {})
+    for (const c of customerNameEnv.Customer ?? []) {
       usedNames.add(c.DisplayName.toLowerCase())
     }
-    for (const v of vendorRes?.Vendor ?? []) {
+
+    const vendorNameEnv = z
+      .object({
+        Vendor: z.array(z.object({ DisplayName: z.string() })).optional(),
+      })
+      .parse(vendorRes ?? {})
+    for (const v of vendorNameEnv.Vendor ?? []) {
       usedNames.add(v.DisplayName.toLowerCase())
     }
-    for (const e of employeeRes?.Employee ?? []) {
+
+    const employeeNameEnv = z
+      .object({
+        Employee: z.array(z.object({ DisplayName: z.string() })).optional(),
+      })
+      .parse(employeeRes ?? {})
+    for (const e of employeeNameEnv.Employee ?? []) {
       usedNames.add(e.DisplayName.toLowerCase())
     }
 
@@ -449,7 +521,8 @@ export default class IntuitAPI {
 
     if (!qbItems) return null
 
-    return QBItemsResponseSchema.parse(qbItems.Item || [])
+    const envelope = QBItemQueryResponseSchema.parse(qbItems)
+    return QBItemsResponseSchema.parse(envelope.Item || [])
   }
 
   async _invoiceSparseUpdate(
@@ -599,13 +672,20 @@ export default class IntuitAPI {
     const query = `select Id, SyncToken, DocNumber from Invoice where DocNumber = '${escapeForQBQuery(invoiceNumber)}' maxresults 1`
     const invoice = await this.customQuery(query)
 
-    if (!invoice.Invoice) return null
+    if (!invoice)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#getInvoice | message = no response',
+      )
+
+    const envelope = QBInvoiceQueryResponseSchema.parse(invoice)
+    if (!envelope.Invoice || envelope.Invoice.length === 0) return null
 
     CustomLogger.info({
-      obj: { response: invoice.Invoice },
+      obj: { response: envelope.Invoice },
       message: `IntuitAPI#getInvoice | invoice fetched with doc number = ${invoiceNumber}.`,
     })
-    return SingleIdAndTokenResponseSchema.parse(invoice.Invoice[0])
+    return SingleIdAndTokenResponseSchema.parse(envelope.Invoice[0])
   }
 
   async _voidInvoice(
@@ -899,44 +979,16 @@ export default class IntuitAPI {
   createCustomer = this.wrapWithRetry(this._createCustomer)
   createItem = this.wrapWithRetry(this._createItem)
   getSingleIncomeAccount = this._getSingleIncomeAccount.bind(this)
-  getACustomer: {
-    (
-      displayName: string,
-      id?: undefined,
-      includeInactive?: boolean,
-    ): Promise<CustomerQueryResponseType>
-    (
-      displayName: undefined,
-      id: string,
-      includeInactive?: boolean,
-    ): Promise<CustomerQueryResponseType>
-    (
-      displayName: string,
-      id: string,
-      includeInactive?: boolean,
-    ): Promise<CustomerQueryResponseType>
-  } = this._getACustomer.bind(this) as any
-  // Additional rationale beyond the wrap convention: a transient 429 mid-walk
-  // would replay from page 1 and amplify rate-limit pressure (same reasoning
-  // as resolveUniqueCustomerName).
+  getACustomer: GetACustomerOverloads = this._getACustomer.bind(
+    this,
+  ) as unknown as GetACustomerOverloads
+  // Intentionally NOT wrapped in wrapWithRetry — a transient 429 mid-walk would
+  // replay from page 1 and amplify rate-limit pressure. The inner customQuery
+  // calls already retry on 429 (same reasoning as resolveUniqueCustomerName).
   getCustomerByEmail = this._getCustomerByEmail.bind(this)
-  getAnItem: {
-    (
-      name: string,
-      id?: undefined,
-      includeInactive?: boolean,
-    ): Promise<QBItemRowType>
-    (
-      name: undefined,
-      id: string,
-      includeInactive?: boolean,
-    ): Promise<QBItemRowType>
-    (
-      name: string,
-      id: string,
-      includeInactive?: boolean,
-    ): Promise<QBItemRowType>
-  } = this._getAnItem.bind(this) as any
+  getAnItem: GetAnItemOverloads = this._getAnItem.bind(
+    this,
+  ) as unknown as GetAnItemOverloads
   getAllItems = this._getAllItems.bind(this)
   invoiceSparseUpdate = this.wrapWithRetry(this._invoiceSparseUpdate)
   customerSparseUpdate = this.wrapWithRetry(this._customerSparseUpdate)
@@ -945,23 +997,9 @@ export default class IntuitAPI {
   getInvoice = this._getInvoice.bind(this)
   voidInvoice = this.wrapWithRetry(this._voidInvoice)
   deleteInvoice = this.wrapWithRetry(this._deleteInvoice)
-  getAnAccount: {
-    (
-      accountName: string,
-      id?: undefined,
-      includeInactive?: boolean,
-    ): Promise<QBAccountRowType>
-    (
-      accountName: undefined,
-      id: string,
-      includeInactive?: boolean,
-    ): Promise<QBAccountRowType>
-    (
-      accountName: string,
-      id: string,
-      includeInactive?: boolean,
-    ): Promise<QBAccountRowType>
-  } = this._getAnAccount.bind(this) as any
+  getAnAccount: GetAnAccountOverloads = this._getAnAccount.bind(
+    this,
+  ) as unknown as GetAnAccountOverloads
   createAccount = this.wrapWithRetry(this._createAccount)
   updateAccount = this.wrapWithRetry(this._updateAccount)
   createPurchase = this.wrapWithRetry(this._createPurchase)
