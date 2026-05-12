@@ -287,10 +287,6 @@ export type CustomerQueryResponseType = z.infer<
   typeof CustomerQueryResponseSchema
 >
 
-// Envelope row used for the paginated email walk. PrimaryEmailAddr.Address is
-// `unknown` (not `z.string()`) because mid-walk we tolerate QBO returning
-// malformed rows (null/number/missing Address) without failing the whole page;
-// the find() predicate narrows with `typeof addr === 'string'`.
 export const CustomerListRowSchema = z.object({
   Id: z.string(),
   SyncToken: z.string(),
