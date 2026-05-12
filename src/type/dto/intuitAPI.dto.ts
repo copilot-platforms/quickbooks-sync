@@ -96,17 +96,29 @@ export type QBItemFullUpdatePayloadType = z.infer<
   typeof QBItemFullUpdatePayloadSchema
 >
 
-export const QBItemResponseSchema = z.object({
-  Item: z.object({
+export const QBItemRowSchema = z
+  .object({
     Id: z.string(),
     SyncToken: z.string(),
     Name: z.string(),
     ClassRef: QBNameValueSchema.optional(),
     Active: z.boolean(),
     UnitPrice: z.number(),
-  }),
+  })
+  .passthrough()
+export type QBItemRowType = z.infer<typeof QBItemRowSchema>
+
+export const QBItemResponseSchema = z.object({
+  Item: QBItemRowSchema,
 })
 export type QBItemResponseType = z.infer<typeof QBItemResponseSchema>
+
+// Envelope returned by `customQuery` for `SELECT ... FROM Item`. Item is
+// optional because QBO omits the key when there are zero results.
+export const QBItemQueryResponseSchema = z.object({
+  Item: z.array(QBItemRowSchema).optional(),
+})
+export type QBItemQueryResponseType = z.infer<typeof QBItemQueryResponseSchema>
 
 export const QBPaymentCreatePayloadSchema = z.object({
   TotalAmt: z.number(),
@@ -169,15 +181,27 @@ export type QBAccountUpdatePayloadType = z.infer<
   typeof QBAccountUpdatePayloadSchema
 >
 
-export const QBAccountResponseSchema = z.object({
-  Account: z.object({
+export const QBAccountRowSchema = z
+  .object({
     Id: z.string(),
     Name: z.string(),
     SyncToken: z.string(),
     Active: z.boolean(),
-  }),
+  })
+  .passthrough()
+export type QBAccountRowType = z.infer<typeof QBAccountRowSchema>
+
+export const QBAccountResponseSchema = z.object({
+  Account: QBAccountRowSchema,
 })
 export type QBAccountResponseType = z.infer<typeof QBAccountResponseSchema>
+
+export const QBAccountQueryResponseSchema = z.object({
+  Account: z.array(QBAccountRowSchema).optional(),
+})
+export type QBAccountQueryResponseType = z.infer<
+  typeof QBAccountQueryResponseSchema
+>
 
 export const QBPurchaseCreatePayloadSchema = z.object({
   PaymentType: z.literal('Cash'),
