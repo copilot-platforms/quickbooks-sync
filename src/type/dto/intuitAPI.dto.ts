@@ -367,7 +367,7 @@ export type QBInvoiceDeleteResponseType = z.infer<
 export const QBPurchaseRowSchema = z
   .object({
     Id: z.string(),
-    SyncToken: z.string().optional(),
+    SyncToken: z.string(),
     TotalAmt: z.number(),
     TxnDate: z.string().optional(),
     AccountRef: QBNameValueSchema.optional(),
