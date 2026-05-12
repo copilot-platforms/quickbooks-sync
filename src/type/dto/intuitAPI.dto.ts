@@ -324,11 +324,79 @@ export type QBInvoiceDeleteResponseType = z.infer<
   typeof QBInvoiceDeleteResponseSchema
 >
 
+export const QBPurchaseRowSchema = z
+  .object({
+    Id: z.string(),
+    SyncToken: z.string().optional(),
+    TotalAmt: z.number(),
+    TxnDate: z.string().optional(),
+    AccountRef: QBNameValueSchema.optional(),
+    PaymentType: z.string().optional(),
+  })
+  .passthrough()
+export type QBPurchaseRowType = z.infer<typeof QBPurchaseRowSchema>
+
 export const QBPurchaseResponseSchema = z.object({
-  Id: z.string(),
-  TotalAmt: z.number(),
+  Purchase: QBPurchaseRowSchema,
+  time: z.string().optional(),
 })
 export type QBPurchaseResponseType = z.infer<typeof QBPurchaseResponseSchema>
+
+export const QBPurchaseDeleteResponseSchema = z.object({
+  Purchase: z.object({
+    Id: z.string(),
+    status: z.string().optional(),
+    domain: z.string().optional(),
+  }),
+  time: z.string().optional(),
+})
+export type QBPurchaseDeleteResponseType = z.infer<
+  typeof QBPurchaseDeleteResponseSchema
+>
+
+export const QBPaymentRowSchema = z
+  .object({
+    Id: z.string(),
+    SyncToken: z.string().optional(),
+    TotalAmt: z.number(),
+    TxnDate: z.string().optional(),
+    CustomerRef: QBNameValueSchema.optional(),
+    Line: z
+      .array(
+        z.object({
+          Amount: z.number().optional(),
+          LinkedTxn: z
+            .array(
+              z.object({
+                TxnId: z.string(),
+                TxnType: z.string(),
+              }),
+            )
+            .optional(),
+        }),
+      )
+      .optional(),
+  })
+  .passthrough()
+export type QBPaymentRowType = z.infer<typeof QBPaymentRowSchema>
+
+export const QBPaymentResponseSchema = z.object({
+  Payment: QBPaymentRowSchema,
+  time: z.string().optional(),
+})
+export type QBPaymentResponseType = z.infer<typeof QBPaymentResponseSchema>
+
+export const QBPaymentDeleteResponseSchema = z.object({
+  Payment: z.object({
+    Id: z.string(),
+    status: z.string().optional(),
+    domain: z.string().optional(),
+  }),
+  time: z.string().optional(),
+})
+export type QBPaymentDeleteResponseType = z.infer<
+  typeof QBPaymentDeleteResponseSchema
+>
 
 export const QBItemsResponseSchema = z.array(
   z.object({
