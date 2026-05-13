@@ -286,11 +286,15 @@ export const CustomerQueryResponseSchema = z.object({
   Active: z.boolean(),
   CompanyName: z.string().optional(),
   FullyQualifiedName: z.string().optional(),
+  // PrimaryEmailAddr and its Address are .nullish() because a single
+  // malformed row (null email object, or present-but-null Address) must not
+  // ZodError the entire paginated walk in _getCustomerByEmail. The find()
+  // predicate narrows with `typeof addr === 'string'`.
   PrimaryEmailAddr: z
     .object({
-      Address: z.string(),
+      Address: z.string().nullish(),
     })
-    .optional(),
+    .nullish(),
 })
 
 export type CustomerQueryResponseType = z.infer<

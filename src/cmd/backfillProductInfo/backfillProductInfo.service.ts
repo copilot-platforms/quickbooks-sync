@@ -69,13 +69,7 @@ export class BackfillProductInfoService extends BaseService {
       }
 
       const intuitApi = new IntuitAPI(qbTokenInfo)
-      const allQbItems = await intuitApi.getAllItems(MAX_PRODUCT_LIST_LIMIT, [
-        'Id',
-        'Name',
-        'UnitPrice',
-        'Description',
-        'SyncToken',
-      ])
+      const allQbItems = await intuitApi.getAllItems(MAX_PRODUCT_LIST_LIMIT)
 
       // 3. update the product info in our mapping table
       for (const mappedProduct of mappedProducts) {

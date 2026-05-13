@@ -91,8 +91,7 @@ describe('IntuitAPI customQuery-based reads', () => {
     await expect(api.getSingleIncomeAccount()).rejects.toBeInstanceOf(APIError)
   })
 
-  it('getAllItems parses rows from a caller-supplied column projection that omits Active', async () => {
-    // Regression guard: mirrors backfillProductInfo's column list (no Active).
+  it('getAllItems parses rows including null Description (QBO returns null for empty)', async () => {
     vi.mocked(getFetcher).mockResolvedValue(
       queryResponse({
         Item: [
@@ -115,13 +114,7 @@ describe('IntuitAPI customQuery-based reads', () => {
     )
 
     const api = makeApi()
-    const result = await api.getAllItems(100, [
-      'Id',
-      'Name',
-      'UnitPrice',
-      'Description',
-      'SyncToken',
-    ])
+    const result = await api.getAllItems(100)
 
     expect(result).toHaveLength(2)
     expect(result?.[0]).toEqual({
@@ -137,12 +130,7 @@ describe('IntuitAPI customQuery-based reads', () => {
     vi.mocked(getFetcher).mockResolvedValue(queryResponse({}))
 
     const api = makeApi()
-    const result = await api.getAllItems(100, [
-      'Id',
-      'Name',
-      'UnitPrice',
-      'SyncToken',
-    ])
+    const result = await api.getAllItems(100)
 
     expect(result).toEqual([])
   })

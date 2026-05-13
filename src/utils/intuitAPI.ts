@@ -529,18 +529,13 @@ export default class IntuitAPI {
     return parsed.Item?.[0] ?? null
   }
 
-  // `columns` MUST include at minimum Id, Name, UnitPrice, SyncToken — the
-  // double-parse path (QBItemQueryResponseSchema then QBItemsResponseSchema)
-  // requires them. Description is optional but typically included by callers.
-  async _getAllItems(
-    limit: number,
-    columns: string[],
-  ): Promise<QBItemsResponseType | null> {
+  async _getAllItems(limit: number): Promise<QBItemsResponseType | null> {
     CustomLogger.info({
       message: `IntuitAPI#getAllItems | Item query start for realmId: ${this.tokens.intuitRealmId}`,
     })
-    const stringColumns = columns.map((column) => `${column}`).join(',')
-    const customerQuery = `select ${stringColumns} from Item where Type = 'Service' maxresults ${limit}` // Only get service items
+    // Columns are fixed to match QBItemsResponseSchema; callers don't need
+    // to know the projection. Service items only.
+    const customerQuery = `select Id, Name, UnitPrice, Description, SyncToken from Item where Type = 'Service' maxresults ${limit}`
     CustomLogger.info({
       obj: { customerQuery },
       message: 'IntuitAPI#getAllItems',

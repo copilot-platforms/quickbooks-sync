@@ -256,14 +256,31 @@ describe('IntuitAPI#getCustomerByEmail', () => {
   })
 
   it('skips rows with missing PrimaryEmailAddr without throwing', async () => {
-    // Defensive behaviour added after review: a row with no email field
-    // must not crash the predicate. Before the fix, accessing `.Address`
-    // on an unexpected shape would throw mid-find().
+    // A row with no email field must not crash the predicate.
     const { api } = makeApi([
       {
         Customer: [
           row('1', null),
           row('2', null),
+          row('3', 'alice@example.com'),
+        ],
+      },
+    ])
+
+    const result = await api.getCustomerByEmail('alice@example.com', undefined)
+
+    expect(result?.Id).toBe('3')
+  })
+
+  it('skips rows with null PrimaryEmailAddr or null Address without ZodError-ing the page', async () => {
+    // Regression guard: a single malformed row must not taint the whole-
+    // page parse. Schema permits PrimaryEmailAddr and Address to be null;
+    // the typeof addr === 'string' predicate skips them.
+    const { api } = makeApi([
+      {
+        Customer: [
+          row('1', null, { PrimaryEmailAddr: null }),
+          row('2', null, { PrimaryEmailAddr: { Address: null } }),
           row('3', 'alice@example.com'),
         ],
       },

@@ -646,13 +646,9 @@ export class ProductService extends BaseService {
     })
   }
 
-  async queryItemsFromQB(
-    qbTokenInfo: IntuitAPITokensType,
-    limit: number,
-    columns: string[],
-  ) {
+  async queryItemsFromQB(qbTokenInfo: IntuitAPITokensType, limit: number) {
     const intuitApi = new IntuitAPI(qbTokenInfo)
-    return await intuitApi.getAllItems(limit, columns)
+    return await intuitApi.getAllItems(limit)
   }
 
   async formatAndSyncProductLogs(payload: ProductChangedItemReferenceType[]) {
