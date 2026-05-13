@@ -706,6 +706,35 @@ export default class IntuitAPI {
     return SingleIdAndTokenResponseSchema.parse(envelope.Invoice[0])
   }
 
+  /**
+   * Returns all QBO invoices whose DocNumber starts with `prefix`. Used by
+   * findNextAvailableDocNumber to detect collisions and pick the next free
+   * suffix before createInvoice. Caps at maxresults=100; if a single prefix
+   * has more matches, the caller falls back to catch-6240 retry semantics.
+   */
+  async _findInvoicesByDocNumberPrefix(
+    prefix: string,
+  ): Promise<Array<{ Id: string; DocNumber: string }>> {
+    // LIKE-wildcard chars in user input would broaden the match. Assembly
+    // invoice numbers don't contain '%' or '_', but escape defensively.
+    const escapedPrefix = escapeForQBQuery(prefix)
+      .replace(/%/g, '\\%')
+      .replace(/_/g, '\\_')
+    const query = `select Id, DocNumber from Invoice where DocNumber LIKE '${escapedPrefix}%' maxresults 100`
+    const response = await this.customQuery(query)
+    if (!response) {
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#findInvoicesByDocNumberPrefix | message = no response',
+      )
+    }
+    if (!response.Invoice) return []
+    return response.Invoice.map((inv: { Id: string; DocNumber?: string }) => ({
+      Id: inv.Id,
+      DocNumber: inv.DocNumber ?? '',
+    }))
+  }
+
   async _voidInvoice(
     payload: QBDestructiveInvoicePayloadSchema,
   ): Promise<QBInvoiceResponseType> {
@@ -1008,6 +1037,7 @@ export default class IntuitAPI {
   itemFullUpdate = this.wrapWithRetry(this._itemFullUpdate)
   createPayment = this.wrapWithRetry(this._createPayment)
   getInvoice = this._getInvoice.bind(this)
+  findInvoicesByDocNumberPrefix = this._findInvoicesByDocNumberPrefix.bind(this)
   voidInvoice = this.wrapWithRetry(this._voidInvoice)
   deleteInvoice = this.wrapWithRetry(this._deleteInvoice)
   getAnAccount: GetAnAccountOverloads = this._getAnAccount.bind(
