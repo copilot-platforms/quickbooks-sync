@@ -46,10 +46,7 @@ describe('findNextAvailableDocNumber', () => {
   })
 
   it('ignores unrelated DocNumbers that happen to share the prefix', () => {
-    const taken = new Set([
-      'MFBZU6WM-00002SOMETHING',
-      'MFBZU6WM-00002-1-EXTRA',
-    ])
+    const taken = new Set(['MFBZU6WM-00002SOMETHING', 'MFBZU6WM-00002-1-EXTRA'])
     expect(findNextAvailableDocNumber('MFBZU6WM-00002', taken)).toBe(
       'MFBZU6WM-00002',
     )
