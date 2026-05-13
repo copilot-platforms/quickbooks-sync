@@ -87,10 +87,13 @@ export function assertNotQBFault(raw: unknown, opName: string): void {
     typeof (error as { code: unknown }).code === 'number'
       ? (error as { code: number }).code
       : httpStatus.BAD_REQUEST
+  // APIError.errors is typed unknown[] — pass array Errors verbatim, drop
+  // non-array shapes to undefined rather than casting (the message + the
+  // logged error above retain the diagnostic detail).
   throw new APIError(
     code,
     `${IntuitAPIErrorMessage}${opName}`,
-    error as unknown[] | undefined,
+    Array.isArray(error) ? error : undefined,
   )
 }
 
