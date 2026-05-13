@@ -136,10 +136,17 @@
       "breakpoints": true
     },
     {
-      "idx": 18,
+      "idx": 19,
       "version": "7",
-      "when": 1784284617002,
-      "tag": "20260717103656_add_bank_deposit_fee_column",
+      "when": 1778670661297,
+      "tag": "20260513111101_add_oneshot_unique_partial_index_in_qb_sync_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1784284760546,
+      "tag": "20260717103920_add_bank_deposit_fee_column",
       "breakpoints": true
     }
   ]

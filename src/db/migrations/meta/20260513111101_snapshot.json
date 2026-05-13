@@ -1,6 +1,6 @@
 {
-  "id": "d7d8aa81-a0a1-4f36-baf8-d41bffa70968",
-  "prevId": "d729909e-8641-49ac-bdd7-a1a6040b17eb",
+  "id": "056be0dd-8db9-4f73-bd22-cb8f5a2598ce",
+  "prevId": "4407e100-64fd-4a94-a638-4be325ce7d5c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -491,12 +491,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "bank_account_ref": {
-          "name": "bank_account_ref",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false
-        },
         "is_suspended": {
           "name": "is_suspended",
           "type": "boolean",
@@ -675,13 +669,6 @@
         },
         "absorbed_fee_flag": {
           "name": "absorbed_fee_flag",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "bank_deposit_fee_flag": {
-          "name": "bank_deposit_fee_flag",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
@@ -933,7 +920,104 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "idx_qb_sync_logs_lookup_active": {
+          "name": "idx_qb_sync_logs_lookup_active",
+          "columns": [
+            {
+              "expression": "portal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "copilot_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "entity_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "event_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"qb_sync_logs\".\"deleted_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_qb_sync_logs_pending_reaper": {
+          "name": "idx_qb_sync_logs_pending_reaper",
+          "columns": [
+            {
+              "expression": "portal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"qb_sync_logs\".\"deleted_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "uq_qb_sync_logs_oneshot_active": {
+          "name": "uq_qb_sync_logs_oneshot_active",
+          "columns": [
+            {
+              "expression": "portal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "copilot_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "entity_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "event_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"qb_sync_logs\".\"deleted_at\" IS NULL AND (\n          (\"qb_sync_logs\".\"entity_type\" = 'invoice' AND \"qb_sync_logs\".\"event_type\" IN ('created','paid','voided','deleted'))\n          OR \"qb_sync_logs\".\"entity_type\" = 'payment'\n        )",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -983,8 +1067,7 @@
         "deleted",
         "succeeded",
         "mapped",
-        "unmapped",
-        "deposited"
+        "unmapped"
       ]
     },
     "public.failed_record_category_types": {
