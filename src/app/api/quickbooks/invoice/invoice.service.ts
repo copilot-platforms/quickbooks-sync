@@ -4,6 +4,11 @@ import { BaseService } from '@/app/api/core/services/base.service'
 import { InvoiceStatus, SyncableEntity } from '@/app/api/core/types/invoice'
 import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 import { CustomerService } from '@/app/api/quickbooks/customer/customer.service'
+import {
+  findNextAvailableDocNumber,
+  formatAssemblyInvoicePrivateNote,
+  isQBODuplicateDocNumberError,
+} from '@/app/api/quickbooks/invoice/invoice.utils'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
 import {
   ProductService,
@@ -543,6 +548,23 @@ export class InvoiceService extends BaseService {
   }
 
   /**
+   * Pre-flights QBO for invoices whose DocNumber starts with the Assembly
+   * invoice number and returns the lowest free slot (`<n>`, `<n>-1`, …).
+   * Used by webhookInvoiceCreated to dodge 6240 collisions when a customer
+   * has already created an invoice with the same DocNumber in QBO manually.
+   */
+  private async resolveAvailableDocNumber(
+    intuitApi: IntuitAPI,
+    assemblyInvoiceNumber: string,
+  ): Promise<string> {
+    const existing = await intuitApi.findInvoicesByDocNumberPrefix(
+      assemblyInvoiceNumber,
+    )
+    const taken = new Set(existing.map((inv) => inv.DocNumber))
+    return findNextAvailableDocNumber(assemblyInvoiceNumber, taken)
+  }
+
+  /**
    * This function is executed when invoice.created event is triggered
    * Handles the invoice creation in QuickBooks
    */
@@ -731,12 +753,30 @@ export class InvoiceService extends BaseService {
     // 5. create invoice in QB
     const customerRefValue: string =
       customer?.Id || existingCustomer?.qbCustomerId
-    const qbInvoicePayload = {
+
+    // Resolve a DocNumber that won't collide in QBO. Pre-flight a prefix
+    // query, pick the lowest free slot (`<n>`, `<n>-1`, `<n>-2`, …). On 6240
+    // race (customer manually created the slot we picked between our query
+    // and our create), re-walk once and retry. After that, throw and let
+    // resync handle it.
+    const assemblyInvoiceNumber = invoiceResource.number
+    let docNumber = await this.resolveAvailableDocNumber(
+      intuitApiService,
+      assemblyInvoiceNumber,
+    )
+
+    // To add customer bill email in Invoice. Docs:
+    // https://help.developer.intuit.com/s/question/0D50f00005E4I5nCAF/customer-email-not-showing-on-invoice
+    const billEmailAddress =
+      customer?.PrimaryEmailAddr?.Address || existingCustomer?.email
+
+    const buildPayload = (resolvedDocNumber: string) => ({
       Line: lineItems,
       CustomerRef: {
         value: customerRefValue,
       },
-      DocNumber: invoiceResource.number, // copilot invoice number as DocNumber
+      DocNumber: resolvedDocNumber,
+      PrivateNote: formatAssemblyInvoicePrivateNote(assemblyInvoiceNumber),
       // include tax and dates
       TxnTaxDetail: {
         TotalTax: totalTax,
@@ -748,15 +788,34 @@ export class InvoiceService extends BaseService {
         DueDate: dayjs(invoiceResource.dueDate).format('YYYY-MM-DD'), // the date format for due date follows XML Schema standard (YYYY-MM-DD). For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice#the-invoice-object
       }),
       BillEmail: {
-        Address: customer?.PrimaryEmailAddr?.Address || existingCustomer?.email, // To add customer bill email in Invoice. Docs: https://help.developer.intuit.com/s/question/0D50f00005E4I5nCAF/customer-email-not-showing-on-invoice
+        Address: billEmailAddress,
       },
-    }
+    })
 
     // 6. create invoice in QB
     addSyncBreadcrumb('Creating invoice in QBO', {
-      invoiceNumber: invoiceResource.number,
+      invoiceNumber: assemblyInvoiceNumber,
+      docNumber,
     })
-    const invoiceRes = await intuitApiService.createInvoice(qbInvoicePayload)
+
+    let invoiceRes
+    try {
+      invoiceRes = await intuitApiService.createInvoice(buildPayload(docNumber))
+    } catch (err) {
+      if (!isQBODuplicateDocNumberError(err)) throw err
+      console.info(
+        `InvoiceService#webhookInvoiceCreated | 6240 on DocNumber=${docNumber}; re-walking once`,
+      )
+      docNumber = await this.resolveAvailableDocNumber(
+        intuitApiService,
+        assemblyInvoiceNumber,
+      )
+      addSyncBreadcrumb('Retrying invoice creation in QBO after 6240', {
+        invoiceNumber: assemblyInvoiceNumber,
+        docNumber,
+      })
+      invoiceRes = await intuitApiService.createInvoice(buildPayload(docNumber))
+    }
 
     const invoicePayload = {
       portalId: this.user.workspaceId,

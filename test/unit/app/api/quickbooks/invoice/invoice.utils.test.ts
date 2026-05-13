@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   findNextAvailableDocNumber,
   formatAssemblyInvoicePrivateNote,
+  isQBODuplicateDocNumberError,
 } from '@/app/api/quickbooks/invoice/invoice.utils'
 
 describe('formatAssemblyInvoicePrivateNote', () => {
@@ -76,5 +77,35 @@ describe('findNextAvailableDocNumber', () => {
     expect(() => findNextAvailableDocNumber(base, taken)).toThrow(
       /no available DocNumber/,
     )
+  })
+})
+
+describe('isQBODuplicateDocNumberError', () => {
+  it('matches numeric 6240 code', () => {
+    expect(isQBODuplicateDocNumberError({ code: 6240 })).toBe(true)
+  })
+  it('matches stringified 6240 code', () => {
+    expect(isQBODuplicateDocNumberError({ code: '6240' })).toBe(true)
+  })
+  it('matches numeric 6240 status (APIError shape from createInvoice)', () => {
+    expect(isQBODuplicateDocNumberError({ status: 6240 })).toBe(true)
+  })
+  it('matches stringified 6240 status', () => {
+    expect(isQBODuplicateDocNumberError({ status: '6240' })).toBe(true)
+  })
+  it('matches the duplicate-doc-number message', () => {
+    expect(
+      isQBODuplicateDocNumberError({
+        message: 'Duplicate Document Number Error',
+      }),
+    ).toBe(true)
+  })
+  it('returns false for unrelated errors', () => {
+    expect(isQBODuplicateDocNumberError({ code: 5010 })).toBe(false)
+    expect(isQBODuplicateDocNumberError({ status: 400 })).toBe(false)
+    expect(isQBODuplicateDocNumberError(null)).toBe(false)
+    expect(isQBODuplicateDocNumberError(undefined)).toBe(false)
+    expect(isQBODuplicateDocNumberError('not an object')).toBe(false)
+    expect(isQBODuplicateDocNumberError({})).toBe(false)
   })
 })

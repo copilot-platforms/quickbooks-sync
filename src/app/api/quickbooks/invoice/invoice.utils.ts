@@ -38,3 +38,25 @@ export const findNextAvailableDocNumber = (
     `findNextAvailableDocNumber: no available DocNumber for "${base}" after ${MAX_SUFFIX_ATTEMPTS} attempts.`,
   )
 }
+
+/**
+ * Recognizes QBO Error 6240 "Duplicate Document Number" across error shapes.
+ *
+ * The `.status`/`.code` branches are forward-compatible: today `intuitAPI.ts`
+ * reads `Fault.Error?.code` as if it were an object (it's actually an array),
+ * so APIError lands with status=400, not 6240. The live safety net is the
+ * regex over `.message`. When the array-access is corrected the structured
+ * branches will start firing too.
+ */
+export const isQBODuplicateDocNumberError = (err: unknown): boolean => {
+  if (!err || typeof err !== 'object' || Array.isArray(err)) return false
+  const e = err as {
+    status?: string | number
+    code?: string | number
+    message?: string
+  }
+  if (e.status === 6240 || e.status === '6240') return true
+  if (e.code === 6240 || e.code === '6240') return true
+  const message = e.message ?? ''
+  return /6240|Duplicate Document Number/i.test(message)
+}
