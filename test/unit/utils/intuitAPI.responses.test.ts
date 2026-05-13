@@ -63,7 +63,12 @@ describe('IntuitAPI customQuery-based reads', () => {
     vi.mocked(getFetcher).mockResolvedValue(
       queryResponse({
         Account: [
-          { Id: '42', Name: 'Sales of Product Income', SyncToken: '0', Active: true },
+          {
+            Id: '42',
+            Name: 'Sales of Product Income',
+            SyncToken: '0',
+            Active: true,
+          },
         ],
       }),
     )
