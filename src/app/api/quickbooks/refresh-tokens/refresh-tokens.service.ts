@@ -78,11 +78,6 @@ export async function refreshExpiringTokens(): Promise<RefreshTokensSummary> {
           message:
             'refreshExpiringTokens | refresh token revoked — reconnect required',
         })
-        Sentry.withScope((scope) => {
-          scope.setTag('portalId', error.portalId)
-          scope.setTag('intuitRealmId', error.intuitRealmId)
-          Sentry.captureException(error)
-        })
         continue
       }
 

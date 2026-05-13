@@ -7,8 +7,10 @@
  *   - Error isolation: a single failure (revocation, transient error) doesn't
  *     short-circuit the rest of the batch.
  *   - Revocation handling: `QBReconnectRequiredError` is counted separately
- *     and Sentry-captured but does NOT mutate any portal state — that's
- *     intentional, scoped out of OUT-3574.
+ *     but does NOT mutate any portal state and no longer raises a Sentry
+ *     event — the cron has no Copilot user context to notify the IU, so the
+ *     signal would be unactionable noise. The webhook auth path (which has
+ *     user context) owns disable-sync + notify-IU.
  *   - Summary shape: counters reflect what actually happened.
  *
  * The DB selector and the helper itself have their own tests; here we mock
