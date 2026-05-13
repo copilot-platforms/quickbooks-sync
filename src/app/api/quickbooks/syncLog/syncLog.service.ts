@@ -18,7 +18,7 @@ import {
 import { WhereClause } from '@/type/common'
 import { orderMap } from '@/utils/drizzle'
 import dayjs from 'dayjs'
-import { and, eq, isNull, lt } from 'drizzle-orm'
+import { and, eq, isNull, lt, sql } from 'drizzle-orm'
 import { json2csv } from 'json-2-csv'
 
 export const STALE_PENDING_THRESHOLD_MINUTES = 15
@@ -141,19 +141,14 @@ export class SyncLogService extends BaseService {
   }
 
   /**
-   * Atomic-ish idempotency claim for webhook entry. Returns `claimed: true` if
-   * we successfully wrote a new PENDING row for this (portal, copilot, entity,
-   * event) tuple, or `claimed: false` if a row already exists for that tuple
-   * — meaning another delivery has handled or is handling it.
-   *
-   * Without a unique constraint on `qb_sync_logs` (descoped due to historical
-   * production duplicates), the read-then-insert has a sub-millisecond TOCTOU
-   * window. In practice this closes the dominant `invoice.created` +
-   * `invoice.updated` race because the existing `sleep(10000)` already
-   * serialises those events.
-   *
-   * Stale claims (PENDING older than `STALE_PENDING_THRESHOLD_MINUTES`) are
-   * recovered by `flipStalePendingToFailed` during the next resync cycle.
+   * Atomic idempotency claim via the partial unique index
+   * `uq_qb_sync_logs_oneshot_active` (covers active invoice one-shot events
+   * and all payment events). For rows in that slice, ON CONFLICT DO NOTHING
+   * yields no row when another worker has already claimed the tuple, so
+   * `claimed: false` is returned. For rows outside the slice
+   * (INVOICE/UPDATED, PRODUCT, PRICE), the partial index does not apply and
+   * INSERT always succeeds — preserving prior behavior for legitimate re-fires.
+   * Stale PENDING claims are recovered by `flipStalePendingToFailed`.
    */
   async claimWebhookEvent({
     copilotId,
@@ -166,24 +161,31 @@ export class SyncLogService extends BaseService {
     eventType: EventType
     invoiceNumber?: string
   }): Promise<{ claimed: boolean }> {
-    const existing = await this.getOneByCopilotIdAndEventType({
-      copilotId,
-      eventType,
-      entityType,
-    })
-    if (existing) {
-      return { claimed: false }
-    }
+    const inserted = await this.db
+      .insert(QBSyncLog)
+      .values({
+        portalId: this.user.workspaceId,
+        copilotId,
+        entityType,
+        eventType,
+        status: LogStatus.PENDING,
+        invoiceNumber,
+      })
+      .onConflictDoNothing({
+        target: [
+          QBSyncLog.portalId,
+          QBSyncLog.copilotId,
+          QBSyncLog.entityType,
+          QBSyncLog.eventType,
+        ],
+        where: sql`deleted_at IS NULL AND (
+          (entity_type = 'invoice' AND event_type IN ('created','paid','voided','deleted'))
+          OR entity_type = 'payment'
+        )`,
+      })
+      .returning({ id: QBSyncLog.id })
 
-    await this.createQBSyncLog({
-      portalId: this.user.workspaceId,
-      copilotId,
-      entityType,
-      eventType,
-      status: LogStatus.PENDING,
-      invoiceNumber,
-    })
-    return { claimed: true }
+    return { claimed: inserted.length > 0 }
   }
 
   /**
