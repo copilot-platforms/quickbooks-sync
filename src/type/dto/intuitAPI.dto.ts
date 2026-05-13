@@ -37,7 +37,7 @@ export const QBInvoiceCreatePayloadSchema = z.object({
   CustomerRef: z.object({
     value: z.string(),
   }),
-  PrivateNote: z.string(),
+  PrivateNote: z.string().max(4000),
 })
 
 export type QBInvoiceCreatePayloadType = z.infer<
