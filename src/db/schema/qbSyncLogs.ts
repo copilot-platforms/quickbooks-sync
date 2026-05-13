@@ -66,6 +66,24 @@ export const QBSyncLog = table(
       .index('idx_qb_sync_logs_pending_reaper')
       .on(table.portalId, table.status, table.createdAt)
       .where(isNull(table.deletedAt)),
+    // Atomic-claim safety: prevents two sync_log rows for the same (portal,
+    // copilot_id, entity, event) within the slice of "one-shot" events. Pairs
+    // with INSERT ... ON CONFLICT DO NOTHING in claimWebhookEvent. Deliberately
+    // scoped to:
+    //   - INVOICE/{created,paid,voided,deleted}: one-shot per invoice; dual-fire
+    //     would cause customer-visible duplicate QBO invoices.
+    //   - PAYMENT/*: one-shot per payment.
+    // INVOICE/updated, PRODUCT, and PRICE events are excluded because repeated
+    // edits / re-fires are legitimate for those entity-event combinations.
+    t
+      .uniqueIndex('uq_qb_sync_logs_oneshot_active')
+      .on(table.portalId, table.copilotId, table.entityType, table.eventType)
+      .where(
+        sql`${table.deletedAt} IS NULL AND (
+          (${table.entityType} = 'invoice' AND ${table.eventType} IN ('created','paid','voided','deleted'))
+          OR ${table.entityType} = 'payment'
+        )`,
+      ),
   ],
 )
 
