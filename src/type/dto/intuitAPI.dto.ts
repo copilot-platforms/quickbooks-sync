@@ -8,6 +8,16 @@ export const QBNameValueSchema = z.object({
 })
 export type QBNameValueSchemaType = z.infer<typeof QBNameValueSchema>
 
+// QBO returns Fault on any failed response. Error is loose (object or array)
+// across endpoints; we forward whatever shape arrived so callers/log
+// consumers can inspect it.
+export const QBFaultSchema = z.object({
+  Fault: z.object({
+    Error: z.unknown().optional(),
+  }),
+})
+export type QBFaultType = z.infer<typeof QBFaultSchema>
+
 export const QBInvoiceLineItemSchema = z.object({
   DetailType: z.string(),
   Amount: z.number(),
@@ -103,7 +113,7 @@ export const QBItemRowSchema = z.object({
   ClassRef: QBNameValueSchema.optional(),
   Active: z.boolean().optional(),
   UnitPrice: z.number(),
-  Description: z.string().optional(),
+  Description: z.string().nullish(),
 })
 export type QBItemRowType = z.infer<typeof QBItemRowSchema>
 
@@ -287,22 +297,14 @@ export type CustomerQueryResponseType = z.infer<
   typeof CustomerQueryResponseSchema
 >
 
-export const CustomerListRowSchema = z.object({
-  Id: z.string(),
-  SyncToken: z.string(),
-  Active: z.boolean(),
-  CompanyName: z.string().optional(),
-  FullyQualifiedName: z.string().optional(),
-  PrimaryEmailAddr: z
-    .object({
-      Address: z.string(),
-    })
-    .optional(),
+// Envelope returned by createCustomer / customerSparseUpdate.
+export const QBCustomerResponseSchema = z.object({
+  Customer: CustomerQueryResponseSchema,
 })
-export type CustomerListRowType = z.infer<typeof CustomerListRowSchema>
+export type QBCustomerResponseType = z.infer<typeof QBCustomerResponseSchema>
 
 export const CustomerListEnvelopeSchema = z.object({
-  Customer: z.array(CustomerListRowSchema).optional(),
+  Customer: z.array(CustomerQueryResponseSchema).optional(),
 })
 export type CustomerListEnvelopeType = z.infer<
   typeof CustomerListEnvelopeSchema
@@ -324,7 +326,6 @@ export type QBInvoiceRowType = z.infer<typeof QBInvoiceRowSchema>
 // Envelope returned by createInvoice / invoiceSparseUpdate / voidInvoice.
 export const QBInvoiceResponseSchema = z.object({
   Invoice: QBInvoiceRowSchema,
-  time: z.string().optional(),
 })
 export type QBInvoiceResponseType = z.infer<typeof QBInvoiceResponseSchema>
 
@@ -344,7 +345,6 @@ export const QBInvoiceDeleteResponseSchema = z.object({
     status: z.string().optional(),
     domain: z.string().optional(),
   }),
-  time: z.string().optional(),
 })
 export type QBInvoiceDeleteResponseType = z.infer<
   typeof QBInvoiceDeleteResponseSchema
@@ -362,7 +362,6 @@ export type QBPurchaseRowType = z.infer<typeof QBPurchaseRowSchema>
 
 export const QBPurchaseResponseSchema = z.object({
   Purchase: QBPurchaseRowSchema,
-  time: z.string().optional(),
 })
 export type QBPurchaseResponseType = z.infer<typeof QBPurchaseResponseSchema>
 
@@ -372,7 +371,6 @@ export const QBPurchaseDeleteResponseSchema = z.object({
     status: z.string().optional(),
     domain: z.string().optional(),
   }),
-  time: z.string().optional(),
 })
 export type QBPurchaseDeleteResponseType = z.infer<
   typeof QBPurchaseDeleteResponseSchema
@@ -404,7 +402,6 @@ export type QBPaymentRowType = z.infer<typeof QBPaymentRowSchema>
 
 export const QBPaymentResponseSchema = z.object({
   Payment: QBPaymentRowSchema,
-  time: z.string().optional(),
 })
 export type QBPaymentResponseType = z.infer<typeof QBPaymentResponseSchema>
 
@@ -414,7 +411,6 @@ export const QBPaymentDeleteResponseSchema = z.object({
     status: z.string().optional(),
     domain: z.string().optional(),
   }),
-  time: z.string().optional(),
 })
 export type QBPaymentDeleteResponseType = z.infer<
   typeof QBPaymentDeleteResponseSchema

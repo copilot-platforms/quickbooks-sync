@@ -29,6 +29,7 @@ import {
   CompanyInfoSchema,
   CustomerQueryResponseType,
   CustomerQueryResponseSchema,
+  QBCustomerResponseSchema,
   QBItemsResponseSchema,
   QBItemsResponseType,
   QBInvoiceResponseType,
@@ -47,6 +48,7 @@ import {
   SingleIdAndTokenResponseType,
   QBInvoiceQueryResponseSchema,
   CustomerListEnvelopeSchema,
+  QBFaultSchema,
 } from '@/type/dto/intuitAPI.dto'
 import { escapeForQBQuery, getNameAsCustomer } from '@/utils/string'
 import CustomLogger from '@/utils/logger'
@@ -67,6 +69,30 @@ export type IntuitAPITokensType = Pick<
 > & { isSuspended?: boolean }
 
 export const IntuitAPIErrorMessage = '#IntuitAPIErrorMessage#'
+
+// Throws an APIError if `raw` is a QBO Fault response; no-op otherwise.
+// Replaces the duplicated `if (raw?.Fault) throw ...` block in every method.
+// Fault.Error.code is preserved only when numeric (HTTP-safe); QBO's
+// string codes fall back to BAD_REQUEST as before.
+export function assertNotQBFault(raw: unknown, opName: string): void {
+  const result = QBFaultSchema.safeParse(raw)
+  if (!result.success) return
+  const error = result.data.Fault.Error
+  CustomLogger.error({ obj: error, message: 'Error: ' })
+  const code =
+    error &&
+    typeof error === 'object' &&
+    !Array.isArray(error) &&
+    'code' in error &&
+    typeof (error as { code: unknown }).code === 'number'
+      ? (error as { code: number }).code
+      : httpStatus.BAD_REQUEST
+  throw new APIError(
+    code,
+    `${IntuitAPIErrorMessage}${opName}`,
+    error as unknown[] | undefined,
+  )
+}
 
 type GetACustomerOverloads = {
   (
@@ -145,9 +171,9 @@ export default class IntuitAPI {
    */
   private async postFetchWithHeaders(
     url: string,
-    body: unknown,
+    body: Record<string, unknown>,
     customHeaders?: Record<string, string>,
-  ) {
+  ): Promise<unknown> {
     const headers = {
       ...this.headers,
       ...customHeaders,
@@ -162,7 +188,7 @@ export default class IntuitAPI {
   private async getFetchWithHeader(
     url: string,
     customHeaders?: Record<string, string>,
-  ) {
+  ): Promise<unknown> {
     const headers = {
       ...this.headers,
       ...customHeaders,
@@ -176,15 +202,14 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/query?query=${encodeURIComponent(query)}&minorversion=${intuitApiMinorVersion}`
     const res = await this.getFetchWithHeader(url)
 
-    if (res?.Fault) {
-      CustomLogger.error({ obj: res.Fault?.Error, message: 'Error: ' })
+    if (!res)
       throw new APIError(
-        res.Fault.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}customQuery`,
-        res.Fault?.Error,
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#customQuery | message = no response',
       )
-    }
-    return res.QueryResponse
+
+    assertNotQBFault(res, 'customQuery')
+    return (res as { QueryResponse?: unknown }).QueryResponse
   }
 
   async _createInvoice(
@@ -197,14 +222,13 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
-    if (invoice?.Fault) {
-      CustomLogger.error({ obj: invoice.Fault?.Error, message: 'Error: ' })
+    if (!invoice)
       throw new APIError(
-        invoice.Fault?.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}createInvoice`,
-        invoice.Fault?.Error,
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createInvoice | message = no response',
       )
-    }
+
+    assertNotQBFault(invoice, 'createInvoice')
 
     const parsed = QBInvoiceResponseSchema.parse(invoice)
     CustomLogger.info({
@@ -224,21 +248,20 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/customer?minorversion=${intuitApiMinorVersion}`
     const customer = await this.postFetchWithHeaders(url, payload)
 
-    if (customer?.Fault) {
-      CustomLogger.error({ obj: customer.Fault?.Error, message: 'Error: ' })
+    if (!customer)
       throw new APIError(
-        customer.Fault?.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}createCustomer`,
-        customer.Fault?.Error,
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createCustomer | message = no response',
       )
-    }
 
-    const parsedCustomer = CustomerQueryResponseSchema.parse(customer.Customer)
+    assertNotQBFault(customer, 'createCustomer')
+
+    const parsed = QBCustomerResponseSchema.parse(customer)
     CustomLogger.info({
-      obj: { response: parsedCustomer },
-      message: `IntuitAPI#createCustomer | customer created with name = ${parsedCustomer.FullyQualifiedName ?? ''}.`,
+      obj: { response: parsed.Customer },
+      message: `IntuitAPI#createCustomer | customer created with name = ${parsed.Customer.FullyQualifiedName ?? ''}.`,
     })
-    return parsedCustomer
+    return parsed.Customer
   }
 
   async _createItem(payload: QBItemCreatePayloadType): Promise<QBItemRowType> {
@@ -249,14 +272,13 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/item?minorversion=${intuitApiMinorVersion}`
     const item = await this.postFetchWithHeaders(url, payload)
 
-    if (item?.Fault) {
-      CustomLogger.error({ obj: item.Fault?.Error, message: 'Error: ' })
+    if (!item)
       throw new APIError(
-        item.Fault?.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}createItem`,
-        item.Fault?.Error,
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createItem | message = no response',
       )
-    }
+
+    assertNotQBFault(item, 'createItem')
 
     const parsed = QBItemResponseSchema.parse(item)
     CustomLogger.info({
@@ -331,7 +353,7 @@ export default class IntuitAPI {
 
     const envelope = CustomerListEnvelopeSchema.parse(qbCustomers)
     if (!envelope.Customer) return
-    return CustomerQueryResponseSchema.parse(envelope.Customer[0])
+    return envelope.Customer[0]
   }
 
   // QBO's parser mishandles special chars on PrimaryEmailAddr filters, so we
@@ -368,7 +390,7 @@ export default class IntuitAPI {
         if ((c.CompanyName || undefined) !== sanitizedCompanyName) return false
         return true
       })
-      if (match) return CustomerQueryResponseSchema.parse(match)
+      if (match) return match
 
       if (customers.length < pageSize) return
       startPosition += pageSize
@@ -504,6 +526,9 @@ export default class IntuitAPI {
     return parsed.Item?.[0] ?? null
   }
 
+  // `columns` MUST include at minimum Id, Name, UnitPrice, SyncToken — the
+  // double-parse path (QBItemQueryResponseSchema then QBItemsResponseSchema)
+  // requires them. Description is optional but typically included by callers.
   async _getAllItems(
     limit: number,
     columns: string[],
@@ -535,14 +560,13 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
-    if (invoice?.Fault) {
-      CustomLogger.error({ obj: invoice.Fault?.Error, message: 'Error: ' })
+    if (!invoice)
       throw new APIError(
-        invoice.Fault?.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}invoiceSparseUpdate`,
-        invoice.Fault?.Error,
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#InvoiceSparseUpdate | message = no response',
       )
-    }
+
+    assertNotQBFault(invoice, 'invoiceSparseUpdate')
 
     const parsed = QBInvoiceResponseSchema.parse(invoice)
     CustomLogger.info({
@@ -562,21 +586,20 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/customer?minorversion=${intuitApiMinorVersion}`
     const customer = await this.postFetchWithHeaders(url, payload)
 
-    if (customer?.Fault) {
-      CustomLogger.error({ obj: customer.Fault?.Error, message: 'Error: ' })
+    if (!customer)
       throw new APIError(
-        customer.Fault?.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}customerSparseUpdate`,
-        customer.Fault?.Error,
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#customerSparseUpdate | message = no response',
       )
-    }
 
-    const parsedCustomer = CustomerQueryResponseSchema.parse(customer.Customer)
+    assertNotQBFault(customer, 'customerSparseUpdate')
+
+    const parsed = QBCustomerResponseSchema.parse(customer)
     CustomLogger.info({
-      obj: { response: parsedCustomer },
-      message: `IntuitAPI#customerSparseUpdate | customer sparse updated with name = ${parsedCustomer.FullyQualifiedName ?? ''}. `,
+      obj: { response: parsed.Customer },
+      message: `IntuitAPI#customerSparseUpdate | customer sparse updated with name = ${parsed.Customer.FullyQualifiedName ?? ''}. `,
     })
-    return parsedCustomer
+    return parsed.Customer
   }
 
   async _itemFullUpdate(
@@ -589,20 +612,19 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/item?minorversion=${intuitApiMinorVersion}`
     const item = await this.postFetchWithHeaders(url, payload)
 
-    if (item?.Fault) {
-      CustomLogger.error({ obj: item.Fault?.Error, message: 'Error: ' })
+    if (!item)
       throw new APIError(
-        item.Fault?.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}itemFullUpdate`,
-        item.Fault?.Error,
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#itemFullUpdate | message = no response',
       )
-    }
+
+    assertNotQBFault(item, 'itemFullUpdate')
 
     const parsedItem = QBItemResponseSchema.parse(item)
 
     CustomLogger.info({
-      obj: { response: item.Item },
-      message: `IntuitAPI#itemFullUpdate | item full updated with Id = ${item.Item?.Id}.`,
+      obj: { response: parsedItem.Item },
+      message: `IntuitAPI#itemFullUpdate | item full updated with Id = ${parsedItem.Item.Id}.`,
     })
     return parsedItem
   }
@@ -617,14 +639,13 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/account?minorversion=${intuitApiMinorVersion}`
     const account = await this.postFetchWithHeaders(url, payload)
 
-    if (account?.Fault) {
-      CustomLogger.error({ obj: account.Fault?.Error, message: 'Error: ' })
+    if (!account)
       throw new APIError(
         httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}updateAccount`,
-        account.Fault?.Error,
+        'IntuitAPI#updateAccount | message = no response',
       )
-    }
+
+    assertNotQBFault(account, 'updateAccount')
 
     const parsedAccount = QBAccountResponseSchema.parse(account)
 
@@ -645,14 +666,13 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/payment?minorversion=${intuitApiMinorVersion}`
     const payment = await this.postFetchWithHeaders(url, payload)
 
-    if (payment?.Fault) {
-      CustomLogger.error({ obj: payment.Fault?.Error, message: 'Error: ' })
+    if (!payment)
       throw new APIError(
-        payment.Fault?.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}createPayment`,
-        payment.Fault?.Error,
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createPayment | message = no response',
       )
-    }
+
+    assertNotQBFault(payment, 'createPayment')
 
     const parsed = QBPaymentResponseSchema.parse(payment)
     CustomLogger.info({
@@ -698,14 +718,13 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=void&minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
-    if (invoice?.Fault) {
-      CustomLogger.error({ obj: invoice.Fault?.Error, message: 'Error: ' })
+    if (!invoice)
       throw new APIError(
-        invoice.Fault?.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}voidInvoice`,
-        invoice.Fault?.Error,
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#voidInvoice | message = no response',
       )
-    }
+
+    assertNotQBFault(invoice, 'voidInvoice')
 
     const parsed = QBInvoiceResponseSchema.parse(invoice)
     CustomLogger.info({
@@ -725,14 +744,14 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/invoice?operation=delete&minorversion=${intuitApiMinorVersion}`
     const invoice = await this.postFetchWithHeaders(url, payload)
 
-    if (invoice?.Fault) {
-      CustomLogger.error({ obj: invoice.Fault?.Error, message: 'Error: ' })
+    if (!invoice) {
       throw new APIError(
-        invoice.Fault?.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}deleteInvoice`,
-        invoice.Fault?.Error,
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#deleteInvoice | No invoice deletion confirmation was received from Quickbooks API',
       )
     }
+
+    assertNotQBFault(invoice, 'deleteInvoice')
 
     const parsed = QBInvoiceDeleteResponseSchema.parse(invoice)
     CustomLogger.info({
@@ -752,14 +771,13 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/payment?operation=delete&minorversion=${intuitApiMinorVersion}`
     const payment = await this.postFetchWithHeaders(url, payload)
 
-    if (payment?.Fault) {
-      CustomLogger.error({ obj: payment.Fault?.Error, message: 'Error: ' })
+    if (!payment)
       throw new APIError(
-        payment.Fault?.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}deletePayment`,
-        payment.Fault?.Error,
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#deletePayment | message = no response',
       )
-    }
+
+    assertNotQBFault(payment, 'deletePayment')
 
     const parsed = QBPaymentDeleteResponseSchema.parse(payment)
     CustomLogger.info({
@@ -823,14 +841,13 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/account?minorversion=${intuitApiMinorVersion}`
     const account = await this.postFetchWithHeaders(url, payload)
 
-    if (account?.Fault) {
-      CustomLogger.error({ obj: account.Fault?.Error, message: 'Error: ' })
+    if (!account)
       throw new APIError(
-        account.Fault?.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}createAccount`,
-        account.Fault?.Error,
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createAccount | message = no response',
       )
-    }
+
+    assertNotQBFault(account, 'createAccount')
 
     const parsed = QBAccountResponseSchema.parse(account)
     CustomLogger.info({
@@ -850,14 +867,13 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/purchase?minorversion=${intuitApiMinorVersion}`
     const purchase = await this.postFetchWithHeaders(url, payload)
 
-    if (purchase?.Fault) {
-      CustomLogger.error({ obj: purchase.Fault?.Error, message: 'Error: ' })
+    if (!purchase)
       throw new APIError(
-        purchase.Fault?.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}createPurchase`,
-        purchase.Fault?.Error,
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createPurchase | message = no response',
       )
-    }
+
+    assertNotQBFault(purchase, 'createPurchase')
 
     const parsed = QBPurchaseResponseSchema.parse(purchase)
     CustomLogger.info({
@@ -907,14 +923,13 @@ export default class IntuitAPI {
     const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/purchase?operation=delete&minorversion=${intuitApiMinorVersion}`
     const purchase = await this.postFetchWithHeaders(url, payload)
 
-    if (purchase?.Fault) {
-      CustomLogger.error({ obj: purchase.Fault?.Error, message: 'Error: ' })
+    if (!purchase)
       throw new APIError(
-        purchase.Fault?.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}deletePurchase`,
-        purchase.Fault?.Error,
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#deletePurchase | message = no response',
       )
-    }
+
+    assertNotQBFault(purchase, 'deletePurchase')
 
     const parsed = QBPurchaseDeleteResponseSchema.parse(purchase)
     CustomLogger.info({
