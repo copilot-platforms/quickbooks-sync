@@ -19,7 +19,7 @@ import {
   QBPaymentUpdateSchema,
   QBPaymentUpdateSchemaType,
 } from '@/db/schema/qbPaymentSync'
-import { InvoiceResponse, WhereClause } from '@/type/common'
+import { WhereClause } from '@/type/common'
 import {
   QBPaymentCreatePayloadSchema,
   QBPaymentCreatePayloadType,
@@ -152,11 +152,17 @@ export class PaymentService extends BaseService {
     }
   }
 
-  async createExpenseForAbsorbedFees(
-    payload: QBPurchaseCreatePayloadType,
-    intuitApi: IntuitAPI,
-    id: string,
-  ) {
+  async createExpenseForAbsorbedFees({
+    payload,
+    invoiceNumber,
+    intuitApi,
+    id,
+  }: {
+    payload: QBPurchaseCreatePayloadType
+    invoiceNumber: string
+    intuitApi: IntuitAPI
+    id: string
+  }) {
     const parsedPayload = QBPurchaseCreatePayloadSchema.parse(payload)
 
     addSyncBreadcrumb('Creating expense for absorbed fees')
@@ -171,7 +177,7 @@ export class PaymentService extends BaseService {
         id,
         {
           qbInvoiceId: res.Purchase.Id,
-          invoiceNumber: payload.DocNumber,
+          invoiceNumber,
         },
         EventType.SUCCEEDED,
         EntityType.PAYMENT,
@@ -284,11 +290,17 @@ export class PaymentService extends BaseService {
     }
   }
 
-  async webhookPaymentSucceeded(
-    parsedPaymentSucceedResource: PaymentSucceededResponseType,
-    qbTokenInfo: IntuitAPITokensType,
-    invoice: InvoiceResponse | undefined,
-  ): Promise<void> {
+  async webhookPaymentSucceeded({
+    parsedPaymentSucceedResource,
+    qbTokenInfo,
+    qbDocNumber,
+    invoiceNumber,
+  }: {
+    parsedPaymentSucceedResource: PaymentSucceededResponseType
+    qbTokenInfo: IntuitAPITokensType
+    qbDocNumber: string
+    invoiceNumber: string
+  }): Promise<void> {
     const paymentResource = parsedPaymentSucceedResource.data
     addSyncBreadcrumb('Payment succeeded flow started', {
       paymentId: paymentResource.id,
@@ -317,7 +329,7 @@ export class PaymentService extends BaseService {
       AccountRef: {
         value: z.string().parse(assetAccountRef),
       },
-      DocNumber: invoice?.number || '',
+      DocNumber: qbDocNumber,
       TxnDate: dayjs(paymentResource.createdAt).format('YYYY-MM-DD'), // the date format for due date follows XML Schema standard (YYYY-MM-DD). For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase#the-purchase-object
       Line: [
         {
@@ -331,11 +343,12 @@ export class PaymentService extends BaseService {
         },
       ],
     }
-    await this.createExpenseForAbsorbedFees(
+    await this.createExpenseForAbsorbedFees({
       payload,
+      invoiceNumber,
       intuitApi,
-      parsedPaymentSucceedResource.data.id,
-    )
+      id: parsedPaymentSucceedResource.data.id,
+    })
   }
 
   private async logSync(

@@ -240,6 +240,23 @@ export class SyncService extends BaseService {
         message: 'syncService#processPaymentSucceededSync | records: ',
         obj: record,
       })
+
+      // check if invoice exists in qbInvoiceSync table
+      if (!record.invoiceNumber) {
+        throw new Error(
+          `Invoice number is empty for invoice id: ${record.copilotId}`,
+        )
+      }
+
+      const invoiceSync = await this.invoiceService.getInvoiceByNumber(
+        record.invoiceNumber,
+      )
+      if (!invoiceSync) {
+        throw new Error(
+          `No invoice found in invoice sync table for invoice id: ${record.copilotId}`,
+        )
+      }
+
       const intuitApi = new IntuitAPI(qbTokenInfo)
       const tokenService = new TokenService(this.user)
       const assetAccountRef = await tokenService.checkAndUpdateAccountStatus(
@@ -260,7 +277,7 @@ export class SyncService extends BaseService {
         AccountRef: {
           value: z.string().parse(assetAccountRef),
         },
-        DocNumber: record.invoiceNumber || '',
+        DocNumber: invoiceSync.qbDocNumber ?? record.invoiceNumber,
         TxnDate: dayjs(record.createdAt).format('YYYY-MM-DD'), // the date format for due date follows XML Schema standard (YYYY-MM-DD). For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase#the-purchase-object
         Line: [
           {
@@ -275,11 +292,12 @@ export class SyncService extends BaseService {
         ],
       }
       const paymentService = new PaymentService(this.user)
-      await paymentService.createExpenseForAbsorbedFees(
-        expensePayload,
+      await paymentService.createExpenseForAbsorbedFees({
+        payload: expensePayload,
+        invoiceNumber: record.invoiceNumber,
         intuitApi,
-        record.copilotId,
-      )
+        id: record.copilotId,
+      })
     } catch (error: unknown) {
       CustomLogger.error({
         message: 'SyncService#processPaymentSucceededSync',

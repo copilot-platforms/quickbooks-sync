@@ -523,20 +523,27 @@ export class WebhookService extends BaseService {
         return
       }
 
-      let invoice: Awaited<ReturnType<CopilotAPI['getInvoice']>>
-      try {
-        const copilotApp = new CopilotAPI(this.user.token)
-        invoice = await copilotApp.getInvoice(
-          parsedPaymentSucceedResource.data.invoiceId,
+      const copilotApp = new CopilotAPI(this.user.token)
+      const invoice = await copilotApp.getInvoice(
+        parsedPaymentSucceedResource.data.invoiceId,
+      )
+
+      if (!invoice)
+        throw new APIError(
+          httpStatus.NOT_FOUND,
+          `Invoice not found in Assembly for invoice id: ${parsedPaymentSucceedResource.data.invoiceId}`,
         )
 
-        if (!invoice)
+      try {
+        validateAccessToken(qbTokenInfo)
+        const invService = new InvoiceService(this.user)
+        const invoiceSync = await invService.getInvoiceByNumber(invoice.number)
+        if (!invoiceSync) {
           throw new APIError(
             httpStatus.NOT_FOUND,
-            `Invoice not found in Assembly for invoice id: ${parsedPaymentSucceedResource.data.invoiceId}`,
+            `No invoice found in invoice sync table for invoice id: ${parsedPaymentSucceedResource.data.invoiceId}`,
           )
-
-        validateAccessToken(qbTokenInfo)
+        }
         const paymentService = new PaymentService(this.user)
 
         if (useBankDepositFlow) {
@@ -549,11 +556,12 @@ export class WebhookService extends BaseService {
           )
         } else {
           // Legacy flow: create a standalone expense for absorbed fees
-          await paymentService.webhookPaymentSucceeded(
+          await paymentService.webhookPaymentSucceeded({
             parsedPaymentSucceedResource,
             qbTokenInfo,
-            invoice,
-          )
+            qbDocNumber: invoiceSync.qbDocNumber ?? invoice.number,
+            invoiceNumber: invoice.number,
+          })
         }
       } catch (error: unknown) {
         CustomLogger.error({ message: 'Webhook handler failed', obj: error })
