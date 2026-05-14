@@ -24,6 +24,7 @@ export const QBInvoiceSync = table(
     }),
     invoiceNumber: t.varchar('invoice_number').notNull(),
     qbInvoiceId: t.varchar('qb_invoice_id'),
+    qbDocNumber: t.varchar('qb_doc_number'),
     qbSyncToken: t.varchar('qb_sync_token', { length: 100 }),
     recipientId: t.uuid('recipient_id'),
     status: invoiceStatusEnum('status').default(InvoiceStatus.OPEN).notNull(),

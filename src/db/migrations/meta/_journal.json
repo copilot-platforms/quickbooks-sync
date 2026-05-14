@@ -145,8 +145,15 @@
     {
       "idx": 20,
       "version": "7",
-      "when": 1784284760546,
-      "tag": "20260717103920_add_bank_deposit_fee_column",
+      "when": 1778752426056,
+      "tag": "20260514095346_add_qb_doc_number_column_in_qb_invoice_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1784285140689,
+      "tag": "20260717104540_add_bank_deposit_fee_column",
       "breakpoints": true
     }
   ]

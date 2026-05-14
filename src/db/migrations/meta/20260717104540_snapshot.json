@@ -1,6 +1,6 @@
 {
-  "id": "9b37b8ea-471f-4ead-9558-059d7fc40b03",
-  "prevId": "056be0dd-8db9-4f73-bd22-cb8f5a2598ce",
+  "id": "5cc4ffb4-bfb5-432c-919e-0b6c90caf3c5",
+  "prevId": "ac41313a-2978-42ad-aa32-ea26dc31d10c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -236,6 +236,12 @@
         },
         "qb_invoice_id": {
           "name": "qb_invoice_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qb_doc_number": {
+          "name": "qb_doc_number",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
@@ -1025,7 +1031,7 @@
             }
           ],
           "isUnique": true,
-          "where": "\"qb_sync_logs\".\"deleted_at\" IS NULL AND (\n          (\"qb_sync_logs\".\"entity_type\" = 'invoice' AND \"qb_sync_logs\".\"event_type\" IN ('created','paid','voided','deleted'))\n          OR \"qb_sync_logs\".\"entity_type\" = 'payment'\n        )",
+          "where": "\"qb_sync_logs\".\"deleted_at\" IS NULL AND (\n          (\"qb_sync_logs\".\"entity_type\" = 'invoice' AND \"qb_sync_logs\".\"event_type\" IN ('created','paid','voided','deleted'))\n          OR (\"qb_sync_logs\".\"entity_type\" = 'payment' AND \"qb_sync_logs\".\"event_type\" = 'succeeded')\n        )",
           "concurrently": false,
           "method": "btree",
           "with": {}
