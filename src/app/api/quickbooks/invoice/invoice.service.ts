@@ -52,7 +52,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { convert } from 'html-to-text'
 import httpStatus from 'http-status'
 import { z } from 'zod'
-import { addSyncBreadcrumb } from '@/utils/sentry'
+import { addSyncBreadcrumb, captureSyncError } from '@/utils/sentry'
 import { replaceSpecialCharsForQB, truncateForQB } from '@/utils/string'
 import { AccountTypeObj } from '@/constant/qbConnection'
 
@@ -561,7 +561,23 @@ export class InvoiceService extends BaseService {
       assemblyInvoiceNumber,
     )
     const taken = new Set(existing.map((inv) => inv.DocNumber))
-    return findNextAvailableDocNumber(assemblyInvoiceNumber, taken)
+    try {
+      return findNextAvailableDocNumber(assemblyInvoiceNumber, taken)
+    } catch (err) {
+      // Exhaustion / length-limit throws aren't recoverable by resync —
+      // surface to Sentry so engineering sees them. Re-throw so the
+      // existing FAILED sync_log path still records the row.
+      captureSyncError(
+        err,
+        { area: 'docnumber-walk-unresolvable' },
+        {
+          portalId: this.user.workspaceId,
+          assemblyInvoiceNumber,
+          takenCount: taken.size,
+        },
+      )
+      throw err
+    }
   }
 
   /**
@@ -821,6 +837,7 @@ export class InvoiceService extends BaseService {
       portalId: this.user.workspaceId,
       invoiceNumber: invoiceResource.number,
       qbInvoiceId: invoiceRes.Invoice.Id,
+      qbDocNumber: docNumber,
       qbSyncToken: invoiceRes.Invoice.SyncToken,
       recipientId: recipientInfo.recipientId,
       customerId: existingCustomerMapId, // foreign key to customer mapping
@@ -1446,6 +1463,7 @@ export class InvoiceService extends BaseService {
         portalId: this.user.workspaceId,
         invoiceNumber,
         qbInvoiceId: qbInvoice.Id,
+        qbDocNumber: invoiceNumber,
         qbSyncToken: qbInvoice.SyncToken,
         recipientId: recipientInfo.recipientId,
         customerId: customerMapId,

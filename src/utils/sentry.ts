@@ -11,3 +11,11 @@ export function addSyncBreadcrumb(
     level: 'info',
   })
 }
+
+export function captureSyncError(
+  error: unknown,
+  tags: Record<string, string>,
+  extra?: Record<string, string | number | boolean | undefined>,
+) {
+  Sentry.captureException(error, { tags, extra })
+}
