@@ -180,7 +180,7 @@ export class SyncLogService extends BaseService {
         ],
         where: sql`deleted_at IS NULL AND (
           (entity_type = 'invoice' AND event_type IN ('created','paid','voided','deleted'))
-          OR entity_type = 'payment'
+          OR (entity_type = 'payment' AND event_type = 'succeeded')
         )`,
       })
       .returning({ id: QBSyncLog.id })
