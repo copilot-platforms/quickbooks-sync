@@ -728,8 +728,9 @@ export default class IntuitAPI {
         'IntuitAPI#findInvoicesByDocNumberPrefix | message = no response',
       )
     }
-    if (!response.Invoice) return []
-    return response.Invoice.map((inv: { Id: string; DocNumber?: string }) => ({
+    const envelope = QBInvoiceQueryResponseSchema.parse(response)
+    if (!envelope.Invoice) return []
+    return envelope.Invoice.map((inv) => ({
       Id: inv.Id,
       DocNumber: inv.DocNumber ?? '',
     }))

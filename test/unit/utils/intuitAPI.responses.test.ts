@@ -268,6 +268,7 @@ describe('IntuitAPI POST-based writes', () => {
     const result = await api.createInvoice({
       Line: [],
       CustomerRef: { value: 'c1' },
+      PrivateNote: 'Assembly invoice: TEST-001',
     })
 
     expect(result.Invoice.Id).toBe('500')
@@ -279,7 +280,7 @@ describe('IntuitAPI POST-based writes', () => {
 
     const api = makeApi()
     await expect(
-      api.createInvoice({ Line: [], CustomerRef: { value: 'c1' } }),
+      api.createInvoice({ Line: [], CustomerRef: { value: 'c1' }, PrivateNote: 'Assembly invoice: TEST-001' }),
     ).rejects.toBeInstanceOf(APIError)
   })
 
