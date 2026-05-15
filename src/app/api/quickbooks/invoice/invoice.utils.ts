@@ -3,7 +3,7 @@ export const formatAssemblyInvoicePrivateNote = (
 ): string => `Assembly invoice: ${invoiceNumber}`
 
 const QBO_DOCNUMBER_MAX_LENGTH = 21
-const MAX_SUFFIX_ATTEMPTS = 10
+export const MAX_SUFFIX_ATTEMPTS = 10
 
 /**
  * Given the Assembly invoice number and a set of DocNumbers already taken in

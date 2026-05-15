@@ -3,6 +3,7 @@ import {
   findNextAvailableDocNumber,
   formatAssemblyInvoicePrivateNote,
   isQBODuplicateDocNumberError,
+  MAX_SUFFIX_ATTEMPTS,
 } from '@/app/api/quickbooks/invoice/invoice.utils'
 
 describe('formatAssemblyInvoicePrivateNote', () => {
@@ -67,10 +68,10 @@ describe('findNextAvailableDocNumber', () => {
     )
   })
 
-  it('throws after exhausting 99 suffix slots', () => {
+  it('throws after exhausting MAX_SUFFIX_ATTEMPTS slots', () => {
     const base = 'TEST-001'
     const taken = new Set<string>([base])
-    for (let n = 1; n <= 99; n++) taken.add(`${base}-${n}`)
+    for (let n = 1; n <= MAX_SUFFIX_ATTEMPTS; n++) taken.add(`${base}-${n}`)
     expect(() => findNextAvailableDocNumber(base, taken)).toThrow(
       /no available DocNumber/,
     )
