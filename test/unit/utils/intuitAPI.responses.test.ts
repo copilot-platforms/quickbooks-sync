@@ -102,10 +102,12 @@ describe('IntuitAPI customQuery-based reads', () => {
   })
 
   it('getSingleIncomeAccount falls back to BAD_REQUEST when Fault.Error[0].code is missing or non-numeric', async () => {
-    // Edge case: QBO returns a fault with no code or a non-numeric code.
-    // We don't want to fail Zod parsing (the Detail/Message are still useful
-    // diagnostics), so the schema coerces and assertNotQBFault treats NaN
-    // (and undefined) as "no usable code" and falls back to BAD_REQUEST.
+    // Missing code: .optional() short-circuits before number coercion → undefined.
+    // Non-numeric code: schema's .catch(NaN) keeps the parse intact → NaN.
+    // Either way assertNotQBFault's Number.isFinite check fails and falls
+    // back to BAD_REQUEST, preserving Detail/Message for diagnostics. This
+    // test exercises the missing branch; the non-numeric branch relies on
+    // the same fallback path via the .catch(NaN) schema guard.
     vi.mocked(getFetcher).mockResolvedValue({
       Fault: {
         Error: [{ Message: 'Unknown', Detail: 'no code field' }],
