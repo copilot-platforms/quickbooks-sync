@@ -114,7 +114,17 @@ export const withErrorHandler = (handler: RequestHandler): RequestHandler => {
         })
       }
 
-      return NextResponse.json({ error: message, errors }, { status })
+      // QBO fault codes (e.g. 6240) are not valid HTTP status values; clamp
+      // to BAD_REQUEST before NextResponse.json. Matches assertNotQBFault's
+      // own fallback and preserves the pre-fix external contract; original
+      // code is kept in `errors`.
+      const httpStatusOut =
+        status >= 200 && status <= 599 ? status : httpStatus.BAD_REQUEST
+
+      return NextResponse.json(
+        { error: message, errors },
+        { status: httpStatusOut },
+      )
     }
   }
 }

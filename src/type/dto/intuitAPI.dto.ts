@@ -8,12 +8,25 @@ export const QBNameValueSchema = z.object({
 })
 export type QBNameValueSchemaType = z.infer<typeof QBNameValueSchema>
 
-// QBO returns Fault on any failed response. Error is loose (object or array)
-// across endpoints; we forward whatever shape arrived so callers/log
-// consumers can inspect it.
+// QBO documents and returns Fault.Error as an array of typed error objects.
+// `code` is delivered as a string (e.g. "6240"); coerce to number so
+// APIError.status and downstream code-based comparators see a number.
+// Non-numeric codes coerce to NaN — assertNotQBFault treats that as
+// "no usable code" rather than failing the parse, so the Detail/Message
+// payload is still surfaced for diagnostics.
+export const QBFaultErrorSchema = z.object({
+  code: z.coerce.number().optional(),
+  Message: z.string().optional(),
+  Detail: z.string().optional(),
+  element: z.string().optional(),
+})
+export type QBFaultErrorSchemaType = z.infer<typeof QBFaultErrorSchema>
+
 export const QBFaultSchema = z.object({
   Fault: z.object({
-    Error: z.unknown().optional(),
+    // .default([]) guards against QBO responses where `Fault` is present but
+    // `Error` is absent — without it safeParse would silently no-op the throw.
+    Error: z.array(QBFaultErrorSchema).optional().default([]),
   }),
 })
 export type QBFaultType = z.infer<typeof QBFaultSchema>

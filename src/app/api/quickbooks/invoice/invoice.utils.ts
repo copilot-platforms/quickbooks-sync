@@ -44,16 +44,11 @@ export const findNextAvailableDocNumber = (
  * surfaces in.
  *
  * Live path: APIError thrown from intuitAPI._createInvoice carries the QBO
- * fault payload in its `errors` array (`{ code: '6240', Detail, Message }`).
- * APIError.status lands as 400 because intuitAPI dereferences
- * `Fault.Error?.code` as if it were an object (the QBO Fault.Error is an
- * array); APIError.message is the boilerplate `#IntuitAPIErrorMessage#…`.
- * So the only reliable signal is iterating `errors[]` and matching `code`
- * or the Detail/Message text.
- *
- * Defense-in-depth: also check top-level .status/.code/.message in case any
- * future call site rethrows the inner fault directly or normalizes the
- * APIError differently.
+ * fault payload in its `errors` array (`{ code: 6240, Detail, Message }`).
+ * APIError.status also reflects the QBO code (e.g. 6240),
+ * so the top-level `.status === 6240` branch now fires on real faults.
+ * The `errors[]` walk remains the durable signal — it stays correct if a
+ * caller ever wraps/normalises the APIError without preserving .status.
  */
 export const isQBODuplicateDocNumberError = (err: unknown): boolean => {
   if (!err || typeof err !== 'object' || Array.isArray(err)) return false

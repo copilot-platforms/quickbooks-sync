@@ -5,6 +5,7 @@ import {
 } from '@/app/api/core/exceptions/custom'
 import { OAuthErrorCodes } from '@/constant/intuitErrorCode'
 import { CopilotApiError, MessagableError } from '@/type/CopilotApiError'
+import { QBFaultErrorSchemaType } from '@/type/dto/intuitAPI.dto'
 import { refreshTokenExpireMessage } from '@/utils/auth'
 import { IntuitAPIErrorMessage } from '@/utils/intuitAPI'
 import httpStatus from 'http-status'
@@ -50,7 +51,8 @@ export const getMessageAndCodeFromError = (
     let errorMessage = error.message || message
     const isIntuitError = error.message.includes(IntuitAPIErrorMessage)
     if (isIntuitError) {
-      errorMessage = (error.errors?.[0] as IntuitErrorType).Detail
+      const firstFault = error.errors?.[0] as QBFaultErrorSchemaType | undefined
+      errorMessage = firstFault?.Detail ?? errorMessage
     }
     return {
       message: errorMessage,

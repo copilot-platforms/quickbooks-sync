@@ -84,11 +84,40 @@ describe('IntuitAPI customQuery-based reads', () => {
     })
   })
 
-  it('getSingleIncomeAccount throws APIError on Fault response', async () => {
+  it('getSingleIncomeAccount throws APIError on Fault response with QBO code on status and typed errors[]', async () => {
+    // Regression guard for OUT-3742: previously APIError.status was always
+    // BAD_REQUEST because assertNotQBFault ignored the array branch. Now the
+    // QBO numeric code (coerced from the QBO string) surfaces on .status, and
+    // .errors is the typed array from QBFaultErrorSchema.
     vi.mocked(getFetcher).mockResolvedValue(faultResponse())
 
     const api = makeApi()
-    await expect(api.getSingleIncomeAccount()).rejects.toBeInstanceOf(APIError)
+    const err = await api.getSingleIncomeAccount().catch((e) => e)
+
+    expect(err).toBeInstanceOf(APIError)
+    expect(err.status).toBe(6000)
+    expect(err.errors).toEqual([
+      { code: 6000, Message: 'Bad request', Detail: 'detail' },
+    ])
+  })
+
+  it('getSingleIncomeAccount falls back to BAD_REQUEST when Fault.Error[0].code is missing or non-numeric', async () => {
+    // Edge case: QBO returns a fault with no code or a non-numeric code.
+    // We don't want to fail Zod parsing (the Detail/Message are still useful
+    // diagnostics), so the schema coerces and assertNotQBFault treats NaN
+    // (and undefined) as "no usable code" and falls back to BAD_REQUEST.
+    vi.mocked(getFetcher).mockResolvedValue({
+      Fault: {
+        Error: [{ Message: 'Unknown', Detail: 'no code field' }],
+      },
+    })
+
+    const api = makeApi()
+    const err = await api.getSingleIncomeAccount().catch((e) => e)
+
+    expect(err).toBeInstanceOf(APIError)
+    expect(err.status).toBe(400)
+    expect((err.errors as Array<{ code?: number }>)[0].code).toBeUndefined()
   })
 
   it('getAllItems parses rows including null Description (QBO returns null for empty)', async () => {
@@ -275,17 +304,26 @@ describe('IntuitAPI POST-based writes', () => {
     expect(result.Invoice.SyncToken).toBe('0')
   })
 
-  it('createInvoice throws APIError on Fault', async () => {
+  it('createInvoice throws APIError on Fault with QBO code on status', async () => {
+    // Mirrors the read-path Fault assertion: status carries the coerced QBO
+    // code, errors[] is the typed array — guards against a future regression
+    // that limits the fix to the GET path.
     vi.mocked(postFetcher).mockResolvedValue(faultResponse())
 
     const api = makeApi()
-    await expect(
-      api.createInvoice({
+    const err = await api
+      .createInvoice({
         Line: [],
         CustomerRef: { value: 'c1' },
         PrivateNote: 'Assembly invoice: TEST-001',
-      }),
-    ).rejects.toBeInstanceOf(APIError)
+      })
+      .catch((e) => e)
+
+    expect(err).toBeInstanceOf(APIError)
+    expect(err.status).toBe(6000)
+    expect(err.errors).toEqual([
+      { code: 6000, Message: 'Bad request', Detail: 'detail' },
+    ])
   })
 
   it('createCustomer parses the envelope and returns the inner Customer', async () => {

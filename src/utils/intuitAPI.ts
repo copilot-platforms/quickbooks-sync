@@ -71,30 +71,20 @@ export type IntuitAPITokensType = Pick<
 export const IntuitAPIErrorMessage = '#IntuitAPIErrorMessage#'
 
 // Throws an APIError if `raw` is a QBO Fault response; no-op otherwise.
-// Replaces the duplicated `if (raw?.Fault) throw ...` block in every method.
-// Fault.Error.code is preserved only when numeric (HTTP-safe); QBO's
-// string codes fall back to BAD_REQUEST as before.
+// APIError.status carries the QBO fault code from errors[0].code (e.g. 6240)
+// when finite, else BAD_REQUEST. withErrorHandler clamps non-HTTP codes
+// before they reach NextResponse.json.
 export function assertNotQBFault(raw: unknown, opName: string): void {
   const result = QBFaultSchema.safeParse(raw)
   if (!result.success) return
-  const error = result.data.Fault.Error
-  CustomLogger.error({ obj: error, message: 'Error: ' })
+  const errors = result.data.Fault.Error
+  CustomLogger.error({ obj: errors, message: 'Error: ' })
+  const firstCode = errors[0]?.code
   const code =
-    error &&
-    typeof error === 'object' &&
-    !Array.isArray(error) &&
-    'code' in error &&
-    typeof (error as { code: unknown }).code === 'number'
-      ? (error as { code: number }).code
+    typeof firstCode === 'number' && Number.isFinite(firstCode)
+      ? firstCode
       : httpStatus.BAD_REQUEST
-  // APIError.errors is typed unknown[] — pass array Errors verbatim, drop
-  // non-array shapes to undefined rather than casting (the message + the
-  // logged error above retain the diagnostic detail).
-  throw new APIError(
-    code,
-    `${IntuitAPIErrorMessage}${opName}`,
-    Array.isArray(error) ? error : undefined,
-  )
+  throw new APIError(code, `${IntuitAPIErrorMessage}${opName}`, errors)
 }
 
 type GetACustomerOverloads = {
