@@ -11,11 +11,12 @@ export type QBNameValueSchemaType = z.infer<typeof QBNameValueSchema>
 // QBO documents and returns Fault.Error as an array of typed error objects.
 // `code` is delivered as a string (e.g. "6240"); coerce to number so
 // APIError.status and downstream code-based comparators see a number.
-// Non-numeric codes coerce to NaN — assertNotQBFault treats that as
-// "no usable code" rather than failing the parse, so the Detail/Message
-// payload is still surfaced for diagnostics.
+// `.catch(NaN)` keeps the parse intact for non-numeric codes — Zod's number
+// validator rejects NaN, so without it `z.coerce.number()` would fail the
+// whole schema and assertNotQBFault would silently swallow the fault.
+// assertNotQBFault treats NaN as "no usable code" and falls back to BAD_REQUEST.
 export const QBFaultErrorSchema = z.object({
-  code: z.coerce.number().optional(),
+  code: z.coerce.number().catch(NaN).optional(),
   Message: z.string().optional(),
   Detail: z.string().optional(),
   element: z.string().optional(),
