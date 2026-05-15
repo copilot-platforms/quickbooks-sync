@@ -78,25 +78,69 @@ describe('findNextAvailableDocNumber', () => {
 })
 
 describe('isQBODuplicateDocNumberError', () => {
-  it('matches numeric 6240 code', () => {
-    expect(isQBODuplicateDocNumberError({ code: 6240 })).toBe(true)
+  it('matches the real APIError shape thrown by intuitAPI._createInvoice', () => {
+    // This is the actual shape: status=400, message=boilerplate, errors=array
+    // of QBO fault objects. The 6240 code lives in errors[i].code.
+    const realApiError = {
+      status: 400,
+      message: '#IntuitAPIErrorMessage#createInvoice',
+      errors: [
+        {
+          code: '6240',
+          Message: 'Duplicate Document Number Error',
+          Detail:
+            'Duplicate Document Number Error : You must specify a different number. This number has already been used.',
+          Element: '',
+        },
+      ],
+    }
+    expect(isQBODuplicateDocNumberError(realApiError)).toBe(true)
   })
-  it('matches stringified 6240 code', () => {
-    expect(isQBODuplicateDocNumberError({ code: '6240' })).toBe(true)
+
+  it('matches when errors[i].code is numeric', () => {
+    expect(
+      isQBODuplicateDocNumberError({
+        status: 400,
+        errors: [{ code: 6240 }],
+      }),
+    ).toBe(true)
   })
-  it('matches numeric 6240 status (APIError shape from createInvoice)', () => {
+
+  it('matches via errors[i].Detail when code is absent', () => {
+    expect(
+      isQBODuplicateDocNumberError({
+        status: 400,
+        errors: [{ Detail: 'Duplicate Document Number Error: …' }],
+      }),
+    ).toBe(true)
+  })
+
+  it('matches top-level .status as 6240 (defense-in-depth)', () => {
     expect(isQBODuplicateDocNumberError({ status: 6240 })).toBe(true)
   })
-  it('matches stringified 6240 status', () => {
-    expect(isQBODuplicateDocNumberError({ status: '6240' })).toBe(true)
+
+  it('matches top-level .code as 6240 (defense-in-depth)', () => {
+    expect(isQBODuplicateDocNumberError({ code: '6240' })).toBe(true)
   })
-  it('matches the duplicate-doc-number message', () => {
+
+  it('matches top-level .message text (defense-in-depth)', () => {
     expect(
       isQBODuplicateDocNumberError({
         message: 'Duplicate Document Number Error',
       }),
     ).toBe(true)
   })
+
+  it('returns false for unrelated APIError shapes', () => {
+    expect(
+      isQBODuplicateDocNumberError({
+        status: 400,
+        message: '#IntuitAPIErrorMessage#createInvoice',
+        errors: [{ code: '5010', Detail: 'Stale object error' }],
+      }),
+    ).toBe(false)
+  })
+
   it('returns false for unrelated errors', () => {
     expect(isQBODuplicateDocNumberError({ code: 5010 })).toBe(false)
     expect(isQBODuplicateDocNumberError({ status: 400 })).toBe(false)
@@ -104,5 +148,6 @@ describe('isQBODuplicateDocNumberError', () => {
     expect(isQBODuplicateDocNumberError(undefined)).toBe(false)
     expect(isQBODuplicateDocNumberError('not an object')).toBe(false)
     expect(isQBODuplicateDocNumberError({})).toBe(false)
+    expect(isQBODuplicateDocNumberError([])).toBe(false)
   })
 })

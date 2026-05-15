@@ -40,13 +40,20 @@ export const findNextAvailableDocNumber = (
 }
 
 /**
- * Recognizes QBO Error 6240 "Duplicate Document Number" across error shapes.
+ * Recognizes QBO Error 6240 "Duplicate Document Number" across the shapes it
+ * surfaces in.
  *
- * The `.status`/`.code` branches are forward-compatible: today `intuitAPI.ts`
- * reads `Fault.Error?.code` as if it were an object (it's actually an array),
- * so APIError lands with status=400, not 6240. The live safety net is the
- * regex over `.message`. When the array-access is corrected the structured
- * branches will start firing too.
+ * Live path: APIError thrown from intuitAPI._createInvoice carries the QBO
+ * fault payload in its `errors` array (`{ code: '6240', Detail, Message }`).
+ * APIError.status lands as 400 because intuitAPI dereferences
+ * `Fault.Error?.code` as if it were an object (the QBO Fault.Error is an
+ * array); APIError.message is the boilerplate `#IntuitAPIErrorMessage#…`.
+ * So the only reliable signal is iterating `errors[]` and matching `code`
+ * or the Detail/Message text.
+ *
+ * Defense-in-depth: also check top-level .status/.code/.message in case any
+ * future call site rethrows the inner fault directly or normalizes the
+ * APIError differently.
  */
 export const isQBODuplicateDocNumberError = (err: unknown): boolean => {
   if (!err || typeof err !== 'object' || Array.isArray(err)) return false
@@ -54,9 +61,26 @@ export const isQBODuplicateDocNumberError = (err: unknown): boolean => {
     status?: string | number
     code?: string | number
     message?: string
+    errors?: unknown
+  }
+  if (Array.isArray(e.errors)) {
+    for (const item of e.errors) {
+      if (!item || typeof item !== 'object') continue
+      const fault = item as {
+        code?: string | number
+        Detail?: string
+        Message?: string
+      }
+      if (fault.code === 6240 || fault.code === '6240') return true
+      if (
+        /6240|Duplicate Document Number/i.test(fault.Detail ?? '') ||
+        /6240|Duplicate Document Number/i.test(fault.Message ?? '')
+      ) {
+        return true
+      }
+    }
   }
   if (e.status === 6240 || e.status === '6240') return true
   if (e.code === 6240 || e.code === '6240') return true
-  const message = e.message ?? ''
-  return /6240|Duplicate Document Number/i.test(message)
+  return /6240|Duplicate Document Number/i.test(e.message ?? '')
 }
