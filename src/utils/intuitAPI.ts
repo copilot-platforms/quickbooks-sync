@@ -720,7 +720,7 @@ export default class IntuitAPI {
     const escapedPrefix = escapeForQBQuery(prefix)
       .replace(/%/g, '\\%')
       .replace(/_/g, '\\_')
-    const query = `select Id, DocNumber from Invoice where DocNumber LIKE '${escapedPrefix}%' maxresults 100`
+    const query = `select Id, SyncToken, DocNumber from Invoice where DocNumber LIKE '${escapedPrefix}%' maxresults 100`
     const response = await this.customQuery(query)
     if (!response) {
       throw new APIError(
