@@ -70,10 +70,8 @@ export type IntuitAPITokensType = Pick<
 
 export const IntuitAPIErrorMessage = '#IntuitAPIErrorMessage#'
 
-// Throws an APIError if `raw` is a QBO Fault response; no-op otherwise.
-// APIError.status carries the QBO fault code from errors[0].code (e.g. 6240)
-// when finite, else BAD_REQUEST. withErrorHandler clamps non-HTTP codes
-// before they reach NextResponse.json.
+// APIError.status carries the QBO fault code (e.g. 6240) when available,
+// else BAD_REQUEST. withErrorHandler clamps non-HTTP codes downstream.
 export function assertNotQBFault(raw: unknown, opName: string): void {
   const result = QBFaultSchema.safeParse(raw)
   if (!result.success) return
@@ -81,9 +79,7 @@ export function assertNotQBFault(raw: unknown, opName: string): void {
   CustomLogger.error({ obj: errors, message: 'Error: ' })
   const firstCode = errors[0]?.code
   const code =
-    typeof firstCode === 'number' && Number.isFinite(firstCode)
-      ? firstCode
-      : httpStatus.BAD_REQUEST
+    typeof firstCode === 'number' ? firstCode : httpStatus.BAD_REQUEST
   throw new APIError(code, `${IntuitAPIErrorMessage}${opName}`, errors)
 }
 
@@ -741,8 +737,6 @@ export default class IntuitAPI {
    * findNextAvailableDocNumber to detect collisions and pick the next free
    * suffix before createInvoice. Caps at maxresults=100; if a single prefix
    * has more matches, the caller falls back to catch-6240 retry semantics.
-   * SyncToken is included so a caller can void/delete a duplicate without a
-   * second lookup.
    */
   async _findInvoicesByDocNumberPrefix(
     prefix: string,

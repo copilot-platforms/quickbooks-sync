@@ -40,15 +40,9 @@ export const findNextAvailableDocNumber = (
 }
 
 /**
- * Recognizes QBO Error 6240 "Duplicate Document Number" across the shapes it
- * surfaces in.
- *
- * Live path: APIError thrown from intuitAPI._createInvoice carries the QBO
- * fault payload in its `errors` array (`{ code: 6240, Detail, Message }`).
- * APIError.status also reflects the QBO code (e.g. 6240),
- * so the top-level `.status === 6240` branch now fires on real faults.
- * The `errors[]` walk remains the durable signal — it stays correct if a
- * caller ever wraps/normalises the APIError without preserving .status.
+ * Recognizes QBO Error 6240 "Duplicate Document Number". Reads `.status`,
+ * `.code`, `errors[].code`, and message text so it works whether the caller
+ * surfaces the parsed APIError directly or wraps/normalises it.
  */
 export const isQBODuplicateDocNumberError = (err: unknown): boolean => {
   if (!err || typeof err !== 'object' || Array.isArray(err)) return false

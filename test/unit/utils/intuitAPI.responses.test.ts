@@ -58,7 +58,7 @@ describe('IntuitAPI customQuery-based reads', () => {
     vi.clearAllMocks()
   })
 
-  it('getSingleIncomeAccount parses the SQL it actually issues (Id + Name + SyncToken + Active)', async () => {
+  it('getSingleIncomeAccount returns the income account when QBO responds with a single matching row', async () => {
     // Regression guard: SQL projection must satisfy QBAccountRowSchema.
     vi.mocked(getFetcher).mockResolvedValue(
       queryResponse({
@@ -68,6 +68,7 @@ describe('IntuitAPI customQuery-based reads', () => {
             Name: 'Sales of Product Income',
             SyncToken: '0',
             Active: true,
+            AccountType: 'Income',
           },
         ],
       }),
@@ -84,11 +85,7 @@ describe('IntuitAPI customQuery-based reads', () => {
     })
   })
 
-  it('getSingleIncomeAccount throws APIError on Fault response with QBO code on status and typed errors[]', async () => {
-    // Regression guard for OUT-3742: previously APIError.status was always
-    // BAD_REQUEST because assertNotQBFault ignored the array branch. Now the
-    // QBO numeric code (coerced from the QBO string) surfaces on .status, and
-    // .errors is the typed array from QBFaultErrorSchema.
+  it('getSingleIncomeAccount throws an APIError whose status matches the QBO fault code', async () => {
     vi.mocked(getFetcher).mockResolvedValue(faultResponse())
 
     const api = makeApi()
@@ -101,13 +98,10 @@ describe('IntuitAPI customQuery-based reads', () => {
     ])
   })
 
-  it('getSingleIncomeAccount falls back to BAD_REQUEST when Fault.Error[0].code is missing or non-numeric', async () => {
-    // Missing code: .optional() short-circuits before number coercion → undefined.
-    // Non-numeric code: schema's .catch(NaN) keeps the parse intact → NaN.
-    // Either way assertNotQBFault's Number.isFinite check fails and falls
-    // back to BAD_REQUEST, preserving Detail/Message for diagnostics. This
-    // test exercises the missing branch; the non-numeric branch relies on
-    // the same fallback path via the .catch(NaN) schema guard.
+  it('getSingleIncomeAccount falls back to status 400 when the QBO fault has no usable code', async () => {
+    // Schema maps missing / null / empty / non-numeric `code` to undefined;
+    // assertNotQBFault falls back to BAD_REQUEST. Test covers the missing
+    // branch; the others converge on the same undefined output.
     vi.mocked(getFetcher).mockResolvedValue({
       Fault: {
         Error: [{ Message: 'Unknown', Detail: 'no code field' }],
@@ -122,7 +116,7 @@ describe('IntuitAPI customQuery-based reads', () => {
     expect((err.errors as Array<{ code?: number }>)[0].code).toBeUndefined()
   })
 
-  it('getAllItems parses rows including null Description (QBO returns null for empty)', async () => {
+  it('getAllItems returns every item, including rows whose Description is null', async () => {
     vi.mocked(getFetcher).mockResolvedValue(
       queryResponse({
         Item: [
@@ -157,7 +151,7 @@ describe('IntuitAPI customQuery-based reads', () => {
     })
   })
 
-  it('getAllItems returns parsed empty array when QBO omits the Item key', async () => {
+  it('getAllItems returns an empty array when QBO omits the Item key entirely', async () => {
     vi.mocked(getFetcher).mockResolvedValue(queryResponse({}))
 
     const api = makeApi()
@@ -166,7 +160,7 @@ describe('IntuitAPI customQuery-based reads', () => {
     expect(result).toEqual([])
   })
 
-  it('getAnAccount parses a single-row account match', async () => {
+  it('getAnAccount returns the account when QBO responds with a single match', async () => {
     vi.mocked(getFetcher).mockResolvedValue(
       queryResponse({
         Account: [{ Id: '7', Name: 'Assets', SyncToken: '0', Active: true }],
@@ -180,7 +174,7 @@ describe('IntuitAPI customQuery-based reads', () => {
     expect(result?.SyncToken).toBe('0')
   })
 
-  it('getAnAccount returns null when no Account key is present', async () => {
+  it('getAnAccount returns null when QBO returns no Account in the response', async () => {
     vi.mocked(getFetcher).mockResolvedValue(queryResponse({}))
 
     const api = makeApi()
@@ -189,7 +183,7 @@ describe('IntuitAPI customQuery-based reads', () => {
     expect(result).toBeNull()
   })
 
-  it('getAnItem parses a single-row item match with the SQL columns it projects', async () => {
+  it('getAnItem returns the item when QBO responds with a single match', async () => {
     vi.mocked(getFetcher).mockResolvedValue(
       queryResponse({
         Item: [
@@ -213,7 +207,7 @@ describe('IntuitAPI customQuery-based reads', () => {
     expect(result?.UnitPrice).toBe(50)
   })
 
-  it('getInvoice parses an invoice match and reduces to Id+SyncToken', async () => {
+  it('getInvoice returns the invoice Id and SyncToken when a match is found', async () => {
     vi.mocked(getFetcher).mockResolvedValue(
       queryResponse({
         Invoice: [{ Id: '100', SyncToken: '0', DocNumber: 'INV-1' }],
@@ -226,7 +220,7 @@ describe('IntuitAPI customQuery-based reads', () => {
     expect(result).toEqual({ Id: '100', SyncToken: '0' })
   })
 
-  it('getInvoice returns null when QBO returns an empty Invoice array', async () => {
+  it('getInvoice returns null when QBO returns an empty Invoice list', async () => {
     vi.mocked(getFetcher).mockResolvedValue(queryResponse({ Invoice: [] }))
 
     const api = makeApi()
@@ -235,7 +229,7 @@ describe('IntuitAPI customQuery-based reads', () => {
     expect(result).toBeNull()
   })
 
-  it('getCompanyInfo tolerates a CompanyInfo row without Country', async () => {
+  it('getCompanyInfo returns the row even when Country is missing', async () => {
     vi.mocked(getFetcher).mockResolvedValue(
       queryResponse({ CompanyInfo: [{}] }),
     )
@@ -246,7 +240,7 @@ describe('IntuitAPI customQuery-based reads', () => {
     expect(result.Country).toBeUndefined()
   })
 
-  it('getCompanyInfo passes Country through when present', async () => {
+  it('getCompanyInfo returns the Country when QBO includes it', async () => {
     vi.mocked(getFetcher).mockResolvedValue(
       queryResponse({ CompanyInfo: [{ Country: 'US' }] }),
     )
@@ -257,7 +251,7 @@ describe('IntuitAPI customQuery-based reads', () => {
     expect(result.Country).toBe('US')
   })
 
-  it('getACustomer parses a single-row customer match', async () => {
+  it('getACustomer returns the customer when QBO responds with a single match', async () => {
     vi.mocked(getFetcher).mockResolvedValue(
       queryResponse({
         Customer: [
@@ -285,7 +279,7 @@ describe('IntuitAPI POST-based writes', () => {
     vi.clearAllMocks()
   })
 
-  it('createInvoice parses the envelope and returns the full response', async () => {
+  it('createInvoice returns the created invoice when QBO accepts the request', async () => {
     vi.mocked(postFetcher).mockResolvedValue({
       Invoice: {
         Id: '500',
@@ -306,10 +300,7 @@ describe('IntuitAPI POST-based writes', () => {
     expect(result.Invoice.SyncToken).toBe('0')
   })
 
-  it('createInvoice throws APIError on Fault with QBO code on status', async () => {
-    // Mirrors the read-path Fault assertion: status carries the coerced QBO
-    // code, errors[] is the typed array — guards against a future regression
-    // that limits the fix to the GET path.
+  it('createInvoice throws an APIError whose status matches the QBO fault code', async () => {
     vi.mocked(postFetcher).mockResolvedValue(faultResponse())
 
     const api = makeApi()
@@ -328,7 +319,7 @@ describe('IntuitAPI POST-based writes', () => {
     ])
   })
 
-  it('createCustomer parses the envelope and returns the inner Customer', async () => {
+  it('createCustomer returns the created customer when QBO accepts the request', async () => {
     vi.mocked(postFetcher).mockResolvedValue({
       Customer: {
         Id: '50',
@@ -347,7 +338,7 @@ describe('IntuitAPI POST-based writes', () => {
     expect(result.FullyQualifiedName).toBe('Acme')
   })
 
-  it('createItem parses the envelope and returns the inner Item', async () => {
+  it('createItem returns the created item when QBO accepts the request', async () => {
     vi.mocked(postFetcher).mockResolvedValue({
       Item: {
         Id: '200',
@@ -370,7 +361,7 @@ describe('IntuitAPI POST-based writes', () => {
     expect(result.UnitPrice).toBe(25)
   })
 
-  it('createAccount parses the envelope and returns the inner Account', async () => {
+  it('createAccount returns the created account when QBO accepts the request', async () => {
     vi.mocked(postFetcher).mockResolvedValue({
       Account: { Id: '300', Name: 'New Asset', SyncToken: '0', Active: true },
     })
@@ -387,7 +378,7 @@ describe('IntuitAPI POST-based writes', () => {
     expect(result.Name).toBe('New Asset')
   })
 
-  it('createPayment parses the envelope and returns the full response', async () => {
+  it('createPayment returns the created payment when QBO accepts the request', async () => {
     vi.mocked(postFetcher).mockResolvedValue({
       Payment: { Id: '400', SyncToken: '0', TotalAmt: 100 },
     })
@@ -403,7 +394,7 @@ describe('IntuitAPI POST-based writes', () => {
     expect(result.Payment.SyncToken).toBe('0')
   })
 
-  it('voidInvoice parses the envelope returned by void operation', async () => {
+  it('voidInvoice returns the voided invoice when QBO confirms the void', async () => {
     vi.mocked(postFetcher).mockResolvedValue({
       Invoice: { Id: '500', SyncToken: '1', DocNumber: 'INV-500' },
     })
@@ -415,7 +406,7 @@ describe('IntuitAPI POST-based writes', () => {
     expect(result.Invoice.SyncToken).toBe('1')
   })
 
-  it('deleteInvoice parses the deletion-confirmation envelope (no full row)', async () => {
+  it('deleteInvoice returns the deletion confirmation when QBO confirms the delete', async () => {
     vi.mocked(postFetcher).mockResolvedValue({
       Invoice: { Id: '500', status: 'Deleted', domain: 'QBO' },
     })

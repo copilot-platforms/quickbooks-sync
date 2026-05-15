@@ -8,15 +8,15 @@ export const QBNameValueSchema = z.object({
 })
 export type QBNameValueSchemaType = z.infer<typeof QBNameValueSchema>
 
-// QBO documents and returns Fault.Error as an array of typed error objects.
-// `code` is delivered as a string (e.g. "6240"); coerce to number so
-// APIError.status and downstream code-based comparators see a number.
-// `.catch(NaN)` keeps the parse intact for non-numeric codes — Zod's number
-// validator rejects NaN, so without it `z.coerce.number()` would fail the
-// whole schema and assertNotQBFault would silently swallow the fault.
-// assertNotQBFault treats NaN as "no usable code" and falls back to BAD_REQUEST.
+// QBO sends `code` as a string. Coerce to number, or to undefined for
+// missing / null / empty / non-numeric values — never NaN, never a parse
+// failure, so assertNotQBFault can't silently swallow a Fault.
 export const QBFaultErrorSchema = z.object({
-  code: z.coerce.number().catch(NaN).optional(),
+  code: z.unknown().transform((v) => {
+    if (v === undefined || v === null || v === '') return undefined
+    const n = typeof v === 'number' ? v : Number(v)
+    return Number.isFinite(n) ? n : undefined
+  }),
   Message: z.string().optional(),
   Detail: z.string().optional(),
   element: z.string().optional(),
@@ -25,8 +25,7 @@ export type QBFaultErrorSchemaType = z.infer<typeof QBFaultErrorSchema>
 
 export const QBFaultSchema = z.object({
   Fault: z.object({
-    // .default([]) guards against QBO responses where `Fault` is present but
-    // `Error` is absent — without it safeParse would silently no-op the throw.
+    // .default([]) prevents a silent no-op when Fault is present but Error is absent.
     Error: z.array(QBFaultErrorSchema).optional().default([]),
   }),
 })

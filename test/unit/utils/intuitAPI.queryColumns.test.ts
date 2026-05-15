@@ -1,7 +1,6 @@
-// Regression guard for QB_*_COLUMNS in src/utils/intuitAPI.ts. Asserting
-// "constant ⊇ schema-required keys" catches drops that would ZodError at
-// runtime. Optional-field drops are silent (callers just get undefined) —
-// if you remove an optional column, verify every caller that reads it.
+// Asserts each QB_*_COLUMNS constant stays a superset of its schema's
+// required keys. Optional-field drops still pass — verify callers if you
+// remove one.
 
 import { describe, it, expect } from 'vitest'
 import {
@@ -24,13 +23,13 @@ const requiredKeysOf = (shape: Record<string, ZodTypeAny>): string[] =>
     .map(([k]) => k)
 
 describe('QB_INVOICE_COLUMNS', () => {
-  it('includes every required field of QBInvoiceRowSchema', () => {
+  it('selects every column the invoice schema marks as required', () => {
     for (const key of requiredKeysOf(QBInvoiceRowSchema.shape)) {
       expect(QB_INVOICE_COLUMNS).toContain(key)
     }
   })
 
-  it('only references fields that exist on QBInvoiceRowSchema', () => {
+  it('does not list any column that the invoice schema does not define', () => {
     const schemaKeys = new Set(Object.keys(QBInvoiceRowSchema.shape))
     for (const col of QB_INVOICE_COLUMNS) {
       expect(schemaKeys.has(col)).toBe(true)
@@ -39,13 +38,13 @@ describe('QB_INVOICE_COLUMNS', () => {
 })
 
 describe('QB_ITEM_COLUMNS', () => {
-  it('includes every required field of QBItemRowSchema', () => {
+  it('selects every column the item schema marks as required', () => {
     for (const key of requiredKeysOf(QBItemRowSchema.shape)) {
       expect(QB_ITEM_COLUMNS).toContain(key)
     }
   })
 
-  it('only references fields that exist on QBItemRowSchema', () => {
+  it('does not list any column that the item schema does not define', () => {
     const schemaKeys = new Set(Object.keys(QBItemRowSchema.shape))
     for (const col of QB_ITEM_COLUMNS) {
       expect(schemaKeys.has(col)).toBe(true)
@@ -54,13 +53,13 @@ describe('QB_ITEM_COLUMNS', () => {
 })
 
 describe('QB_CUSTOMER_COLUMNS', () => {
-  it('includes every required field of CustomerQueryResponseSchema', () => {
+  it('selects every column the customer schema marks as required', () => {
     for (const key of requiredKeysOf(CustomerQueryResponseSchema.shape)) {
       expect(QB_CUSTOMER_COLUMNS).toContain(key)
     }
   })
 
-  it('only references fields that exist on CustomerQueryResponseSchema', () => {
+  it('does not list any column that the customer schema does not define', () => {
     const schemaKeys = new Set(Object.keys(CustomerQueryResponseSchema.shape))
     for (const col of QB_CUSTOMER_COLUMNS) {
       expect(schemaKeys.has(col)).toBe(true)
@@ -69,13 +68,13 @@ describe('QB_CUSTOMER_COLUMNS', () => {
 })
 
 describe('QB_ACCOUNT_COLUMNS', () => {
-  it('includes every required field of QBAccountRowSchema', () => {
+  it('selects every column the account schema marks as required', () => {
     for (const key of requiredKeysOf(QBAccountRowSchema.shape)) {
       expect(QB_ACCOUNT_COLUMNS).toContain(key)
     }
   })
 
-  it('only references fields that exist on QBAccountRowSchema', () => {
+  it('does not list any column that the account schema does not define', () => {
     const schemaKeys = new Set(Object.keys(QBAccountRowSchema.shape))
     for (const col of QB_ACCOUNT_COLUMNS) {
       expect(schemaKeys.has(col)).toBe(true)

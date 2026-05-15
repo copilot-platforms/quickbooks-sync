@@ -1231,7 +1231,8 @@ export class InvoiceService extends BaseService {
       )
     }
 
-    // Copilot doesn't allow to delete invoice that are not voided. So, just log an error about possible edge cases without returning an error
+    // Copilot only fires delete on voided invoices; surface any other state
+    // as a FAILED log via the webhook catch.
     if (syncedInvoice.status !== InvoiceStatus.VOID) {
       console.error(
         'InvoiceService#handleInvoiceDeleted | Invoices delete was requested for non-voided record',
