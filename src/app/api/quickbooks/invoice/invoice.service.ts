@@ -550,7 +550,7 @@ export class InvoiceService extends BaseService {
   /**
    * Pre-flights QBO for invoices whose DocNumber starts with the Assembly
    * invoice number and returns the lowest free slot (`<n>`, `<n>-1`, …).
-   * Used by webhookInvoiceCreated to dodge 6240 collisions when a customer
+   * Used by webhookInvoiceCreated to dodge 6140 collisions when a customer
    * has already created an invoice with the same DocNumber in QBO manually.
    */
   private async resolveAvailableDocNumber(
@@ -771,7 +771,7 @@ export class InvoiceService extends BaseService {
       customer?.Id || existingCustomer?.qbCustomerId
 
     // Resolve a DocNumber that won't collide in QBO. Pre-flight a prefix
-    // query, pick the lowest free slot (`<n>`, `<n>-1`, `<n>-2`, …). On 6240
+    // query, pick the lowest free slot (`<n>`, `<n>-1`, `<n>-2`, …). On 6140
     // race (customer manually created the slot we picked between our query
     // and our create), re-walk once and retry. After that, throw and let
     // resync handle it.
@@ -820,13 +820,13 @@ export class InvoiceService extends BaseService {
     } catch (err) {
       if (!isQBODuplicateDocNumberError(err)) throw err
       console.info(
-        `InvoiceService#webhookInvoiceCreated | 6240 on DocNumber=${docNumber}; re-walking once`,
+        `InvoiceService#webhookInvoiceCreated | 6140 on DocNumber=${docNumber}; re-walking once`,
       )
       docNumber = await this.resolveAvailableDocNumber(
         intuitApiService,
         assemblyInvoiceNumber,
       )
-      addSyncBreadcrumb('Retrying invoice creation in QBO after 6240', {
+      addSyncBreadcrumb('Retrying invoice creation in QBO after 6140', {
         invoiceNumber: assemblyInvoiceNumber,
         docNumber,
       })

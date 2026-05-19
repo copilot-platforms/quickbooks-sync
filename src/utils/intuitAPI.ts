@@ -736,7 +736,7 @@ export default class IntuitAPI {
    * Returns all QBO invoices whose DocNumber starts with `prefix`. Used by
    * findNextAvailableDocNumber to detect collisions and pick the next free
    * suffix before createInvoice. Caps at maxresults=100; if a single prefix
-   * has more matches, the caller falls back to catch-6240 retry semantics.
+   * has more matches, the caller falls back to catch-6140 retry semantics.
    */
   async _findInvoicesByDocNumberPrefix(
     prefix: string,

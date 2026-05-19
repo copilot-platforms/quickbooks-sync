@@ -68,7 +68,7 @@ describe('POST /api/quickbooks/webhook — invoice.created (an invoice with this
       const duplicateError = Object.assign(
         new Error('Duplicate Document Number'),
         {
-          errors: [{ code: '6240', Detail: 'Duplicate Document Number error' }],
+          errors: [{ code: '6140', Detail: 'Duplicate Document Number error' }],
         },
       )
       const createInvoice = vi

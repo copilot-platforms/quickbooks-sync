@@ -1,7 +1,7 @@
 /**
  * Unit coverage for InvoiceService#resolveAvailableDocNumber — the pre-flight
- * helper used by webhookInvoiceCreated to dodge 6240 collisions. The public
- * retry-after-6240 branch is covered end-to-end in
+ * helper used by webhookInvoiceCreated to dodge 6140 collisions. The public
+ * retry-after-6140 branch is covered end-to-end in
  * test/integration/quickbooks/invoiceCreated/qboDocNumberCollision.test.ts;
  * this file pins the focused pieces in isolation.
  *

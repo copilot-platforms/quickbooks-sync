@@ -40,7 +40,7 @@ export const findNextAvailableDocNumber = (
 }
 
 /**
- * Recognizes QBO Error 6240 "Duplicate Document Number". Reads `.status`,
+ * Recognizes QBO Error 6140 "Duplicate Document Number". Reads `.status`,
  * `.code`, `errors[].code`, and message text so it works whether the caller
  * surfaces the parsed APIError directly or wraps/normalises it.
  */
@@ -60,16 +60,16 @@ export const isQBODuplicateDocNumberError = (err: unknown): boolean => {
         Detail?: string
         Message?: string
       }
-      if (fault.code === 6240 || fault.code === '6240') return true
+      if (fault.code === 6140 || fault.code === '6140') return true
       if (
-        /6240|Duplicate Document Number/i.test(fault.Detail ?? '') ||
-        /6240|Duplicate Document Number/i.test(fault.Message ?? '')
+        /6140|Duplicate Document Number/i.test(fault.Detail ?? '') ||
+        /6140|Duplicate Document Number/i.test(fault.Message ?? '')
       ) {
         return true
       }
     }
   }
-  if (e.status === 6240 || e.status === '6240') return true
-  if (e.code === 6240 || e.code === '6240') return true
-  return /6240|Duplicate Document Number/i.test(e.message ?? '')
+  if (e.status === 6140 || e.status === '6140') return true
+  if (e.code === 6140 || e.code === '6140') return true
+  return /6140|Duplicate Document Number/i.test(e.message ?? '')
 }
