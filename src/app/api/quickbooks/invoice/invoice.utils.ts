@@ -1,3 +1,5 @@
+import { QBOErrorCodes } from '@/constant/intuitErrorCode'
+
 export const formatAssemblyInvoicePrivateNote = (
   invoiceNumber: string,
 ): string => `Assembly invoice: ${invoiceNumber}`
@@ -39,8 +41,15 @@ export const findNextAvailableDocNumber = (
   )
 }
 
+const DUP_DOC_NUMBER_CODE = QBOErrorCodes.DUPLICATE_DOC_NUMBER
+const DUP_DOC_NUMBER_CODE_STR = String(DUP_DOC_NUMBER_CODE)
+const DUP_DOC_NUMBER_PATTERN = new RegExp(
+  `${DUP_DOC_NUMBER_CODE}|Duplicate Document Number`,
+  'i', // case insensitive
+)
+
 /**
- * Recognizes QBO Error 6140 "Duplicate Document Number". Reads `.status`,
+ * Recognizes QBO's Duplicate Document Number error. Reads `.status`,
  * `.code`, `errors[].code`, and message text so it works whether the caller
  * surfaces the parsed APIError directly or wraps/normalises it.
  */
@@ -60,16 +69,23 @@ export const isQBODuplicateDocNumberError = (err: unknown): boolean => {
         Detail?: string
         Message?: string
       }
-      if (fault.code === 6140 || fault.code === '6140') return true
       if (
-        /6140|Duplicate Document Number/i.test(fault.Detail ?? '') ||
-        /6140|Duplicate Document Number/i.test(fault.Message ?? '')
+        fault.code === DUP_DOC_NUMBER_CODE ||
+        fault.code === DUP_DOC_NUMBER_CODE_STR
+      ) {
+        return true
+      }
+      if (
+        DUP_DOC_NUMBER_PATTERN.test(fault.Detail ?? '') ||
+        DUP_DOC_NUMBER_PATTERN.test(fault.Message ?? '')
       ) {
         return true
       }
     }
   }
-  if (e.status === 6140 || e.status === '6140') return true
-  if (e.code === 6140 || e.code === '6140') return true
-  return /6140|Duplicate Document Number/i.test(e.message ?? '')
+  if (e.status === DUP_DOC_NUMBER_CODE || e.status === DUP_DOC_NUMBER_CODE_STR)
+    return true
+  if (e.code === DUP_DOC_NUMBER_CODE || e.code === DUP_DOC_NUMBER_CODE_STR)
+    return true
+  return DUP_DOC_NUMBER_PATTERN.test(e.message ?? '')
 }

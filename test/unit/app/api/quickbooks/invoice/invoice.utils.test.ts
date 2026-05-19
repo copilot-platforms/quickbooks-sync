@@ -5,6 +5,10 @@ import {
   isQBODuplicateDocNumberError,
   MAX_SUFFIX_ATTEMPTS,
 } from '@/app/api/quickbooks/invoice/invoice.utils'
+import { QBOErrorCodes } from '@/constant/intuitErrorCode'
+
+const DUP_DOC_NUMBER = QBOErrorCodes.DUPLICATE_DOC_NUMBER
+const DUP_DOC_NUMBER_STR = String(DUP_DOC_NUMBER)
 
 describe('formatAssemblyInvoicePrivateNote', () => {
   it('formats an invoice number into the canonical PrivateNote string', () => {
@@ -80,14 +84,14 @@ describe('findNextAvailableDocNumber', () => {
 
 describe('isQBODuplicateDocNumberError', () => {
   it('matches the real APIError shape thrown by intuitAPI._createInvoice', () => {
-    // This is the actual shape: status=400, message=boilerplate, errors=array
-    // of QBO fault objects. The 6140 code lives in errors[i].code.
+    // Actual shape: status=400, message=boilerplate, errors=array of QBO
+    // fault objects. The duplicate code lives in errors[i].code.
     const realApiError = {
       status: 400,
       message: '#IntuitAPIErrorMessage#createInvoice',
       errors: [
         {
-          code: '6140',
+          code: DUP_DOC_NUMBER_STR,
           Message: 'Duplicate Document Number Error',
           Detail:
             'Duplicate Document Number Error : You must specify a different number. This number has already been used.',
@@ -102,7 +106,7 @@ describe('isQBODuplicateDocNumberError', () => {
     expect(
       isQBODuplicateDocNumberError({
         status: 400,
-        errors: [{ code: 6140 }],
+        errors: [{ code: DUP_DOC_NUMBER }],
       }),
     ).toBe(true)
   })
@@ -116,12 +120,14 @@ describe('isQBODuplicateDocNumberError', () => {
     ).toBe(true)
   })
 
-  it('matches top-level .status as 6140 (defense-in-depth)', () => {
-    expect(isQBODuplicateDocNumberError({ status: 6140 })).toBe(true)
+  it('matches the duplicate code at the top-level .status (defense-in-depth)', () => {
+    expect(isQBODuplicateDocNumberError({ status: DUP_DOC_NUMBER })).toBe(true)
   })
 
-  it('matches top-level .code as 6140 (defense-in-depth)', () => {
-    expect(isQBODuplicateDocNumberError({ code: '6140' })).toBe(true)
+  it('matches the duplicate code at the top-level .code (defense-in-depth)', () => {
+    expect(isQBODuplicateDocNumberError({ code: DUP_DOC_NUMBER_STR })).toBe(
+      true,
+    )
   })
 
   it('matches top-level .message text (defense-in-depth)', () => {

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 
 import { db } from '@/db'
 import { QBInvoiceSync } from '@/db/schema/qbInvoiceSync'
+import { QBOErrorCodes } from '@/constant/intuitErrorCode'
 
 import invoiceCreatedPayload from '@test/fixtures/invoiceCreated.webhook'
 import {
@@ -68,7 +69,12 @@ describe('POST /api/quickbooks/webhook — invoice.created (an invoice with this
       const duplicateError = Object.assign(
         new Error('Duplicate Document Number'),
         {
-          errors: [{ code: '6140', Detail: 'Duplicate Document Number error' }],
+          errors: [
+            {
+              code: String(QBOErrorCodes.DUPLICATE_DOC_NUMBER),
+              Detail: 'Duplicate Document Number error',
+            },
+          ],
         },
       )
       const createInvoice = vi
