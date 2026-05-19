@@ -16,19 +16,15 @@ import {
 import { setupInvoiceCreatedTest } from '@test/helpers/invoiceCreatedTestSetup'
 import { postWebhook } from '@test/helpers/webhook'
 
-/**
- * A pre-existing CREATED log row for the same copilotId blocks a second
- * delivery. claimWebhookEvent returns { claimed: false } and the handler
- * exits without doing any service work.
- */
-describe('POST /api/quickbooks/webhook — invoice.created (idempotency)', () => {
+describe('POST /api/quickbooks/webhook — invoice.created (same webhook delivered twice)', () => {
   const apis = setupInvoiceCreatedTest()
 
-  it('skips the handler when a CREATED log already exists', async () => {
+  it('processes the invoice only once when a sync log for it already exists', async () => {
     await seedHealthyPortal()
     await seedProductSync()
 
-    // Pre-existing claim row for this copilotInvoiceId
+    // Simulate a prior delivery that already claimed this invoice. Any further
+    // delivery for the same Copilot invoice id should be a no-op.
     await db.insert(QBSyncLog).values({
       portalId: TEST_PORTAL_ID,
       entityType: EntityType.INVOICE,
@@ -41,12 +37,12 @@ describe('POST /api/quickbooks/webhook — invoice.created (idempotency)', () =>
     const res = await postWebhook(invoiceCreatedPayload)
     expect(res.status).toBe(200)
 
-    // Still exactly one log row — the seeded one, untouched
+    // The seeded log row is left exactly as it was; the second delivery did
+    // not overwrite it or insert a new row.
     const logs = await db.select().from(QBSyncLog)
     expect(logs).toHaveLength(1)
     expect(logs[0].status).toBe(LogStatus.PENDING)
 
-    // No service work
     expect(apis.intuit.createInvoice).not.toHaveBeenCalled()
     expect(apis.intuit.createCustomer).not.toHaveBeenCalled()
     expect(await db.select().from(QBInvoiceSync)).toHaveLength(0)

@@ -8,15 +8,10 @@ import { seedHealthyPortal } from '@test/helpers/seed'
 import { setupInvoiceCreatedTest } from '@test/helpers/invoiceCreatedTestSetup'
 import { postWebhook } from '@test/helpers/webhook'
 
-/**
- * Line item without productId/priceId routes through the Assembly Service
- * one-off item. copilot.getProduct is never called; createInvoice is invoked
- * with ItemRef pointing at the service item Id (not '999').
- */
-describe('POST /api/quickbooks/webhook — invoice.created (one-off line item)', () => {
+describe('POST /api/quickbooks/webhook — invoice.created (line item not tied to a product or price)', () => {
   const apis = setupInvoiceCreatedTest()
 
-  it('uses Assembly Service ref when line item has no productId/priceId', async () => {
+  it('bills the line item under the generic "Assembly Service" item in QuickBooks', async () => {
     await seedHealthyPortal()
 
     const oneOffPayload = {
@@ -35,14 +30,12 @@ describe('POST /api/quickbooks/webhook — invoice.created (one-off line item)',
     const res = await postWebhook(oneOffPayload)
     expect(res.status).toBe(200)
 
-    // Service item path, not product mapping
+    // No productId/priceId on the line item, so Copilot product lookup is
+    // skipped and the line is billed as a generic service item.
     expect(apis.copilot.getProduct).not.toHaveBeenCalled()
     expect(apis.intuit.getAnItem).toHaveBeenCalledWith('Assembly Service')
 
-    // Invoice still created
     expect(apis.intuit.createInvoice).toHaveBeenCalledTimes(1)
-
-    // Persisted
     expect(await db.select().from(QBInvoiceSync)).toHaveLength(1)
   })
 })

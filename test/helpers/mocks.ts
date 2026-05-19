@@ -115,6 +115,11 @@ export function createMockIntuitAPI(overrides: IntuitAPIOverrides = {}) {
     createPayment: vi.fn().mockResolvedValue({
       Payment: { Id: 'qb-pay-1', SyncToken: '0' },
     }),
+    // webhookInvoiceCreated pre-flights QBO for DocNumber collisions before
+    // every createInvoice call (OUT-3710). Default to "no collisions" so the
+    // base Assembly invoice number is used; override per-test to exercise the
+    // suffix-walk path.
+    findInvoicesByDocNumberPrefix: vi.fn().mockResolvedValue([]),
     ...overrides,
   }
 }

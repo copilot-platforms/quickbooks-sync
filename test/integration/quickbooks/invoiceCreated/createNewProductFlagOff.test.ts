@@ -9,49 +9,34 @@ import { seedHealthyPortal } from '@test/helpers/seed'
 import { setupInvoiceCreatedTest } from '@test/helpers/invoiceCreatedTestSetup'
 import { postWebhook } from '@test/helpers/webhook'
 
-/**
- * Pins the second createNewProductFlag check inside
- * InvoiceService#getInvoiceItemRef (line 252) — distinct from the
- * webhook-level gate that only fires for PRICE/PRODUCT events.
- *
- * Setup: line item has productId+priceId but no qb_product_sync mapping AND
- * createNewProductFlag=false. Expected: falls back to one-off Assembly
- * Service ref; no qb_product_sync row written; createItem is NOT invoked
- * for the unmapped product (it is called once for the Assembly Service
- * item ref, which is unrelated bookkeeping done by handleServiceItem).
- */
-describe('POST /api/quickbooks/webhook — invoice.created (createNewProductFlag=false on unmapped item)', () => {
+describe('POST /api/quickbooks/webhook — invoice.created (product is not mapped and the "create new products" setting is off)', () => {
   const apis = setupInvoiceCreatedTest()
 
-  it('uses one-off ref and writes no product mapping when flag is off', async () => {
+  it('bills the unmapped product under "Assembly Service" and never creates a new product in QuickBooks', async () => {
     await seedHealthyPortal({ setting: { createNewProductFlag: false } })
-    // intentionally no seedProductSync()
+    // intentionally no seedProductSync() — the line item's product is unmapped
 
     const res = await postWebhook(invoiceCreatedPayload)
     expect(res.status).toBe(200)
 
-    // copilot.getProduct IS called — flag check sits AFTER product resolution
+    // Copilot product lookup still runs — the flag check happens after.
     expect(apis.copilot.getProduct).toHaveBeenCalled()
 
-    // Service item path is exercised: handleServiceItem looks up
-    // 'Assembly Service' in QB. Mirrors oneOffLineItem.test.ts.
+    // The line item falls back to the generic Assembly Service item.
     expect(apis.intuit.getAnItem).toHaveBeenCalledWith('Assembly Service')
 
-    // createItem may run once for the Assembly Service ref (handleServiceItem
-    // → manageServiceItemRef → createItemInQB), but NEVER for the line-item
-    // product. Asserting on the Name field is the strongest signal — '999'
-    // collisions on Id make a count-based check fragile.
+    // createItem may run once to set up the Assembly Service item itself, but
+    // it must never run for the unmapped product. Asserting on Name is more
+    // robust than a call-count check.
     const createItemNames = apis.intuit.createItem.mock.calls.map(
       ([payload]) => payload?.Name,
     )
     expect(createItemNames).not.toContain('Test Product')
 
-    // No product mapping written — this is the flag-off invariant we care
-    // about most. Even if the service item path changes, this row count
-    // proves the flag-off short-circuit fired.
+    // No mapping row written — the flag-off behavior we care about most.
     expect(await db.select().from(QBProductSync)).toHaveLength(0)
 
-    // Invoice still gets written.
+    // The invoice itself is still synced.
     expect(await db.select().from(QBInvoiceSync)).toHaveLength(1)
   })
 })

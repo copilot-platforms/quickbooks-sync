@@ -10,14 +10,10 @@ import { seedHealthyPortal } from '@test/helpers/seed'
 import { setupInvoiceCreatedTest } from '@test/helpers/invoiceCreatedTestSetup'
 import { postWebhook } from '@test/helpers/webhook'
 
-/**
- * The DRAFT gate sits BEFORE claimWebhookEvent in WebhookService#handleInvoiceCreated.
- * No claim row is written and no service work runs.
- */
-describe('POST /api/quickbooks/webhook — invoice.created (draft skip)', () => {
+describe('POST /api/quickbooks/webhook — invoice.created (draft invoices are ignored)', () => {
   const apis = setupInvoiceCreatedTest()
 
-  it('returns 200 without claiming, calling QB, or writing rows', async () => {
+  it('does nothing — no QuickBooks calls, no database rows, no sync logs', async () => {
     await seedHealthyPortal()
 
     const draftPayload = {

@@ -16,12 +16,7 @@ import { createMockIntuitAPI } from '@test/helpers/mocks'
 import { setupInvoiceCreatedTest } from '@test/helpers/invoiceCreatedTestSetup'
 import { postWebhook } from '@test/helpers/webhook'
 
-/**
- * QB createInvoice rejects: WebhookService#handleInvoiceCreated catches the
- * error and updates the existing claim row to FAILED via
- * pushFailedInvoiceToSyncLog.
- */
-describe('POST /api/quickbooks/webhook — invoice.created (QB createInvoice fails)', () => {
+describe('POST /api/quickbooks/webhook — invoice.created (QuickBooks rejects the invoice)', () => {
   const apis = setupInvoiceCreatedTest(() => ({
     intuit: createMockIntuitAPI({
       createInvoice: vi
@@ -30,17 +25,17 @@ describe('POST /api/quickbooks/webhook — invoice.created (QB createInvoice fai
     }),
   }))
 
-  it('writes no qb_invoice_sync row and updates claim log to FAILED', async () => {
+  it('does not save the invoice locally and marks the sync log as FAILED', async () => {
     await seedHealthyPortal()
     await seedProductSync()
 
     const res = await postWebhook(invoiceCreatedPayload)
     expect(res.status).toBe(200)
 
-    // No invoice row — createInvoice failed before insert
+    // Nothing persisted — the QuickBooks call failed before any local insert.
     expect(await db.select().from(QBInvoiceSync)).toHaveLength(0)
 
-    // Claim log was flipped from PENDING to FAILED with the error message
+    // The claim row that was pending flips to FAILED with the error message.
     const logs = await db
       .select()
       .from(QBSyncLog)

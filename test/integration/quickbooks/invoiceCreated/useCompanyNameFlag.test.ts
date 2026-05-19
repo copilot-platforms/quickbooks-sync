@@ -9,18 +9,10 @@ import { createMockCopilotAPI } from '@test/helpers/mocks'
 import { setupInvoiceCreatedTest } from '@test/helpers/invoiceCreatedTestSetup'
 import { postWebhook } from '@test/helpers/webhook'
 
-/**
- * Pins the company-only customer resolution path:
- *   - payload has companyId, no clientId
- *   - useCompanyNameFlag=true on the portal setting
- *   - expected: customer is created in QB with DisplayName = company.name
- *     and customerType='company'; copilot.getClients is NOT called (that's
- *     the flag-off branch).
- */
-describe('POST /api/quickbooks/webhook — invoice.created (useCompanyNameFlag=true, company-only payload)', () => {
+describe('POST /api/quickbooks/webhook — invoice.created (invoice belongs to a company and the "use company name" setting is on)', () => {
   const apis = setupInvoiceCreatedTest(() => ({
     copilot: createMockCopilotAPI({
-      // no clientId in payload, so getClient should not even be called
+      // Payload has companyId but no clientId, so any client lookup is wrong.
       getClient: vi.fn().mockResolvedValue(undefined),
       getCompany: vi.fn().mockResolvedValue({
         id: '22222222-2222-2222-2222-222222222222',
@@ -29,7 +21,7 @@ describe('POST /api/quickbooks/webhook — invoice.created (useCompanyNameFlag=t
     }),
   }))
 
-  it('creates a company customer using companyName as DisplayName', async () => {
+  it('creates the QuickBooks customer using the company name', async () => {
     await seedHealthyPortal({ setting: { useCompanyNameFlag: true } })
     await seedProductSync()
 
@@ -44,7 +36,6 @@ describe('POST /api/quickbooks/webhook — invoice.created (useCompanyNameFlag=t
     const res = await postWebhook(companyPayload)
     expect(res.status).toBe(200)
 
-    // customerType='company' with companyName populated
     const customers = await db.select().from(QBCustomers)
     expect(customers).toHaveLength(1)
     expect(customers[0]).toMatchObject({
@@ -53,7 +44,6 @@ describe('POST /api/quickbooks/webhook — invoice.created (useCompanyNameFlag=t
       displayName: 'Acme Inc',
     })
 
-    // QB createCustomer called with company DisplayName
     expect(apis.intuit.createCustomer).toHaveBeenCalledTimes(1)
     const [createPayload] = apis.intuit.createCustomer.mock.calls[0]
     expect(createPayload).toMatchObject({
@@ -61,7 +51,7 @@ describe('POST /api/quickbooks/webhook — invoice.created (useCompanyNameFlag=t
       CompanyName: 'Acme Inc',
     })
 
-    // Flag-on branch must NOT call getClients (that's the flag-off fallback)
+    // When the setting is on, the app must not fall back to listing clients.
     expect(apis.copilot.getClients).not.toHaveBeenCalled()
   })
 })

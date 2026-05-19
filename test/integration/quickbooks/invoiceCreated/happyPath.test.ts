@@ -21,26 +21,24 @@ import { createMockIntuitAPI } from '@test/helpers/mocks'
 import { setupInvoiceCreatedTest } from '@test/helpers/invoiceCreatedTestSetup'
 import { postWebhook } from '@test/helpers/webhook'
 
-describe('POST /api/quickbooks/webhook — invoice.created (happy path)', () => {
+describe('POST /api/quickbooks/webhook — invoice.created (typical client invoice)', () => {
   const apis = setupInvoiceCreatedTest(() => ({
     intuit: createMockIntuitAPI({
-      // Override getAnItem so the product-mapping path returns a real item
-      // when queried by id (default mock returns undefined for every call,
-      // which collapses both branches of getInvoiceItemRef into the
-      // Assembly Service one-off — see docs/superpowers/specs/2026-05-08...).
-      // Tests want to pin the mapped-product branch, not the fallback.
+      // Return a real QB item when looked up by id so the invoice references a
+      // mapped product. Without this, the default mock would route the line
+      // item through the generic "Assembly Service" fallback instead.
       getAnItem: vi
         .fn()
         .mockImplementation(async (name?: string, id?: string) => {
           if (id === '999') {
             return { Id: '999', SyncToken: '0', Active: true }
           }
-          return undefined // 'Assembly Service' lookup → triggers manageServiceItemRef
+          return undefined
         }),
     }),
   }))
 
-  it('creates QB customer + invoice, writes mappings, logs SUCCESS', async () => {
+  it('creates a customer in QuickBooks, creates the invoice, and logs the sync as successful', async () => {
     await seedHealthyPortal()
     await seedProductSync()
 
@@ -62,6 +60,7 @@ describe('POST /api/quickbooks/webhook — invoice.created (happy path)', () => 
       portalId: TEST_PORTAL_ID,
       invoiceNumber: TEST_INVOICE_NUMBER,
       qbInvoiceId: TEST_QB_INVOICE_ID,
+      qbDocNumber: TEST_INVOICE_NUMBER,
       status: 'open',
     })
 
@@ -84,11 +83,15 @@ describe('POST /api/quickbooks/webhook — invoice.created (happy path)', () => 
       '11111111-1111-1111-1111-111111111111',
     )
     expect(apis.intuit.createCustomer).toHaveBeenCalledTimes(1)
+    expect(apis.intuit.findInvoicesByDocNumberPrefix).toHaveBeenCalledWith(
+      TEST_INVOICE_NUMBER,
+    )
+    expect(apis.intuit.findInvoicesByDocNumberPrefix).toHaveBeenCalledTimes(1)
     expect(apis.intuit.createInvoice).toHaveBeenCalledTimes(1)
-    // Product was already mapped — createItem must not be invoked for the
-    // mapped product. handleServiceItem still creates the 'Assembly Service'
-    // one-off item (because seedHealthyPortal does not set serviceItemRef),
-    // so the only allowed createItem call is the Assembly Service one.
+    // The product is already mapped so createItem must not run for it. The
+    // only allowed createItem call is the generic Assembly Service item the
+    // portal needs for one-off line items. Asserting on Name (not call count)
+    // makes the test resilient to unrelated bookkeeping changes.
     const createItemNames = apis.intuit.createItem.mock.calls.map(
       ([payload]) => payload?.Name,
     )
@@ -101,10 +104,9 @@ describe('POST /api/quickbooks/webhook — invoice.created (happy path)', () => 
     expect(invoicePayload.Line[0].SalesItemLineDetail.ItemRef).toEqual({
       value: '999',
     })
-    // Mapped-product branch sets Description from copilot.getProduct (not the
-    // payload's lineItem.description). The fallback path leaves
-    // productDescription undefined, which would surface 'Test product line'
-    // here. This pins the mapped branch.
+    // Mapped products take their description from Copilot, not from the
+    // payload's lineItem.description. If this read 'Test product line', the
+    // line item silently fell through to the unmapped path.
     expect(invoicePayload.Line[0].Description).toBe('Test product description')
   })
 })
