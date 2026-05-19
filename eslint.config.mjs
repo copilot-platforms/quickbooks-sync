@@ -32,6 +32,23 @@ const eslintConfig = [
     },
   }),
   {
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@test/*', '**/test/*', '**/test/**'],
+              message:
+                'Source code must not import from the test/ folder. Test helpers belong to test files only.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     ignores: [
       '.next',
       '.cache',
