@@ -42,7 +42,6 @@ export const findNextAvailableDocNumber = (
 }
 
 const DUP_DOC_NUMBER_CODE = QBOErrorCodes.DUPLICATE_DOC_NUMBER
-const DUP_DOC_NUMBER_CODE_STR = String(DUP_DOC_NUMBER_CODE)
 const DUP_DOC_NUMBER_PATTERN = new RegExp(
   `${DUP_DOC_NUMBER_CODE}|Duplicate Document Number`,
   'i', // case insensitive
@@ -69,12 +68,7 @@ export const isQBODuplicateDocNumberError = (err: unknown): boolean => {
         Detail?: string
         Message?: string
       }
-      if (
-        fault.code === DUP_DOC_NUMBER_CODE ||
-        fault.code === DUP_DOC_NUMBER_CODE_STR
-      ) {
-        return true
-      }
+      if (Number(fault.code) === DUP_DOC_NUMBER_CODE) return true
       if (
         DUP_DOC_NUMBER_PATTERN.test(fault.Detail ?? '') ||
         DUP_DOC_NUMBER_PATTERN.test(fault.Message ?? '')
@@ -83,9 +77,10 @@ export const isQBODuplicateDocNumberError = (err: unknown): boolean => {
       }
     }
   }
-  if (e.status === DUP_DOC_NUMBER_CODE || e.status === DUP_DOC_NUMBER_CODE_STR)
-    return true
-  if (e.code === DUP_DOC_NUMBER_CODE || e.code === DUP_DOC_NUMBER_CODE_STR)
+  if (
+    Number(e.status) === DUP_DOC_NUMBER_CODE ||
+    Number(e.code) === DUP_DOC_NUMBER_CODE
+  )
     return true
   return DUP_DOC_NUMBER_PATTERN.test(e.message ?? '')
 }
