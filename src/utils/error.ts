@@ -5,7 +5,7 @@ import {
 } from '@/app/api/core/exceptions/custom'
 import { OAuthErrorCodes } from '@/constant/intuitErrorCode'
 import { CopilotApiError, MessagableError } from '@/type/CopilotApiError'
-import { QBFaultErrorSchemaType } from '@/type/dto/intuitAPI.dto'
+import { QBFaultErrorSchemaType, QBFaultSchema } from '@/type/dto/intuitAPI.dto'
 import { refreshTokenExpireMessage } from '@/utils/auth'
 import { IntuitAPIErrorMessage } from '@/utils/intuitAPI'
 import httpStatus from 'http-status'
@@ -78,7 +78,19 @@ export const getMessageAndCodeFromError = (
       : error.url.includes('copilot')
         ? 'copilot'
         : 'unknown'
-    return { message: error.message, code: error.status, source }
+    // For Intuit, prefer the QBO Fault.Error[0].code (e.g. 5010, 6140) over
+    // the HTTP status (usually 400). QBFaultSchema already coerces string
+    // codes to numbers; fall back to error.status when no Fault is present
+    // (timeouts, generic 5xx, etc.).
+    let code = error.status
+    if (source === 'intuit') {
+      const fault = QBFaultSchema.safeParse(error.body)
+      const faultCode = fault.success
+        ? fault.data.Fault.Error[0]?.code
+        : undefined
+      if (typeof faultCode === 'number') code = faultCode
+    }
+    return { message: error.message, code, source }
   } else if (error instanceof Error && error.message) {
     return { message: error.message, code, source: 'unknown' }
   } else if (isAxiosError(error)) {
