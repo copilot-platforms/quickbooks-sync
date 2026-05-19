@@ -1,5 +1,5 @@
 {
-  "id": "5cc4ffb4-bfb5-432c-919e-0b6c90caf3c5",
+  "id": "f7d488e4-7c23-4015-b457-0d9e4240a2cf",
   "prevId": "ac41313a-2978-42ad-aa32-ea26dc31d10c",
   "version": "7",
   "dialect": "postgresql",
@@ -497,12 +497,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "bank_account_ref": {
-          "name": "bank_account_ref",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false
-        },
         "is_suspended": {
           "name": "is_suspended",
           "type": "boolean",
@@ -681,13 +675,6 @@
         },
         "absorbed_fee_flag": {
           "name": "absorbed_fee_flag",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "bank_deposit_fee_flag": {
-          "name": "bank_deposit_fee_flag",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
@@ -903,6 +890,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "error_code": {
+          "name": "error_code",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "category": {
           "name": "category",
           "type": "failed_record_category_types",
@@ -1086,8 +1079,7 @@
         "deleted",
         "succeeded",
         "mapped",
-        "unmapped",
-        "deposited"
+        "unmapped"
       ]
     },
     "public.failed_record_category_types": {
