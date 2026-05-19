@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { db } from '@/db'
 import { QBInvoiceSync } from '@/db/schema/qbInvoiceSync'
 
-import invoiceCreatedPayload from '@test/fixtures/invoiceCreated.webhook.json'
+import invoiceCreatedPayload from '@test/fixtures/invoiceCreated.webhook'
 import {
   seedHealthyPortal,
   seedProductSync,

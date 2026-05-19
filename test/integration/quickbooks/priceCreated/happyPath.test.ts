@@ -6,7 +6,7 @@ import { QBProductSync } from '@/db/schema/qbProductSync'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 
-import priceCreatedPayload from '@test/fixtures/priceCreated.webhook.json'
+import priceCreatedPayload from '@test/fixtures/priceCreated.webhook'
 import { seedHealthyPortal, TEST_PORTAL_ID } from '@test/helpers/seed'
 import { setupPriceCreatedTest } from '@test/helpers/priceCreatedTestSetup'
 import { postWebhook } from '@test/helpers/webhook'

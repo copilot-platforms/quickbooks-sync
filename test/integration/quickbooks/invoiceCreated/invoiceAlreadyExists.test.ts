@@ -6,7 +6,7 @@ import { QBInvoiceSync } from '@/db/schema/qbInvoiceSync'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import { LogStatus } from '@/app/api/core/types/log'
 
-import invoiceCreatedPayload from '@test/fixtures/invoiceCreated.webhook.json'
+import invoiceCreatedPayload from '@test/fixtures/invoiceCreated.webhook'
 import {
   seedHealthyPortal,
   seedProductSync,

@@ -4,7 +4,7 @@ import { db } from '@/db'
 import { QBProductSync } from '@/db/schema/qbProductSync'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 
-import priceCreatedPayload from '@test/fixtures/priceCreated.webhook.json'
+import priceCreatedPayload from '@test/fixtures/priceCreated.webhook'
 import { seedHealthyPortal, seedProductSync } from '@test/helpers/seed'
 import { setupPriceCreatedTest } from '@test/helpers/priceCreatedTestSetup'
 import { postWebhook } from '@test/helpers/webhook'

@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { db } from '@/db'
 import { QBCustomers } from '@/db/schema/qbCustomers'
 
-import invoiceCreatedPayload from '@test/fixtures/invoiceCreated.webhook.json'
+import invoiceCreatedPayload from '@test/fixtures/invoiceCreated.webhook'
 import { seedHealthyPortal, seedProductSync } from '@test/helpers/seed'
 import { createMockCopilotAPI } from '@test/helpers/mocks'
 import { setupInvoiceCreatedTest } from '@test/helpers/invoiceCreatedTestSetup'
