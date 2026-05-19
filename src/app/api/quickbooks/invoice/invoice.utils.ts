@@ -42,6 +42,9 @@ export const findNextAvailableDocNumber = (
 }
 
 const DUP_DOC_NUMBER_CODE = QBOErrorCodes.DUPLICATE_DOC_NUMBER
+// QBOErrorCode is a numeric literal union, so the interpolation below has
+// no regex-special characters and needs no escaping. If that type ever
+// widens to a string, escape the interpolation before using it here.
 const DUP_DOC_NUMBER_PATTERN = new RegExp(
   `${DUP_DOC_NUMBER_CODE}|Duplicate Document Number`,
   'i', // case insensitive

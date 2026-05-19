@@ -70,7 +70,7 @@ export type IntuitAPITokensType = Pick<
 
 export const IntuitAPIErrorMessage = '#IntuitAPIErrorMessage#'
 
-// APIError.status carries the QBO fault code (e.g. 6240) when available,
+// APIError.status carries the QBO fault code (e.g. 6140) when available,
 // else BAD_REQUEST. withErrorHandler clamps non-HTTP codes downstream.
 export function assertNotQBFault(raw: unknown, opName: string): void {
   const result = QBFaultSchema.safeParse(raw)
