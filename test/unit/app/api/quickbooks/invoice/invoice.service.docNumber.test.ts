@@ -101,7 +101,9 @@ describe('InvoiceService#resolveAvailableDocNumber', () => {
     const result = await newSvc().resolveAvailableDocNumber(intuit, 'INV-0001')
 
     expect(result).toBe('INV-0001')
-    expect(intuit.findInvoicesByDocNumberPrefix).toHaveBeenCalledWith('INV-0001')
+    expect(intuit.findInvoicesByDocNumberPrefix).toHaveBeenCalledWith(
+      'INV-0001',
+    )
     expect(captureSyncError).not.toHaveBeenCalled()
   })
 

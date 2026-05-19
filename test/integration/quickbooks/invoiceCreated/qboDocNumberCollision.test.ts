@@ -28,7 +28,11 @@ describe('POST /api/quickbooks/webhook — invoice.created (an invoice with this
         // QuickBooks already has an invoice at the base number, so the next
         // free slot is `${TEST_INVOICE_NUMBER}-1`.
         findInvoicesByDocNumberPrefix: vi.fn().mockResolvedValue([
-          { Id: 'qb-existing-1', DocNumber: TEST_INVOICE_NUMBER, SyncToken: '0' },
+          {
+            Id: 'qb-existing-1',
+            DocNumber: TEST_INVOICE_NUMBER,
+            SyncToken: '0',
+          },
         ]),
       }),
     }))
