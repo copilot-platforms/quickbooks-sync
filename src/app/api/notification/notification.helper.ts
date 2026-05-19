@@ -153,10 +153,10 @@ export const NotificationCopy: Record<
   [NotificationActions.QB_CLOSED_PERIOD]: {
     title: 'QuickBooks sync failed: accounting period is closed',
     body: (ref) =>
-      `A sync failed${ref} because the transaction date falls in a closed accounting period. This usually happens after a fiscal year close or when a closing date was set in Quickbooks under Settings → Account and Settings → Advanced. Reopen the period or move the closing date in QuickBooks; the next scheduled retry will pick it up. ${MANUAL_EDIT_NOTE}`,
+      `A sync failed${ref} because the transaction date falls in a closed accounting period. This usually happens after a fiscal year close or when a closing date was set in QuickBooks under Settings → Account and Settings → Advanced. Reopen the period or move the closing date in QuickBooks; the next scheduled retry will pick it up. ${MANUAL_EDIT_NOTE}`,
     emailSubject: 'QuickBooks sync failed: accounting period is closed',
     emailBody: (ref) =>
-      `A sync failed${ref} because the transaction date falls in a closed accounting period in QuickBooks. This usually happens after a fiscal year close or when a closing date was set in Quickbooks under Settings → Account and Settings → Advanced. Reopen the period or move the closing date in QuickBooks. The next scheduled retry (within a few hours) will pick it up automatically. ${MANUAL_EDIT_NOTE}`,
+      `A sync failed${ref} because the transaction date falls in a closed accounting period in QuickBooks. This usually happens after a fiscal year close or when a closing date was set in QuickBooks under Settings → Account and Settings → Advanced. Reopen the period or move the closing date in QuickBooks. The next scheduled retry (within a few hours) will pick it up automatically. ${MANUAL_EDIT_NOTE}`,
   },
 
   [NotificationActions.QB_DEPOSITED_TXN_LOCKED]: {
