@@ -41,7 +41,10 @@ import {
   getActionForErrorCode,
   getEntityKey,
 } from '@/app/api/quickbooks/syncLog/syncErrorNotifier'
-import { UserActionableErrorCodes } from '@/constant/intuitErrorCode'
+import {
+  QBOErrorCodes,
+  UserActionableErrorCodes,
+} from '@/constant/intuitErrorCode'
 
 const baseLog: QBSyncLogSelectSchemaType = {
   id: 'log-1',
@@ -63,8 +66,8 @@ const baseLog: QBSyncLogSelectSchemaType = {
   productPrice: null,
   qbItemName: null,
   copilotPriceId: null,
-  errorMessage: 'Duplicate Document Number Error',
-  errorCode: '6140',
+  errorMessage: 'Closed accounting period',
+  errorCode: String(QBOErrorCodes.CLOSED_PERIOD),
   category: 'qb_api_error' as never,
   attempt: 0,
   createdAt: new Date(),
@@ -229,12 +232,12 @@ describe('SyncErrorNotifier#notify', () => {
     expect(sendNotificationToIU).toHaveBeenCalledTimes(1)
     const [senderId, action, ctx] = sendNotificationToIU.mock.calls[0]
     expect(senderId).toBe('iu-1')
-    expect(action).toBe(NotificationActions.QB_DUPLICATE_DOC_NUMBER)
+    expect(action).toBe(NotificationActions.QB_CLOSED_PERIOD)
     expect(ctx).toMatchObject({
       entityKey: 'INV-001',
       invoiceNumber: 'INV-001',
       eventType: 'created',
-      errorMessage: 'Duplicate Document Number Error',
+      errorMessage: 'Closed accounting period',
     })
   })
 })

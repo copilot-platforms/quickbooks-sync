@@ -1,6 +1,5 @@
 export enum NotificationActions {
   AUTH_RECONNECT = 'auth_reconnect',
-  QB_DUPLICATE_DOC_NUMBER = 'qb_duplicate_doc_number',
   QB_DUPLICATE_NAME = 'qb_duplicate_name',
   QB_CLOSED_PERIOD = 'qb_closed_period',
   QB_DEPOSITED_TXN_LOCKED = 'qb_deposited_txn_locked',

@@ -37,7 +37,7 @@ describe('getInProductNotificationDetail', () => {
 
   it('omits the entity reference clause when called without context (AUTH_RECONNECT path)', () => {
     const detail = getInProductNotificationDetail(
-      NotificationActions.QB_DUPLICATE_DOC_NUMBER,
+      NotificationActions.QB_CLOSED_PERIOD,
     )
     expect(detail.body).not.toMatch(/\(during|ref /)
   })
@@ -131,7 +131,7 @@ describe('getInProductNotificationDetail', () => {
     // guard against future callers passing context without action dimensions.
     const ctx: NotificationContext = { invoiceNumber: 'INV-001' }
     const detail = getInProductNotificationDetail(
-      NotificationActions.QB_DUPLICATE_DOC_NUMBER,
+      NotificationActions.QB_CLOSED_PERIOD,
       ctx,
     )
     expect(detail.body).toContain('(ref INV-001)')
@@ -144,7 +144,7 @@ describe('getInProductNotificationDetail', () => {
       eventType: 'created',
     }
     const detail = getInProductNotificationDetail(
-      NotificationActions.QB_DUPLICATE_DOC_NUMBER,
+      NotificationActions.QB_CLOSED_PERIOD,
       ctx,
     )
     expect(detail.body).toContain('(during invoice creation)')
@@ -153,7 +153,7 @@ describe('getInProductNotificationDetail', () => {
 
   it('omits the parenthetical entirely when ctx has neither action nor id', () => {
     const detail = getInProductNotificationDetail(
-      NotificationActions.QB_DUPLICATE_DOC_NUMBER,
+      NotificationActions.QB_CLOSED_PERIOD,
       {},
     )
     expect(detail.body).not.toMatch(/\(during|\(ref/)

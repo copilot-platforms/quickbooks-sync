@@ -134,15 +134,6 @@ export const NotificationCopy: Record<
     ctaParams: { type: AuthStatus.RECONNECT },
   },
 
-  [NotificationActions.QB_DUPLICATE_DOC_NUMBER]: {
-    title: 'QuickBooks sync failed: duplicate document number',
-    body: (ref) =>
-      `A sync failed${ref} because another invoice in QuickBooks already uses this document number. This often happens when "Custom transaction numbers" is enabled and the same number was reused, or an invoice with that number was created manually in QuickBooks. Change the document number on the conflicting invoice in QuickBooks; we re-attempt failed syncs every few hours, so the next run should pick it up. ${MANUAL_EDIT_NOTE}`,
-    emailSubject: 'QuickBooks sync failed: duplicate document number',
-    emailBody: (ref) =>
-      `A sync failed${ref} because another invoice in QuickBooks already uses this document number. This often happens when "Custom transaction numbers" is enabled in QuickBooks and the same number was reused, or an invoice with that number was created manually. Change the document number on the conflicting invoice in QuickBooks. We re-attempt failed syncs automatically every few hours, so the next run should pick it up — no further action needed in this app. ${MANUAL_EDIT_NOTE}`,
-  },
-
   // 6240 lives in two QBO namespaces: Items have their own list, while
   // Customer/Vendor/Employee share one. The body branches on entityType
   // because the fix is namespace-specific.
@@ -162,10 +153,10 @@ export const NotificationCopy: Record<
   [NotificationActions.QB_CLOSED_PERIOD]: {
     title: 'QuickBooks sync failed: accounting period is closed',
     body: (ref) =>
-      `A sync failed${ref} because the transaction date falls in a closed accounting period. This usually happens after a fiscal year close or when a closing date was set in Settings → Account and Settings → Advanced in QuickBooks. Reopen the period or move the closing date in QuickBooks; the next scheduled retry will pick it up. ${MANUAL_EDIT_NOTE}`,
+      `A sync failed${ref} because the transaction date falls in a closed accounting period. This usually happens after a fiscal year close or when a closing date was set in Quickbooks under Settings → Account and Settings → Advanced. Reopen the period or move the closing date in QuickBooks; the next scheduled retry will pick it up. ${MANUAL_EDIT_NOTE}`,
     emailSubject: 'QuickBooks sync failed: accounting period is closed',
     emailBody: (ref) =>
-      `A sync failed${ref} because the transaction date falls in a closed accounting period in QuickBooks. This usually happens after a fiscal year close or when a closing date was set in Settings → Account and Settings → Advanced. Reopen the period or move the closing date in QuickBooks. The next scheduled retry (within a few hours) will pick it up automatically. ${MANUAL_EDIT_NOTE}`,
+      `A sync failed${ref} because the transaction date falls in a closed accounting period in QuickBooks. This usually happens after a fiscal year close or when a closing date was set in Quickbooks under Settings → Account and Settings → Advanced. Reopen the period or move the closing date in QuickBooks. The next scheduled retry (within a few hours) will pick it up automatically. ${MANUAL_EDIT_NOTE}`,
   },
 
   [NotificationActions.QB_DEPOSITED_TXN_LOCKED]: {
