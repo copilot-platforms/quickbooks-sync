@@ -188,20 +188,16 @@ describe('SyncErrorNotifier#notify', () => {
     expect(sendNotificationToIU).not.toHaveBeenCalled()
   })
 
-  it.each(['product', 'customer', 'payment'] as const)(
-    'suppresses 5010 stale-object on %s (auto-recovers via syncToken refresh)',
-    async (entityType) => {
-      sendNotificationToIU.mockReset()
-      const notifier = new SyncErrorNotifier(user)
-      await notifier.notify({
-        ...baseLog,
-        errorCode: '5010',
-        entityType: entityType as never,
-        qbItemName: 'Widget',
-      })
-      expect(sendNotificationToIU).not.toHaveBeenCalled()
-    },
-  )
+  it('suppresses 5010 stale-object on product (auto-recovers via updateProductSyncToken)', async () => {
+    const notifier = new SyncErrorNotifier(user)
+    await notifier.notify({
+      ...baseLog,
+      errorCode: '5010',
+      entityType: 'product' as never,
+      qbItemName: 'Widget',
+    })
+    expect(sendNotificationToIU).not.toHaveBeenCalled()
+  })
 
   it('falls back to empty senderId when getPortalConnection returns null', async () => {
     getPortalConnectionMock.mockResolvedValueOnce(null)
@@ -212,17 +208,20 @@ describe('SyncErrorNotifier#notify', () => {
     expect(senderId).toBe('')
   })
 
-  it('still dispatches 5010 stale-object on invoices (no auto-recovery)', async () => {
-    const notifier = new SyncErrorNotifier(user)
-    await notifier.notify({
-      ...baseLog,
-      errorCode: '5010',
-      entityType: 'invoice' as never,
-    })
-    expect(sendNotificationToIU).toHaveBeenCalledTimes(1)
-    const [, action] = sendNotificationToIU.mock.calls[0]
-    expect(action).toBe(NotificationActions.QB_STALE_OBJECT)
-  })
+  it.each(['invoice', 'payment'] as const)(
+    'dispatches 5010 stale-object on %s (no auto-recovery)',
+    async (entityType) => {
+      const notifier = new SyncErrorNotifier(user)
+      await notifier.notify({
+        ...baseLog,
+        errorCode: '5010',
+        entityType: entityType as never,
+      })
+      expect(sendNotificationToIU).toHaveBeenCalledTimes(1)
+      const [, action] = sendNotificationToIU.mock.calls[0]
+      expect(action).toBe(NotificationActions.QB_STALE_OBJECT)
+    },
+  )
 
   it('dispatches a notification for a FAILED row with a user-actionable code', async () => {
     const notifier = new SyncErrorNotifier(user)

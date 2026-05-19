@@ -52,15 +52,12 @@ export class SyncErrorNotifier extends BaseService {
     const action = getActionForErrorCode(log.errorCode)
     if (!action) return
 
-    // 5010 stale-object on customers/items auto-recovers: every retry
-    // pre-fetches the latest SyncToken via updateProductSyncToken /
-    // updateCustomerSyncToken before issuing the update, so the next cron tick
-    // succeeds without IU intervention. Suppress to avoid notification noise.
-    // The invoice flow has no equivalent pre-fetch (it reads qbSyncToken from
-    // our DB cache directly), so 5010 on invoices remains user-actionable.
+    // PRODUCT 5010 auto-recovers via updateProductSyncToken on the next
+    // cron tick. INVOICE/PAYMENT have no equivalent refresh, so their
+    // 5010s stay user-actionable.
     if (
       action === NotificationActions.QB_STALE_OBJECT &&
-      log.entityType !== EntityType.INVOICE
+      log.entityType === EntityType.PRODUCT
     ) {
       return
     }
