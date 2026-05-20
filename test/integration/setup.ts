@@ -12,14 +12,28 @@ import { vi } from 'vitest'
  *   modules (copilot-node-sdk has an ESM directory-import that breaks).
  * - Sentry has to be stubbed because withRetry.ts calls
  *   `scope.addEventProcessor(...)` inside Sentry.withScope.
+ *
+ * Pin the vi.fn() factories on globalThis so multiple setupFile evaluations
+ * under isolate:false reuse the same mock identity. See docs/vitest-gotchas.md.
  */
 
+type MockSingletons = {
+  CopilotAPI?: ReturnType<typeof vi.fn>
+  IntuitAPI?: ReturnType<typeof vi.fn>
+}
+const g = globalThis as typeof globalThis & {
+  __qbsync_test_mocks?: MockSingletons
+}
+g.__qbsync_test_mocks ??= {}
+g.__qbsync_test_mocks.CopilotAPI ??= vi.fn()
+g.__qbsync_test_mocks.IntuitAPI ??= vi.fn()
+
 vi.mock('@/utils/copilotAPI', () => ({
-  CopilotAPI: vi.fn(),
+  CopilotAPI: g.__qbsync_test_mocks!.CopilotAPI!,
 }))
 
 vi.mock('@/utils/intuitAPI', () => ({
-  default: vi.fn(),
+  default: g.__qbsync_test_mocks!.IntuitAPI!,
   // Named export used by src/utils/error.ts to detect Intuit-sourced APIErrors
   // when unwrapping error messages in the webhook catch block.
   IntuitAPIErrorMessage: '#IntuitAPIErrorMessage#',

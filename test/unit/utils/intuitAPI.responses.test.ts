@@ -82,6 +82,7 @@ describe('IntuitAPI customQuery-based reads', () => {
       Name: 'Sales of Product Income',
       SyncToken: '0',
       Active: true,
+      AccountType: 'Income',
     })
   })
 
@@ -163,7 +164,15 @@ describe('IntuitAPI customQuery-based reads', () => {
   it('getAnAccount returns the account when QBO responds with a single match', async () => {
     vi.mocked(getFetcher).mockResolvedValue(
       queryResponse({
-        Account: [{ Id: '7', Name: 'Assets', SyncToken: '0', Active: true }],
+        Account: [
+          {
+            Id: '7',
+            Name: 'Assets',
+            SyncToken: '0',
+            Active: true,
+            AccountType: 'OtherCurrentAsset',
+          },
+        ],
       }),
     )
 
@@ -363,7 +372,13 @@ describe('IntuitAPI POST-based writes', () => {
 
   it('createAccount returns the created account when QBO accepts the request', async () => {
     vi.mocked(postFetcher).mockResolvedValue({
-      Account: { Id: '300', Name: 'New Asset', SyncToken: '0', Active: true },
+      Account: {
+        Id: '300',
+        Name: 'New Asset',
+        SyncToken: '0',
+        Active: true,
+        AccountType: 'Asset',
+      },
     })
 
     const api = makeApi()

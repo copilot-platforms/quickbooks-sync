@@ -120,6 +120,11 @@ export function createMockIntuitAPI(overrides: IntuitAPIOverrides = {}) {
     // base Assembly invoice number is used; override per-test to exercise the
     // suffix-walk path.
     findInvoicesByDocNumberPrefix: vi.fn().mockResolvedValue([]),
+    getAccountsForProductMapping: vi.fn().mockResolvedValue({
+      income: [],
+      expense: [],
+      asset: [],
+    }),
     ...overrides,
   }
 }
