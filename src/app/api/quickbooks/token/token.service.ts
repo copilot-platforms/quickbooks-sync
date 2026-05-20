@@ -99,7 +99,7 @@ export class TokenService extends BaseService {
   }
 
   async updateAccountRefs(payload: AccountRefsUpdateType) {
-    const parsed = AccountRefsUpdateSchema.parse(payload)
+    const accountRefs = AccountRefsUpdateSchema.parse(payload)
 
     let tokens
     try {
@@ -123,16 +123,16 @@ export class TokenService extends BaseService {
     }
 
     const checks: Array<[keyof AccountRefsUpdateType, string]> = []
-    if (parsed.incomeAccountRef)
+    if (accountRefs.incomeAccountRef)
       checks.push(['incomeAccountRef', QBO_ACCOUNT_TYPE.incomeAccountRef])
-    if (parsed.expenseAccountRef)
+    if (accountRefs.expenseAccountRef)
       checks.push(['expenseAccountRef', QBO_ACCOUNT_TYPE.expenseAccountRef])
-    if (parsed.assetAccountRef)
+    if (accountRefs.assetAccountRef)
       checks.push(['assetAccountRef', QBO_ACCOUNT_TYPE.assetAccountRef])
 
     await Promise.all(
       checks.map(async ([field, expectedType]) => {
-        const id = parsed[field]!
+        const id = accountRefs[field]!
         const account = await intuitApi.getAnAccount(undefined, id)
         if (!account) {
           throw new APIError(
@@ -149,8 +149,8 @@ export class TokenService extends BaseService {
       }),
     )
 
-    const conn = await this.updateQBPortalConnection(
-      parsed,
+    const updatedConnection = await this.updateQBPortalConnection(
+      accountRefs,
       eq(QBPortalConnection.portalId, this.user.workspaceId),
     )
     // updateQBPortalConnection destructures the first row from `.returning()`
@@ -158,13 +158,13 @@ export class TokenService extends BaseService {
     // above is the de facto guard, but make it explicit so a future refactor
     // of the ordering doesn't silently produce a misleading 422 from
     // SafePortalConnectionSchema.parse(undefined) in the controller.
-    if (!conn) {
+    if (!updatedConnection) {
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
         'TokenService#updateAccountRefs | portal connection row not found during update',
       )
     }
-    return conn
+    return updatedConnection
   }
 
   async turnOffSync(intuitRealmId: string) {

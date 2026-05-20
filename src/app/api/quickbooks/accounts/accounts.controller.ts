@@ -20,22 +20,23 @@ const SafePortalConnectionSchema = QBPortalConnectionSelectSchema.pick({
 export async function listAccounts(req: NextRequest) {
   const user = await authenticate(req)
   const service = new AccountService(user)
-  const data = await service.listAccountsForProductMapping()
-  return NextResponse.json(data)
+  const accountsResponse = await service.listAccountsForProductMapping()
+  return NextResponse.json(accountsResponse)
 }
 
 export async function updateAccountRefs(req: NextRequest) {
   const user = await authenticate(req)
   const body = await req.json()
-  const payload = AccountRefsUpdateSchema.parse(body)
+  const accountRefs = AccountRefsUpdateSchema.parse(body)
 
   const service = new TokenService(user)
-  const conn = await service.updateAccountRefs(payload)
+  const updatedConnection = await service.updateAccountRefs(accountRefs)
 
-  const safe = SafePortalConnectionSchema.parse(conn)
+  const safePortalConnection =
+    SafePortalConnectionSchema.parse(updatedConnection)
 
   return NextResponse.json(
-    { portalConnection: safe },
+    { portalConnection: safePortalConnection },
     { status: httpStatus.OK },
   )
 }
