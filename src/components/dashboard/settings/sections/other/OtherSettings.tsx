@@ -1,9 +1,6 @@
-import {
-  AccountOption,
-  AccountsListResponseUi,
-  OtherSettingsState,
-} from '@/hook/useSettings'
+import { AccountsListResponseUi, OtherSettingsState } from '@/hook/useSettings'
 import useClickOutside from '@/hook/useClickOutside'
+import { AccountOption } from '@/type/common'
 import { Icon, Spinner } from 'copilot-design-system'
 import { useRef, useState } from 'react'
 

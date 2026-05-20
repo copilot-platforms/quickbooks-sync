@@ -13,6 +13,7 @@ import { patchFetcher, postFetcher } from '@/helper/fetch.helper'
 import { mutate } from 'swr'
 import equal from 'deep-equal'
 import {
+  AccountOption,
   InvoiceSettingType,
   ProductSettingType,
   SettingType,
@@ -583,8 +584,6 @@ export const useInvoiceDetailSettings = () => {
     showButton,
   }
 }
-
-export type AccountOption = { id: string; name: string }
 
 export type OtherSettingsState = {
   incomeAccountRef: string
