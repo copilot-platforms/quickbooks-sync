@@ -345,28 +345,25 @@ export default class IntuitAPI {
       message: `IntuitAPI#getAccountsForProductMapping | start for realmId: ${this.tokens.intuitRealmId}`,
     })
     // QBO's query parser does not support OR, parentheses for grouping, or
-    // IN on AccountType. We work around with: one query per AccountType, and
-    // JS-side filtering on AccountSubType for the income bucket.
-    const incomeQuery =
-      "SELECT Id, Name, SyncToken, Active, AccountType, AccountSubType FROM Account WHERE AccountType = 'Income' AND AccountSubType = 'SalesOfProductIncome' AND Active = true"
-    const expenseQuery =
-      "SELECT Id, Name, SyncToken, Active, AccountType FROM Account WHERE AccountType = 'Expense' AND Active = true"
-    const assetQuery =
-      "SELECT Id, Name, SyncToken, Active, AccountType FROM Account WHERE AccountType = 'Bank' AND Active = true"
+    // IN on AccountType — one flat query per AccountType is the only shape
+    // that parses.
+    const baseCols = QB_ACCOUNT_COLUMNS.join(', ')
+    const incomeQuery = `SELECT ${baseCols}, AccountSubType FROM Account WHERE AccountType = 'Income' AND AccountSubType = 'SalesOfProductIncome' AND Active = true`
+    const expenseQuery = `SELECT ${baseCols} FROM Account WHERE AccountType = 'Expense' AND Active = true`
+    const assetQuery = `SELECT ${baseCols} FROM Account WHERE AccountType = 'Bank' AND Active = true`
 
-    const [incomeRaw, expenseRaw, assetOtherRaw] = await Promise.all([
+    const [incomeRaw, expenseRaw, assetRaw] = await Promise.all([
       this.customQuery(incomeQuery),
       this.customQuery(expenseQuery),
       this.customQuery(assetQuery),
     ])
 
-    if (!incomeRaw || !expenseRaw || !assetOtherRaw)
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        'IntuitAPI#getAccountsForProductMapping | no response from QBO',
-      )
-
+    // customQuery returns undefined when QBO responds with no QueryResponse
+    // key (degenerate but observed in some empty-realm states). Treat as an
+    // empty bucket rather than a hard error — the UI shows "No matching
+    // accounts in QuickBooks" instead of a misleading "Could not load."
     const parse = (raw: unknown): QBAccountRowType[] => {
+      if (raw === undefined || raw === null) return []
       const parsed = QBAccountQueryResponseSchema.parse(raw)
       return parsed.Account ?? []
     }
@@ -374,7 +371,7 @@ export default class IntuitAPI {
     return {
       income: parse(incomeRaw),
       expense: parse(expenseRaw),
-      asset: parse(assetOtherRaw),
+      asset: parse(assetRaw),
     }
   }
 

@@ -105,4 +105,14 @@ describe('IntuitAPI#getAccountsForProductMapping', () => {
     const out = await (api as any).getAccountsForProductMapping()
     expect(out).toEqual({ income: [], expense: [], asset: [] })
   })
+
+  it('treats a missing QueryResponse (undefined customQuery result) as an empty bucket', async () => {
+    // Regression guard: an earlier version threw APIError(400) when any of
+    // the three customQuery calls returned undefined (e.g., realm with no
+    // QueryResponse key). That would surface as "Could not load accounts"
+    // in the UI even though the correct semantic is an empty dropdown.
+    const { api } = makeApi(() => undefined)
+    const out = await (api as any).getAccountsForProductMapping()
+    expect(out).toEqual({ income: [], expense: [], asset: [] })
+  })
 })

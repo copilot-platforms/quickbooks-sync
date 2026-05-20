@@ -113,17 +113,25 @@ export class TokenService extends BaseService {
 
     const intuitApi = new IntuitAPI(tokens)
 
-    const checks: Array<[keyof AccountRefsUpdateType, (t: string) => boolean]> =
-      []
+    // QBO API AccountType values per settings bucket. Distinct from local
+    // `AccountTypeObj` (lowercase keys for our own routing); these strings
+    // must match QBO's enum exactly.
+    const QBO_ACCOUNT_TYPE: Record<keyof AccountRefsUpdateType, string> = {
+      incomeAccountRef: 'Income',
+      expenseAccountRef: 'Expense',
+      assetAccountRef: 'Bank',
+    }
+
+    const checks: Array<[keyof AccountRefsUpdateType, string]> = []
     if (parsed.incomeAccountRef)
-      checks.push(['incomeAccountRef', (t) => t === 'Income'])
+      checks.push(['incomeAccountRef', QBO_ACCOUNT_TYPE.incomeAccountRef])
     if (parsed.expenseAccountRef)
-      checks.push(['expenseAccountRef', (t) => t === 'Expense'])
+      checks.push(['expenseAccountRef', QBO_ACCOUNT_TYPE.expenseAccountRef])
     if (parsed.assetAccountRef)
-      checks.push(['assetAccountRef', (t) => t === 'Bank'])
+      checks.push(['assetAccountRef', QBO_ACCOUNT_TYPE.assetAccountRef])
 
     await Promise.all(
-      checks.map(async ([field, isValidType]) => {
+      checks.map(async ([field, expectedType]) => {
         const id = parsed[field]!
         const account = await intuitApi.getAnAccount(undefined, id)
         if (!account) {
@@ -132,8 +140,7 @@ export class TokenService extends BaseService {
             `${field} account not found`,
           )
         }
-        const acctType = account.AccountType
-        if (!isValidType(acctType)) {
+        if (account.AccountType !== expectedType) {
           throw new APIError(
             httpStatus.BAD_REQUEST,
             `${field} has an incompatible account type`,
@@ -142,10 +149,22 @@ export class TokenService extends BaseService {
       }),
     )
 
-    return await this.updateQBPortalConnection(
+    const conn = await this.updateQBPortalConnection(
       parsed,
       eq(QBPortalConnection.portalId, this.user.workspaceId),
     )
+    // updateQBPortalConnection destructures the first row from `.returning()`
+    // and yields undefined if the WHERE matched nothing. getPortalTokens
+    // above is the de facto guard, but make it explicit so a future refactor
+    // of the ordering doesn't silently produce a misleading 422 from
+    // SafePortalConnectionSchema.parse(undefined) in the controller.
+    if (!conn) {
+      throw new APIError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'TokenService#updateAccountRefs | portal connection row not found during update',
+      )
+    }
+    return conn
   }
 
   async turnOffSync(intuitRealmId: string) {

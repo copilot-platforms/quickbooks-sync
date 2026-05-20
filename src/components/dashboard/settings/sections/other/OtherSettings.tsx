@@ -43,9 +43,12 @@ function AccountSelect({
   // surfaces the stale id with a hint instead of silently snapping to empty.
   const optionMissing = !!value && !selected
 
+  const labelId = `account-select-label-${label.replace(/\s+/g, '-').toLowerCase()}`
   return (
     <div className="mb-5">
-      <label className="block text-sm font-medium mb-1">{label}</label>
+      <label id={labelId} className="block text-sm font-medium mb-1">
+        {label}
+      </label>
       <p className="text-xs text-gray-500 mb-2">{description}</p>
       <div className="relative">
         <button
@@ -53,6 +56,9 @@ function AccountSelect({
           type="button"
           disabled={disabled}
           onClick={() => setIsOpen((v) => !v)}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          aria-labelledby={labelId}
           className="w-full bg-gray-100 hover:bg-gray-150 grid grid-cols-6 md:grid-cols-14 py-2 pl-4 pr-3 border border-gray-200 rounded text-left disabled:opacity-50 focus:outline-none focus:border-gray-200"
         >
           <div className="col-span-5 md:col-span-13 text-sm text-gray-600 break-all lg:break-normal">
@@ -80,6 +86,8 @@ function AccountSelect({
         {isOpen && !disabled && (
           <div
             ref={dropdownRef}
+            role="listbox"
+            aria-labelledby={labelId}
             className="absolute right-0 left-0 top-full mt-[-1px] bg-white border border-gray-150 !shadow-popover-050 rounded-sm z-100"
           >
             <div className="max-h-56 overflow-y-auto">
@@ -87,6 +95,8 @@ function AccountSelect({
                 <button
                   key={o.id}
                   type="button"
+                  role="option"
+                  aria-selected={o.id === value}
                   onClick={() => {
                     onChange(o.id)
                     setIsOpen(false)
