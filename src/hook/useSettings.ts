@@ -9,7 +9,7 @@ import {
 import { getTimeInterval } from '@/utils/common'
 import { QBO_ITEM_NAME_MAX_LENGTH } from '@/utils/string'
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
-import { postFetcher } from '@/helper/fetch.helper'
+import { patchFetcher, postFetcher } from '@/helper/fetch.helper'
 import { mutate } from 'swr'
 import equal from 'deep-equal'
 import {
@@ -584,10 +584,113 @@ export const useInvoiceDetailSettings = () => {
   }
 }
 
+export type AccountOption = { id: string; name: string }
+
+export type OtherSettingsState = {
+  incomeAccountRef: string
+  expenseAccountRef: string
+  assetAccountRef: string
+}
+
+export type AccountsListResponseUi = {
+  options: {
+    income: AccountOption[]
+    expense: AccountOption[]
+    asset: AccountOption[]
+  }
+  selected: OtherSettingsState
+}
+
+export const useOtherSettings = () => {
+  const { token, syncFlag, portalConnectionStatus } = useApp()
+  // Skip the /accounts fetch when QB isn't connected or sync is off — the
+  // endpoint requires a live portal connection and would 404 otherwise.
+  const isDisconnected = !syncFlag || !portalConnectionStatus
+  const [settingState, setSettingState] = useState<OtherSettingsState>({
+    incomeAccountRef: '',
+    expenseAccountRef: '',
+    assetAccountRef: '',
+  })
+  const [showButton, setShowButton] = useState(false)
+  const [initialState, setInitialState] = useState<
+    OtherSettingsState | undefined
+  >()
+
+  const { data, error, isLoading } = useSwrHelper(
+    isDisconnected ? null : `/api/quickbooks/accounts?token=${token}`,
+    {
+      suspense: false,
+      revalidateOnMount: true,
+    },
+  )
+
+  useEffect(() => {
+    if (data?.selected) {
+      setSettingState(data.selected)
+      setInitialState(structuredClone(data.selected))
+    }
+  }, [data])
+
+  useEffect(() => {
+    if (!initialState) return
+    setShowButton(!equal(initialState, settingState))
+  }, [settingState, initialState])
+
+  const changeSettings = (field: keyof OtherSettingsState, value: string) => {
+    setSettingState((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const submitOtherSettings = async () => {
+    if (!initialState) return
+    setShowButton(false)
+    try {
+      // Send only changed fields to keep the PATCH minimal.
+      const payload: Partial<OtherSettingsState> = {}
+      if (settingState.incomeAccountRef !== initialState.incomeAccountRef)
+        payload.incomeAccountRef = settingState.incomeAccountRef
+      if (settingState.expenseAccountRef !== initialState.expenseAccountRef)
+        payload.expenseAccountRef = settingState.expenseAccountRef
+      if (settingState.assetAccountRef !== initialState.assetAccountRef)
+        payload.assetAccountRef = settingState.assetAccountRef
+
+      await patchFetcher(
+        `/api/quickbooks/accounts?token=${token}`,
+        { 'content-type': 'application/json' },
+        payload,
+        { timeoutMs: null },
+      )
+      mutate(`/api/quickbooks/accounts?token=${token}`)
+      setInitialState(structuredClone(settingState))
+    } catch (err) {
+      setShowButton(true)
+      console.error('Error submitting Other settings', err)
+    }
+  }
+
+  const cancelOtherSettings = () => {
+    setShowButton(false)
+    if (initialState) setSettingState(initialState)
+  }
+
+  return {
+    options: data?.options as AccountsListResponseUi['options'] | undefined,
+    settingState,
+    changeSettings,
+    submitOtherSettings,
+    cancelOtherSettings,
+    error,
+    isLoading,
+    showButton,
+    isDisconnected,
+  }
+}
+
 export const useSettings = () => {
   const { isEnabled } = useApp()
   const [openItems, setOpenItems] = useState<string[]>(
-    isEnabled ? ['product-mapping'] : ['product-mapping', 'invoice-detail'],
+    isEnabled
+      ? ['product-mapping']
+      : ['product-mapping', 'invoice-detail', 'other-settings'],
   )
 
   return { openItems, setOpenItems }

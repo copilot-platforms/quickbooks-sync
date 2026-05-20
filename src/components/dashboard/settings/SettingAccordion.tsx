@@ -1,10 +1,12 @@
 import { useApp } from '@/app/context/AppContext'
 import InvoiceDetail from '@/components/dashboard/settings/sections/invoice/InvoiceDetail'
+import OtherSettings from '@/components/dashboard/settings/sections/other/OtherSettings'
 import ProductMapping from '@/components/dashboard/settings/sections/product/ProductMapping'
 import Accordion from '@/components/ui/Accordion'
 import Divider from '@/components/ui/Divider'
 import {
   useInvoiceDetailSettings,
+  useOtherSettings,
   useProductMappingSettings,
   useSettings,
 } from '@/hook/useSettings'
@@ -44,6 +46,18 @@ export default function SettingAccordion({
     showButton: showInvoiceButton,
   } = useInvoiceDetailSettings()
 
+  const {
+    options: accountOptions,
+    settingState: otherSettingState,
+    changeSettings: changeOtherSettings,
+    submitOtherSettings,
+    cancelOtherSettings,
+    isLoading: otherIsLoading,
+    error: otherError,
+    showButton: showOtherButton,
+    isDisconnected: otherIsDisconnected,
+  } = useOtherSettings()
+
   const accordionItems = [
     {
       id: 'product-mapping',
@@ -72,6 +86,20 @@ export default function SettingAccordion({
           settingState={settingState}
           changeSettings={changeSettings}
           isLoading={isLoading}
+        />
+      ),
+    },
+    {
+      id: 'other-settings',
+      header: 'Other Settings',
+      content: (
+        <OtherSettings
+          options={accountOptions}
+          settingState={otherSettingState}
+          changeSettings={changeOtherSettings}
+          isLoading={otherIsLoading}
+          error={otherError}
+          isDisconnected={otherIsDisconnected}
         />
       ),
     },
@@ -142,6 +170,22 @@ export default function SettingAccordion({
                     />
                   </>
                 )}
+              {index === 2 && syncFlag && showOtherButton && (
+                <>
+                  <Button
+                    label="Cancel"
+                    variant="text"
+                    className="me-2"
+                    onClick={cancelOtherSettings}
+                  />
+                  <Button
+                    label="Update Setting"
+                    variant="primary"
+                    prefixIcon="Check"
+                    onClick={submitOtherSettings}
+                  />
+                </>
+              )}
             </div>
             <Accordion
               item={item}
