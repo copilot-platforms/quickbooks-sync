@@ -122,6 +122,7 @@ export const QB_ACCOUNT_COLUMNS = [
   'Name',
   'SyncToken',
   'Active',
+  'AccountType',
 ] as const satisfies ReadonlyArray<keyof QBAccountRowType>
 
 type GetACustomerOverloads = {
@@ -333,6 +334,48 @@ export default class IntuitAPI {
 
     const parsed = QBAccountQueryResponseSchema.parse(qbIncomeAccountRefInfo)
     return parsed.Account?.[0]
+  }
+
+  async _getAccountsForProductMapping(): Promise<{
+    income: QBAccountRowType[]
+    expense: QBAccountRowType[]
+    asset: QBAccountRowType[]
+  }> {
+    CustomLogger.info({
+      message: `IntuitAPI#getAccountsForProductMapping | start for realmId: ${this.tokens.intuitRealmId}`,
+    })
+    // QBO's query parser does not support OR, parentheses for grouping, or
+    // IN on AccountType. We work around with: one query per AccountType, and
+    // JS-side filtering on AccountSubType for the income bucket.
+    const incomeQuery =
+      "SELECT Id, Name, SyncToken, Active, AccountType, AccountSubType FROM Account WHERE AccountType = 'Income' AND AccountSubType = 'SalesOfProductIncome' AND Active = true"
+    const expenseQuery =
+      "SELECT Id, Name, SyncToken, Active, AccountType FROM Account WHERE AccountType = 'Expense' AND Active = true"
+    const assetQuery =
+      "SELECT Id, Name, SyncToken, Active, AccountType FROM Account WHERE AccountType = 'Bank' AND Active = true"
+
+    const [incomeRaw, expenseRaw, assetOtherRaw] = await Promise.all([
+      this.customQuery(incomeQuery),
+      this.customQuery(expenseQuery),
+      this.customQuery(assetQuery),
+    ])
+
+    if (!incomeRaw || !expenseRaw || !assetOtherRaw)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#getAccountsForProductMapping | no response from QBO',
+      )
+
+    const parse = (raw: unknown): QBAccountRowType[] => {
+      const parsed = QBAccountQueryResponseSchema.parse(raw)
+      return parsed.Account ?? []
+    }
+
+    return {
+      income: parse(incomeRaw),
+      expense: parse(expenseRaw),
+      asset: parse(assetOtherRaw),
+    }
   }
 
   /**
@@ -1049,6 +1092,8 @@ export default class IntuitAPI {
   createCustomer = this.wrapWithRetry(this._createCustomer)
   createItem = this.wrapWithRetry(this._createItem)
   getSingleIncomeAccount = this._getSingleIncomeAccount.bind(this)
+  // bind-only: three inner customQuery calls each already retry; wrapping would amplify.
+  getAccountsForProductMapping = this._getAccountsForProductMapping.bind(this)
   getACustomer: GetACustomerOverloads = this._getACustomer.bind(
     this,
   ) as unknown as GetACustomerOverloads

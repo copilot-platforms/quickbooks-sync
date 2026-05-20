@@ -12,8 +12,16 @@ import {
   QBPortalConnectionUpdateSchemaType,
 } from '@/db/schema/qbPortalConnections'
 import { QBSetting, QBSettingsUpdateSchemaType } from '@/db/schema/qbSettings'
-import { getPortalConnection } from '@/db/service/token.service'
-import { AccountType, ChangeEnableStatusRequestType } from '@/type/common'
+import {
+  getPortalConnection,
+  getPortalTokens,
+} from '@/db/service/token.service'
+import {
+  AccountRefsUpdateSchema,
+  AccountRefsUpdateType,
+  AccountType,
+  ChangeEnableStatusRequestType,
+} from '@/type/common'
 import IntuitAPI from '@/utils/intuitAPI'
 import CustomLogger from '@/utils/logger'
 import dayjs from 'dayjs'
@@ -88,6 +96,56 @@ export class TokenService extends BaseService {
       : await query.returning()
 
     return token
+  }
+
+  async updateAccountRefs(payload: AccountRefsUpdateType) {
+    const parsed = AccountRefsUpdateSchema.parse(payload)
+
+    let tokens
+    try {
+      tokens = await getPortalTokens(this.user.workspaceId)
+    } catch {
+      throw new APIError(
+        httpStatus.NOT_FOUND,
+        'TokenService#updateAccountRefs | no portal connection',
+      )
+    }
+
+    const intuitApi = new IntuitAPI(tokens)
+
+    const checks: Array<[keyof AccountRefsUpdateType, (t: string) => boolean]> =
+      []
+    if (parsed.incomeAccountRef)
+      checks.push(['incomeAccountRef', (t) => t === 'Income'])
+    if (parsed.expenseAccountRef)
+      checks.push(['expenseAccountRef', (t) => t === 'Expense'])
+    if (parsed.assetAccountRef)
+      checks.push(['assetAccountRef', (t) => t === 'Bank'])
+
+    await Promise.all(
+      checks.map(async ([field, isValidType]) => {
+        const id = parsed[field]!
+        const account = await intuitApi.getAnAccount(undefined, id)
+        if (!account) {
+          throw new APIError(
+            httpStatus.BAD_REQUEST,
+            `${field} account not found`,
+          )
+        }
+        const acctType = account.AccountType
+        if (!isValidType(acctType)) {
+          throw new APIError(
+            httpStatus.BAD_REQUEST,
+            `${field} has an incompatible account type`,
+          )
+        }
+      }),
+    )
+
+    return await this.updateQBPortalConnection(
+      parsed,
+      eq(QBPortalConnection.portalId, this.user.workspaceId),
+    )
   }
 
   async turnOffSync(intuitRealmId: string) {

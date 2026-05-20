@@ -91,6 +91,23 @@ export const postFetcher = async (
   return response.json()
 }
 
+export const patchFetcher = async (
+  url: string,
+  headers: Record<string, string>,
+  body: Record<string, unknown>,
+  opts: FetcherOptions = {},
+) => {
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(body),
+    signal: resolveSignal(opts),
+  })
+
+  if (!response.ok) throw await buildHttpFetchError(response, url)
+  return response.json()
+}
+
 export const getFetcher = async (
   url: string,
   headers: Record<string, string>,

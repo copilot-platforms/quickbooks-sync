@@ -329,6 +329,37 @@ export type ProductSettingType = Required<
   Pick<SettingRequestType, 'createNewProductFlag'>
 > & { id?: string }
 
+export type AccountOption = { id: string; name: string }
+
+export type AccountsListResponse = {
+  options: {
+    income: AccountOption[]
+    expense: AccountOption[]
+    asset: AccountOption[]
+  }
+  selected: {
+    incomeAccountRef: string
+    expenseAccountRef: string
+    assetAccountRef: string
+  }
+}
+
+export const AccountRefsUpdateSchema = z
+  .object({
+    incomeAccountRef: z.string().min(1).optional(),
+    expenseAccountRef: z.string().min(1).optional(),
+    assetAccountRef: z.string().min(1).optional(),
+  })
+  .refine(
+    (v) => v.incomeAccountRef || v.expenseAccountRef || v.assetAccountRef,
+    {
+      message:
+        'At least one of incomeAccountRef, expenseAccountRef, or assetAccountRef must be provided',
+    },
+  )
+
+export type AccountRefsUpdateType = z.infer<typeof AccountRefsUpdateSchema>
+
 export enum TransactionType {
   INVOICE = 'Invoice',
 }

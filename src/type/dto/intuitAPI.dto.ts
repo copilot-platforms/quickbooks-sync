@@ -209,6 +209,8 @@ export const QBAccountRowSchema = z.object({
   Name: z.string(),
   SyncToken: z.string(),
   Active: z.boolean(),
+  AccountType: z.string(),
+  AccountSubType: z.string().optional(),
 })
 export type QBAccountRowType = z.infer<typeof QBAccountRowSchema>
 
