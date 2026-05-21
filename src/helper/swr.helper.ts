@@ -5,8 +5,11 @@ import useSWR, { SWRConfiguration } from 'swr'
 // SWR handles its own error-retry; aborts here would just produce false negatives.
 const fetcher = (url: string) => getFetcher(url, {}, { timeoutMs: null })
 
-export const useSwrHelper = (key: any, opts: SWRConfiguration = {}) =>
-  useSWR(key, fetcher, {
+export const useSwrHelper = <T = any>(
+  key: any,
+  opts: SWRConfiguration<T> = {},
+) =>
+  useSWR<T>(key, fetcher, {
     revalidateOnFocus: false,
     suspense: true,
     revalidateOnMount: false,
