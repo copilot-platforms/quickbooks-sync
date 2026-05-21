@@ -12,10 +12,7 @@ import {
   QBPortalConnectionUpdateSchemaType,
 } from '@/db/schema/qbPortalConnections'
 import { QBSetting, QBSettingsUpdateSchemaType } from '@/db/schema/qbSettings'
-import {
-  getPortalConnection,
-  getPortalTokens,
-} from '@/db/service/token.service'
+import { getPortalConnection } from '@/db/service/token.service'
 import {
   AccountRefsUpdateSchema,
   AccountRefsUpdateType,
@@ -101,63 +98,10 @@ export class TokenService extends BaseService {
   async updateAccountRefs(payload: AccountRefsUpdateType) {
     const accountRefs = AccountRefsUpdateSchema.parse(payload)
 
-    let tokens
-    try {
-      tokens = await getPortalTokens(this.user.workspaceId)
-    } catch {
-      throw new APIError(
-        httpStatus.NOT_FOUND,
-        'TokenService#updateAccountRefs | no portal connection',
-      )
-    }
-
-    const intuitApi = new IntuitAPI(tokens)
-
-    // QBO API AccountType values per settings bucket. Distinct from local
-    // `AccountTypeObj` (lowercase keys for our own routing); these strings
-    // must match QBO's enum exactly.
-    const QBO_ACCOUNT_TYPE: Record<keyof AccountRefsUpdateType, string> = {
-      incomeAccountRef: 'Income',
-      expenseAccountRef: 'Expense',
-      assetAccountRef: 'Bank',
-    }
-
-    const checks: Array<[keyof AccountRefsUpdateType, string]> = []
-    if (accountRefs.incomeAccountRef)
-      checks.push(['incomeAccountRef', QBO_ACCOUNT_TYPE.incomeAccountRef])
-    if (accountRefs.expenseAccountRef)
-      checks.push(['expenseAccountRef', QBO_ACCOUNT_TYPE.expenseAccountRef])
-    if (accountRefs.assetAccountRef)
-      checks.push(['assetAccountRef', QBO_ACCOUNT_TYPE.assetAccountRef])
-
-    await Promise.all(
-      checks.map(async ([field, expectedType]) => {
-        const id = accountRefs[field]!
-        const account = await intuitApi.getAnAccount(undefined, id)
-        if (!account) {
-          throw new APIError(
-            httpStatus.BAD_REQUEST,
-            `${field} account not found`,
-          )
-        }
-        if (account.AccountType !== expectedType) {
-          throw new APIError(
-            httpStatus.BAD_REQUEST,
-            `${field} has an incompatible account type`,
-          )
-        }
-      }),
-    )
-
     const updatedConnection = await this.updateQBPortalConnection(
       accountRefs,
       eq(QBPortalConnection.portalId, this.user.workspaceId),
     )
-    // updateQBPortalConnection destructures the first row from `.returning()`
-    // and yields undefined if the WHERE matched nothing. getPortalTokens
-    // above is the de facto guard, but make it explicit so a future refactor
-    // of the ordering doesn't silently produce a misleading 422 from
-    // SafePortalConnectionSchema.parse(undefined) in the controller.
     if (!updatedConnection) {
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,

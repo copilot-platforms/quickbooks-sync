@@ -107,14 +107,4 @@ describe('AccountService.listAccountsForProductMapping', () => {
       assetAccountRef: '101',
     })
   })
-
-  it('throws 404 APIError when the portal connection is missing', async () => {
-    getPortalTokens.mockRejectedValueOnce(
-      new Error('Portal connection not found'),
-    )
-    const svc = new AccountService(fakeUser)
-    await expect(svc.listAccountsForProductMapping()).rejects.toMatchObject({
-      status: 404,
-    })
-  })
 })

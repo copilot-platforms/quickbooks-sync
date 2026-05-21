@@ -1,4 +1,5 @@
 'use server'
+import APIError from '@/app/api/core/exceptions/api'
 import { db } from '@/db'
 import {
   PortalConnectionWithSettingType,
@@ -10,6 +11,7 @@ import { WorkspaceResponse } from '@/type/common'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import { IntuitAPITokensType } from '@/utils/intuitAPI'
 import { and, asc, eq, isNotNull, isNull, sql } from 'drizzle-orm'
+import httpStatus from 'http-status'
 
 export const getPortalConnection = async (
   portalId: string,
@@ -108,7 +110,8 @@ export const getPortalTokens = async (
   portalId: string,
 ): Promise<IntuitAPITokensType> => {
   const portalConnection = await getPortalConnection(portalId)
-  if (!portalConnection) throw new Error('Portal connection not found')
+  if (!portalConnection)
+    throw new APIError(httpStatus.NOT_FOUND, 'Portal connection not found')
 
   return {
     accessToken: portalConnection.accessToken,

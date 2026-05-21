@@ -6,7 +6,7 @@ import * as appHandler from '@/app/api/quickbooks/accounts/route'
 import { db } from '@/db'
 import { QBPortalConnection } from '@/db/schema/qbPortalConnections'
 import { truncateAllTestTables } from '@test/helpers/testDb'
-import { createMockIntuitAPI, installMockApis } from '@test/helpers/mocks'
+import { installMockApis } from '@test/helpers/mocks'
 import {
   seedHealthyPortal,
   TEST_PORTAL_ID,
@@ -17,26 +17,14 @@ import {
 } from '@test/helpers/seed'
 
 describe('PATCH /api/quickbooks/accounts', () => {
-  const getAnAccount = vi.fn()
-
   beforeEach(async () => {
     await truncateAllTestTables()
-    getAnAccount.mockReset()
-    installMockApis({
-      intuit: createMockIntuitAPI({ getAnAccount }),
-    })
+    installMockApis()
   })
   afterEach(() => vi.clearAllMocks())
 
   it('updates only the income ref when only income is provided', async () => {
     await seedHealthyPortal()
-    getAnAccount.mockResolvedValue({
-      Id: '500',
-      Name: 'New Sales',
-      SyncToken: '0',
-      Active: true,
-      AccountType: 'Income',
-    })
 
     await testApiHandler({
       appHandler,
@@ -64,36 +52,6 @@ describe('PATCH /api/quickbooks/accounts', () => {
     expect(rows[0].assetAccountRef).toBe(TEST_ASSET_ACCOUNT_REF)
   })
 
-  it('rejects when the provided ref has the wrong AccountType', async () => {
-    await seedHealthyPortal()
-    getAnAccount.mockResolvedValue({
-      Id: '999',
-      Name: 'Bank',
-      SyncToken: '0',
-      Active: true,
-      AccountType: 'Bank',
-    })
-
-    await testApiHandler({
-      appHandler,
-      url: `/api/quickbooks/accounts?token=${TEST_WEBHOOK_TOKEN}`,
-      test: async ({ fetch }) => {
-        const res = await fetch({
-          method: 'PATCH',
-          body: JSON.stringify({ incomeAccountRef: '999' }),
-          headers: { 'content-type': 'application/json' },
-        })
-        expect(res.status).toBe(400)
-      },
-    })
-
-    const rows = await db
-      .select()
-      .from(QBPortalConnection)
-      .where(eq(QBPortalConnection.portalId, TEST_PORTAL_ID))
-    expect(rows[0].incomeAccountRef).toBe(TEST_INCOME_ACCOUNT_REF)
-  })
-
   it('rejects empty body with 422', async () => {
     await seedHealthyPortal()
     await testApiHandler({
@@ -110,22 +68,8 @@ describe('PATCH /api/quickbooks/accounts', () => {
     })
   })
 
-  it('updates all three refs when all are provided and valid', async () => {
+  it('updates all three refs when all are provided', async () => {
     await seedHealthyPortal()
-    getAnAccount.mockImplementation(async (_name: any, id: string) => {
-      const map: Record<string, string> = {
-        '700': 'Income',
-        '701': 'Expense',
-        '702': 'Bank',
-      }
-      return {
-        Id: id,
-        Name: `acct-${id}`,
-        SyncToken: '0',
-        Active: true,
-        AccountType: map[id],
-      }
-    })
 
     await testApiHandler({
       appHandler,
@@ -168,14 +112,6 @@ describe('PATCH /api/quickbooks/accounts', () => {
     await seedHealthyPortal({
       portal: { portalId: OTHER, intuitRealmId: 'other-realm' },
       setting: { portalId: OTHER },
-    })
-
-    getAnAccount.mockResolvedValue({
-      Id: '700',
-      Name: 'Sales',
-      SyncToken: '0',
-      Active: true,
-      AccountType: 'Income',
     })
 
     await testApiHandler({

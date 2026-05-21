@@ -1,8 +1,7 @@
 /**
- * TokenService.updateAccountRefs — validates each provided ref against QBO
- * (must exist, be active, and have the matching AccountType) before writing
- * to qb_portal_connections. Tenant scope is enforced by the caller via the
- * portal-id WHERE in updateQBPortalConnection.
+ * TokenService.updateAccountRefs writes incoming refs to qb_portal_connections
+ * scoped by portalId. The dashboard is the only caller and every ref came from
+ * GET /api/quickbooks/accounts, so no per-ref QBO validation runs here.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -15,29 +14,15 @@ vi.mock('@/utils/logger', () => ({
   default: { info: vi.fn(), error: vi.fn() },
 }))
 
-const intuit = {
-  getAnAccount: vi.fn(),
-}
+// Stub IntuitAPI + CopilotAPI so importing TokenService doesn't transitively
+// load copilot-node-sdk (which has an ESM directory-import that breaks under
+// vitest). See docs/vitest-gotchas.md.
 vi.mock('@/utils/intuitAPI', () => ({
-  default: vi.fn().mockImplementation(function (this: unknown) {
-    return intuit
-  }),
+  default: vi.fn(),
   IntuitAPIErrorMessage: '#IntuitAPIErrorMessage#',
 }))
-
-const tokens = {
-  accessToken: 'access',
-  refreshToken: 'refresh',
-  intuitRealmId: 'realm-1',
-  incomeAccountRef: '100',
-  expenseAccountRef: '102',
-  assetAccountRef: '101',
-  serviceItemRef: null,
-  clientFeeRef: null,
-}
-const getPortalTokens = vi.fn(async (_portalId: string) => tokens)
-vi.mock('@/db/service/token.service', () => ({
-  getPortalTokens: (portalId: string) => getPortalTokens(portalId),
+vi.mock('@/utils/copilotAPI', () => ({
+  CopilotAPI: vi.fn(),
 }))
 
 import { TokenService } from '@/app/api/quickbooks/token/token.service'
@@ -49,43 +34,29 @@ const fakeUser = new User('test-token', {
   internalUserId: 'user-1',
 })
 
-function makeService() {
-  const svc = new TokenService(fakeUser)
-  // Replace the inherited update method with a spy so we can assert payload
-  // shape without touching Postgres.
-  ;(svc as any).updateQBPortalConnection = vi.fn(async () => ({}))
-  return svc
+function makeService(updateReturn: unknown = { id: 'pc-1' }) {
+  const service = new TokenService(fakeUser)
+  // Spy on the inherited update so we can assert payload + WHERE clause without
+  // touching Postgres.
+  ;(service as any).updateQBPortalConnection = vi
+    .fn()
+    .mockResolvedValue(updateReturn)
+  return service
 }
 
 describe('TokenService.updateAccountRefs', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    getPortalTokens.mockResolvedValue(tokens)
   })
 
-  it('writes only the provided refs after validating their AccountType', async () => {
-    intuit.getAnAccount.mockImplementation(async (_name: any, id: string) => {
-      if (id === '300')
-        return {
-          Id: '300',
-          Name: 'New Sales',
-          SyncToken: '0',
-          Active: true,
-          AccountType: 'Income',
-        }
-      throw new Error(`unexpected id ${id}`)
-    })
+  it('writes only the provided refs, scoped by portal_id', async () => {
+    const service = makeService()
+    await service.updateAccountRefs({ incomeAccountRef: '300' })
 
-    const svc = makeService()
-    await svc.updateAccountRefs({ incomeAccountRef: '300' })
-
-    expect(intuit.getAnAccount).toHaveBeenCalledTimes(1)
-    expect(getPortalTokens).toHaveBeenCalledWith('portal-1')
-    expect((svc as any).updateQBPortalConnection).toHaveBeenCalledTimes(1)
-    const [payload, where] = (svc as any).updateQBPortalConnection.mock.calls[0]
-    expect(payload).toEqual({ incomeAccountRef: '300' })
-    // The WHERE clause is a Drizzle SQL fragment. Inspect its queryChunks for
-    // a column reference whose name is portal_id (tenant scoping).
+    expect((service as any).updateQBPortalConnection).toHaveBeenCalledTimes(1)
+    const [accountRefs, where] = (service as any).updateQBPortalConnection.mock
+      .calls[0]
+    expect(accountRefs).toEqual({ incomeAccountRef: '300' })
     const chunks = (where as { queryChunks?: unknown[] }).queryChunks ?? []
     const referencesPortalId = chunks.some(
       (c) => (c as { name?: string })?.name === 'portal_id',
@@ -93,87 +64,35 @@ describe('TokenService.updateAccountRefs', () => {
     expect(referencesPortalId).toBe(true)
   })
 
-  it('throws 400 when an income ref points at a non-Income account', async () => {
-    intuit.getAnAccount.mockResolvedValue({
-      Id: '400',
-      Name: 'Bank',
-      SyncToken: '0',
-      Active: true,
-      AccountType: 'Bank',
-    })
-    const svc = makeService()
-    await expect(
-      svc.updateAccountRefs({ incomeAccountRef: '400' }),
-    ).rejects.toBeInstanceOf(APIError)
-    expect((svc as any).updateQBPortalConnection).not.toHaveBeenCalled()
-  })
-
-  it('throws 400 when an expense ref points at the wrong AccountType', async () => {
-    intuit.getAnAccount.mockResolvedValue({
-      Id: '500',
-      Name: 'Sales',
-      SyncToken: '0',
-      Active: true,
-      AccountType: 'Income',
-    })
-    const svc = makeService()
-    await expect(
-      svc.updateAccountRefs({ expenseAccountRef: '500' }),
-    ).rejects.toBeInstanceOf(APIError)
-    expect((svc as any).updateQBPortalConnection).not.toHaveBeenCalled()
-  })
-
-  it('throws 400 when an asset ref is not in the asset AccountType set', async () => {
-    intuit.getAnAccount.mockResolvedValue({
-      Id: '600',
-      Name: 'COGS',
-      SyncToken: '0',
-      Active: true,
-      AccountType: 'Expense',
-    })
-    const svc = makeService()
-    await expect(
-      svc.updateAccountRefs({ assetAccountRef: '600' }),
-    ).rejects.toBeInstanceOf(APIError)
-    expect((svc as any).updateQBPortalConnection).not.toHaveBeenCalled()
-  })
-
-  it('throws 400 when QBO has no such account (getAnAccount returns null)', async () => {
-    intuit.getAnAccount.mockResolvedValue(null)
-    const svc = makeService()
-    await expect(
-      svc.updateAccountRefs({ incomeAccountRef: 'does-not-exist' }),
-    ).rejects.toBeInstanceOf(APIError)
-    expect((svc as any).updateQBPortalConnection).not.toHaveBeenCalled()
-  })
-
-  it('validates and writes all three when all are provided', async () => {
-    intuit.getAnAccount.mockImplementation(async (_n: any, id: string) => {
-      const map: Record<string, string> = {
-        '300': 'Income',
-        '301': 'Expense',
-        '302': 'Bank',
-      }
-      return {
-        Id: id,
-        Name: `n-${id}`,
-        SyncToken: '0',
-        Active: true,
-        AccountType: map[id],
-      }
-    })
-    const svc = makeService()
-    await svc.updateAccountRefs({
+  it('writes all three refs when all are provided', async () => {
+    const service = makeService()
+    await service.updateAccountRefs({
       incomeAccountRef: '300',
       expenseAccountRef: '301',
       assetAccountRef: '302',
     })
-    expect(intuit.getAnAccount).toHaveBeenCalledTimes(3)
-    const [payload] = (svc as any).updateQBPortalConnection.mock.calls[0]
-    expect(payload).toEqual({
+    const [accountRefs] = (service as any).updateQBPortalConnection.mock
+      .calls[0]
+    expect(accountRefs).toEqual({
       incomeAccountRef: '300',
       expenseAccountRef: '301',
       assetAccountRef: '302',
     })
+  })
+
+  it('throws 500 when the update matches no row (portal connection missing)', async () => {
+    // updateQBPortalConnection yields a falsy value when WHERE matches zero
+    // rows (Drizzle destructures `.returning()`'s first element). Pass null
+    // — undefined would collide with makeService's default parameter.
+    const service = makeService(null)
+    await expect(
+      service.updateAccountRefs({ incomeAccountRef: '300' }),
+    ).rejects.toBeInstanceOf(APIError)
+  })
+
+  it('rejects an empty payload via the schema refine', async () => {
+    const service = makeService()
+    await expect(service.updateAccountRefs({})).rejects.toThrow()
+    expect((service as any).updateQBPortalConnection).not.toHaveBeenCalled()
   })
 })

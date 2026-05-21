@@ -32,11 +32,8 @@ export async function updateAccountRefs(req: NextRequest) {
   const service = new TokenService(user)
   const updatedConnection = await service.updateAccountRefs(accountRefs)
 
-  const safePortalConnection =
-    SafePortalConnectionSchema.parse(updatedConnection)
-
   return NextResponse.json(
-    { portalConnection: safePortalConnection },
+    { portalConnection: SafePortalConnectionSchema.parse(updatedConnection) },
     { status: httpStatus.OK },
   )
 }
