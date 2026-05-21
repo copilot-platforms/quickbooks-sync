@@ -31,7 +31,7 @@ vi.mock('@/utils/sleep', () => ({
 vi.mock('@/utils/auth', () => ({
   validateAccessToken: vi.fn(),
   // `@/utils/synclog` (transitively imported via the catch block's
-  // getCategory/getDeletedAtForAuthAccountCategoryLog) reads this constant.
+  // getCategory/getShouldRetryForCategory) reads this constant.
   refreshTokenExpireMessage: 'Refresh token is expired',
 }))
 

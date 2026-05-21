@@ -55,6 +55,7 @@ export const QBSyncLog = table(
       .default(FailedRecordCategoryType.OTHERS)
       .notNull(),
     attempt: t.integer('attempt').default(0).notNull(),
+    shouldRetry: t.boolean('should_retry').default(true).notNull(),
     ...timestamps,
   },
   (table) => [

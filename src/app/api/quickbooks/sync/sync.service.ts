@@ -25,10 +25,7 @@ import { MAX_ATTEMPTS } from '@/constant/sync'
 import { captureMessage } from '@sentry/nextjs'
 import { AccountTypeObj } from '@/constant/qbConnection'
 import { ErrorMessageAndCode, getMessageAndCodeFromError } from '@/utils/error'
-import {
-  getCategory,
-  getDeletedAtForAuthAccountCategoryLog,
-} from '@/utils/synclog'
+import { getCategory, getShouldRetryForCategory } from '@/utils/synclog'
 
 export const runtime = 'nodejs'
 
@@ -506,8 +503,8 @@ export class SyncService extends BaseService {
   }
 
   async syncFailedRecords({
-    includeDeleted = false,
-  }: { includeDeleted?: boolean } = {}) {
+    includeNoRetry = false,
+  }: { includeNoRetry?: boolean } = {}) {
     try {
       CustomLogger.info({
         message: 'SyncService#syncFailedRecords | Start re-sync process',
@@ -521,7 +518,7 @@ export class SyncService extends BaseService {
 
       // 1. get all failed sync logs group by the entity type
       const failedSyncLogs =
-        await this.syncLogService.getAllFailedLogsForWorkspace(includeDeleted)
+        await this.syncLogService.getAllFailedLogsForWorkspace(includeNoRetry)
 
       if (failedSyncLogs.length === 0) {
         CustomLogger.info({
@@ -650,7 +647,7 @@ export class SyncService extends BaseService {
         status: LogStatus.FAILED,
         errorMessage,
         errorCode: error?.code?.toString(),
-        deletedAt: getDeletedAtForAuthAccountCategoryLog(error),
+        shouldRetry: getShouldRetryForCategory(error),
         category: getCategory(error),
       },
       eq(QBSyncLog.id, syncLogId),

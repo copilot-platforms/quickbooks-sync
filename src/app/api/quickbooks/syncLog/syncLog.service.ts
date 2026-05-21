@@ -329,14 +329,15 @@ export class SyncLogService extends BaseService {
    * Get all failed sync logs
    */
   async getAllFailedLogsForWorkspace(
-    includeDeleted: boolean,
+    includeNoRetry: boolean = false,
   ): Promise<QBSyncLogSelectSchemaType[] | []> {
     return await this.db.query.QBSyncLog.findMany({
       where: (logs, { eq, and }) =>
         and(
           eq(logs.portalId, this.user.workspaceId),
           eq(logs.status, LogStatus.FAILED),
-          !includeDeleted ? isNull(logs.deletedAt) : undefined,
+          isNull(logs.deletedAt),
+          !includeNoRetry ? eq(logs.shouldRetry, true) : undefined,
         ),
       orderBy: (logs, { asc }) => [asc(logs.createdAt)],
     })

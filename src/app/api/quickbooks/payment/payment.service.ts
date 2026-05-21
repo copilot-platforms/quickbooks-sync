@@ -32,10 +32,7 @@ import { PaymentSucceededResponseType } from '@/type/dto/webhook.dto'
 import { getMessageAndCodeFromError } from '@/utils/error'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import CustomLogger from '@/utils/logger'
-import {
-  getDeletedAtForAuthAccountCategoryLog,
-  getCategory,
-} from '@/utils/synclog'
+import { getCategory, getShouldRetryForCategory } from '@/utils/synclog'
 import { addSyncBreadcrumb } from '@/utils/sentry'
 import dayjs from 'dayjs'
 import { z } from 'zod'
@@ -143,8 +140,8 @@ export class PaymentService extends BaseService {
           customerEmail: recipientInfo.email,
           errorMessage,
           errorCode: errorWithCode.code?.toString(),
+          shouldRetry: getShouldRetryForCategory(errorWithCode),
           category: getCategory(errorWithCode),
-          deletedAt: getDeletedAtForAuthAccountCategoryLog(errorWithCode),
         },
         LogStatus.FAILED,
       )
@@ -368,7 +365,7 @@ export class PaymentService extends BaseService {
       errorMessage?: string
       errorCode?: string
       category?: FailedRecordCategoryType
-      deletedAt?: Date
+      shouldRetry?: boolean
     },
     status: LogStatus = LogStatus.SUCCESS,
   ) {

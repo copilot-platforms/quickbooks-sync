@@ -1,0 +1,1 @@
+ALTER TABLE "qb_sync_logs" ADD COLUMN "should_retry" boolean DEFAULT true NOT NULL;

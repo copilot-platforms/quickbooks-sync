@@ -159,8 +159,15 @@
     {
       "idx": 22,
       "version": "7",
-      "when": 1784285845888,
-      "tag": "20260717105725_add_bank_deposit_fee_column",
+      "when": 1779277043255,
+      "tag": "20260520113723_add_should_retry_to_qb_sync_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1784285973453,
+      "tag": "20260717105933_add_bank_deposit_fee_column",
       "breakpoints": true
     }
   ]

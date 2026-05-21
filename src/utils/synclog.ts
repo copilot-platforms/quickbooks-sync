@@ -29,10 +29,13 @@ export function getCategory(errorWithCode?: ErrorMessageAndCode) {
   return FailedRecordCategoryType.OTHERS
 }
 
-export function getDeletedAtForAuthAccountCategoryLog(
+// AUTH (refresh token dead) is terminal — retrying without a reconnect
+// guarantees another failure. ACCOUNT (QBO subscription suspended) stays
+// retryable so the cron's next sweep picks it up once the customer
+// renews their subscription; MAX_ATTEMPTS bounds the retry waste.
+export function getShouldRetryForCategory(
   errorWithCode?: ErrorMessageAndCode,
-) {
+): boolean {
   const category = getCategory(errorWithCode)
-  if (category === FailedRecordCategoryType.ACCOUNT) return new Date()
-  return
+  return category !== FailedRecordCategoryType.AUTH
 }

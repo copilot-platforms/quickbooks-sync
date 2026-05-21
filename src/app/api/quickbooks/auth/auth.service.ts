@@ -177,7 +177,9 @@ export class AuthService extends BaseService {
             clientFeeRef: existingToken.clientFeeRef,
           }
           const syncService = new SyncService(this.user)
-          await syncService.syncFailedRecords()
+          await syncService.syncFailedRecords({
+            includeNoRetry: true,
+          })
         }
       })
 
