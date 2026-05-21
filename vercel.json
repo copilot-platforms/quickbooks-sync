@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/quickbooks/cron",
-      "schedule": "0 */3 * * *"
+      "schedule": "0 */12 * * *"
     },
     {
       "path": "/api/quickbooks/refresh-tokens",
