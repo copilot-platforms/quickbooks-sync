@@ -329,7 +329,7 @@ export class SyncLogService extends BaseService {
    * Get all failed sync logs
    */
   async getAllFailedLogsForWorkspace(
-    includeNoRetry: boolean = false,
+    includeNoRetry = false,
   ): Promise<QBSyncLogSelectSchemaType[] | []> {
     return await this.db.query.QBSyncLog.findMany({
       where: (logs, { eq, and }) =>
