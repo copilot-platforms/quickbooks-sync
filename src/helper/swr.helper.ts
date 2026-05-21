@@ -8,5 +8,7 @@ const fetcher = (url: string) => getFetcher(url, {}, { timeoutMs: null })
 export const useSwrHelper = (key: any, opts: SWRConfiguration = {}) =>
   useSWR(key, fetcher, {
     revalidateOnFocus: false,
+    suspense: true,
+    revalidateOnMount: false,
     ...opts,
   })

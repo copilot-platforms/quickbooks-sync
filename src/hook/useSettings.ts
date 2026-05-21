@@ -76,10 +76,6 @@ export const useProductMappingSettings = () => {
 
   const { data: setting } = useSwrHelper(
     `/api/quickbooks/setting?type=${SettingType.PRODUCT}&token=${token}`,
-    {
-      suspense: true,
-      revalidateOnMount: false,
-    },
   )
 
   const changeSettings = async (
@@ -339,26 +335,14 @@ export const useProductTableSetting = (
   const { token, setAppParams, syncFlag } = useApp()
   const { data: products } = useSwrHelper(
     `/api/quickbooks/product/flatten?token=${token}`,
-    {
-      suspense: true,
-      revalidateOnMount: false,
-    },
   )
 
   const { data: quickbooksItems } = useSwrHelper(
     syncFlag ? `/api/quickbooks/product/qb/item?token=${token}` : null,
-    {
-      suspense: true,
-      revalidateOnMount: false,
-    },
   )
 
   const { data: mappedItems } = useSwrHelper(
     `/api/quickbooks/product/map?token=${token}`,
-    {
-      suspense: true,
-      revalidateOnMount: false,
-    },
   )
 
   useEffect(() => {
@@ -517,10 +501,7 @@ export const useInvoiceDetailSettings = () => {
     data: setting,
     error,
     isLoading,
-  } = useSwrHelper(`/api/quickbooks/setting?type=invoice&token=${token}`, {
-    suspense: true,
-    revalidateOnMount: false,
-  })
+  } = useSwrHelper(`/api/quickbooks/setting?type=invoice&token=${token}`)
 
   const changeSettings = async (
     flag: keyof InvoiceSettingType,
@@ -617,10 +598,10 @@ export const useOtherSettings = () => {
 
   const { data, error, isLoading } = useSwrHelper(
     isDisconnected ? null : `/api/quickbooks/accounts?token=${token}`,
-    {
-      suspense: false,
-      revalidateOnMount: true,
-    },
+    // Override the shared suspense default: keep loading/error state inline
+    // to this accordion section so the dashboard doesn't fall back to the
+    // page-level loading.tsx full-screen spinner on first open.
+    { suspense: false, revalidateOnMount: true },
   )
 
   useEffect(() => {
