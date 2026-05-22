@@ -84,6 +84,8 @@ export function createMockIntuitAPI(overrides: IntuitAPIOverrides = {}) {
     getAnItem: vi.fn().mockResolvedValue(undefined),
     // Echo the id back so callers (checkAndUpdateAccountStatus) get the ref
     // they asked for; name-only queries fall back to the income account.
+    // Name and AccountType are stubs — they don't vary by id because no
+    // current caller inspects them. Parameterize if a future test does.
     getAnAccount: vi
       .fn()
       .mockImplementation(async (_name?: string, id?: string) => ({
