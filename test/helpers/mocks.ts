@@ -5,6 +5,7 @@ import {
   TEST_INCOME_ACCOUNT_REF,
   TEST_INTERNAL_USER_ID,
   TEST_PORTAL_ID,
+  TEST_COPILOT_INVOICE_ID,
   TEST_INVOICE_NUMBER,
   TEST_QB_PURCHASE_ID,
 } from './seed'
@@ -64,7 +65,7 @@ export function createMockCopilotAPI(overrides: CopilotAPIOverrides = {}) {
     getPayments: vi.fn().mockResolvedValue({ data: [] }),
     // payment.succeeded needs a real invoice object to proceed past the getInvoice guard (OUT-3773)
     getInvoice: vi.fn().mockResolvedValue({
-      id: 'inv-cop-0001',
+      id: TEST_COPILOT_INVOICE_ID,
       number: TEST_INVOICE_NUMBER,
     }),
     ...overrides,
