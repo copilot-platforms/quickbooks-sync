@@ -49,12 +49,14 @@ describe('POST /api/quickbooks/webhook — payment.succeeded (absorbed-fee expen
       remark: 'Absorbed fees',
     })
 
-    expect(apis.copilot.getInvoice).toHaveBeenCalledWith(TEST_COPILOT_INVOICE_ID)
+    expect(apis.copilot.getInvoice).toHaveBeenCalledWith(
+      TEST_COPILOT_INVOICE_ID,
+    )
     expect(apis.intuit.getAnAccount).toHaveBeenCalledTimes(2) // asset + expense
     expect(apis.intuit.getAnAccount).toHaveBeenCalledWith(
-      undefined,
-      TEST_ASSET_ACCOUNT_REF,
-      true,
+      undefined, // account name
+      TEST_ASSET_ACCOUNT_REF, // account id
+      true, // includeInactive
     )
     expect(apis.intuit.getAnAccount).toHaveBeenCalledWith(
       undefined,
