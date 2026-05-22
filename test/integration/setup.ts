@@ -92,3 +92,19 @@ vi.mock('@sentry/nextjs', () => ({
   addBreadcrumb: vi.fn(),
   init: vi.fn(),
 }))
+
+// Webhook pre-claim sleeps would add ≥7s per test; we don't exercise race
+// ordering at this layer.
+vi.mock('@/utils/sleep', () => ({
+  sleep: vi.fn().mockResolvedValue(undefined),
+}))
+
+// Importing modules that pull `next/server` corrupts NTARH's AsyncLocalStorage.
+// Shimming this entry point keeps the next/server import out of the graph.
+vi.mock('@/app/api/core/utils/afterIfAvailable', () => ({
+  afterIfAvailable: (callback: () => Promise<void>) => {
+    void callback().catch((err) => {
+      console.error('[afterIfAvailable mock] callback failed:', err)
+    })
+  },
+}))
