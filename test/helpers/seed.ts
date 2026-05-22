@@ -109,6 +109,8 @@ export const TEST_QB_CUSTOMER_ID = 'qb-cust-1'
 export const TEST_QB_INVOICE_ID = 'qb-inv-1'
 export const TEST_INVOICE_NUMBER = 'INV-0001'
 export const TEST_COPILOT_INVOICE_ID = 'inv-cop-0001'
+export const TEST_COPILOT_PAYMENT_ID = 'pay-cop-0001'
+export const TEST_QB_PURCHASE_ID = 'qb-purch-1'
 
 type CustomerOverrides = Partial<InferInsertModel<typeof QBCustomers>>
 type InvoiceSyncOverrides = Partial<InferInsertModel<typeof QBInvoiceSync>>

@@ -5,6 +5,8 @@ import {
   TEST_INCOME_ACCOUNT_REF,
   TEST_INTERNAL_USER_ID,
   TEST_PORTAL_ID,
+  TEST_INVOICE_NUMBER,
+  TEST_QB_PURCHASE_ID,
 } from './seed'
 
 // Restricts override keys to the actual method names of the underlying class
@@ -60,7 +62,11 @@ export function createMockCopilotAPI(overrides: CopilotAPIOverrides = {}) {
       type: 'recurring',
     }),
     getPayments: vi.fn().mockResolvedValue({ data: [] }),
-    getInvoice: vi.fn().mockResolvedValue(undefined),
+    // payment.succeeded needs a real invoice object to proceed past the getInvoice guard (OUT-3773)
+    getInvoice: vi.fn().mockResolvedValue({
+      id: 'inv-cop-0001',
+      number: TEST_INVOICE_NUMBER,
+    }),
     ...overrides,
   }
 }
@@ -76,13 +82,17 @@ export function createMockCopilotAPI(overrides: CopilotAPIOverrides = {}) {
 export function createMockIntuitAPI(overrides: IntuitAPIOverrides = {}) {
   return {
     getAnItem: vi.fn().mockResolvedValue(undefined),
-    getAnAccount: vi.fn().mockResolvedValue({
-      Id: TEST_INCOME_ACCOUNT_REF,
-      Name: 'Sales of Product Income',
-      SyncToken: '0',
-      Active: true,
-      AccountType: 'Income',
-    }),
+    // Echo the id back so callers (checkAndUpdateAccountStatus) get the ref
+    // they asked for; name-only queries fall back to the income account.
+    getAnAccount: vi
+      .fn()
+      .mockImplementation(async (_name?: string, id?: string) => ({
+        Id: id ?? TEST_INCOME_ACCOUNT_REF,
+        Name: 'Sales of Product Income',
+        SyncToken: '0',
+        Active: true,
+        AccountType: 'Income',
+      })),
     createItem: vi.fn().mockResolvedValue({
       Id: '999',
       Name: 'Test Product',
@@ -114,6 +124,12 @@ export function createMockIntuitAPI(overrides: IntuitAPIOverrides = {}) {
     }),
     createPayment: vi.fn().mockResolvedValue({
       Payment: { Id: 'qb-pay-1', SyncToken: '0' },
+    }),
+    createPurchase: vi.fn().mockResolvedValue({
+      Purchase: { Id: TEST_QB_PURCHASE_ID, SyncToken: '0' },
+    }),
+    deletePurchase: vi.fn().mockResolvedValue({
+      Purchase: { Id: TEST_QB_PURCHASE_ID, status: 'Deleted' },
     }),
     // webhookInvoiceCreated pre-flights QBO for DocNumber collisions before
     // every createInvoice call (OUT-3710). Default to "no collisions" so the
