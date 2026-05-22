@@ -1,13 +1,13 @@
-import { AccountsListResponseUi, OtherSettingsState } from '@/hook/useSettings'
+import { AccountsListResponseUi, AccountMappingState } from '@/hook/useSettings'
 import useClickOutside from '@/hook/useClickOutside'
 import { AccountOption } from '@/type/common'
 import { Icon, Spinner } from 'copilot-design-system'
 import { useRef, useState } from 'react'
 
-type OtherSettingsProps = {
+type AccountMappingProps = {
   options: AccountsListResponseUi['options'] | undefined
-  settingState: OtherSettingsState
-  changeSettings: (field: keyof OtherSettingsState, value: string) => void
+  settingState: AccountMappingState
+  changeSettings: (field: keyof AccountMappingState, value: string) => void
   isLoading: boolean
   error: unknown
   isDisconnected: boolean
@@ -63,7 +63,7 @@ function AccountSelect({
               selected.name
             ) : optionMissing ? (
               <span className="text-gray-500">
-                Currently set: {value} — no longer in QuickBooks
+                Please select {label.toLowerCase()}
               </span>
             ) : (
               <span className="text-gray-400">
@@ -111,14 +111,14 @@ function AccountSelect({
   )
 }
 
-export default function OtherSettings({
+export default function AccountMapping({
   options,
   settingState,
   changeSettings,
   isLoading,
   error,
   isDisconnected,
-}: OtherSettingsProps) {
+}: AccountMappingProps) {
   if (isDisconnected) {
     return (
       <div className="mt-2 mb-6 text-sm text-gray-600">

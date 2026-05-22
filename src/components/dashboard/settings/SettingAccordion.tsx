@@ -1,12 +1,12 @@
 import { useApp } from '@/app/context/AppContext'
 import InvoiceDetail from '@/components/dashboard/settings/sections/invoice/InvoiceDetail'
-import OtherSettings from '@/components/dashboard/settings/sections/other/OtherSettings'
+import AccountMapping from '@/components/dashboard/settings/sections/account/AccountMapping'
 import ProductMapping from '@/components/dashboard/settings/sections/product/ProductMapping'
 import Accordion from '@/components/ui/Accordion'
 import Divider from '@/components/ui/Divider'
 import {
   useInvoiceDetailSettings,
-  useOtherSettings,
+  useAccountMapping,
   useProductMappingSettings,
   useSettings,
 } from '@/hook/useSettings'
@@ -48,15 +48,15 @@ export default function SettingAccordion({
 
   const {
     options: accountOptions,
-    settingState: otherSettingState,
-    changeSettings: changeOtherSettings,
-    submitOtherSettings,
-    cancelOtherSettings,
-    isLoading: otherIsLoading,
-    error: otherError,
-    showButton: showOtherButton,
-    isDisconnected: otherIsDisconnected,
-  } = useOtherSettings()
+    settingState: accountMappingState,
+    changeSettings: changeAccountMapping,
+    submitAccountMapping,
+    cancelAccountMapping,
+    isLoading: accountMappingIsLoading,
+    error: accountMappingError,
+    showButton: showAccountMappingButton,
+    isDisconnected: accountMappingIsDisconnected,
+  } = useAccountMapping()
 
   const accordionItems = [
     {
@@ -90,16 +90,16 @@ export default function SettingAccordion({
       ),
     },
     {
-      id: 'other-settings',
-      header: 'Other Settings',
+      id: 'account-mapping',
+      header: 'Account Mapping',
       content: (
-        <OtherSettings
+        <AccountMapping
           options={accountOptions}
-          settingState={otherSettingState}
-          changeSettings={changeOtherSettings}
-          isLoading={otherIsLoading}
-          error={otherError}
-          isDisconnected={otherIsDisconnected}
+          settingState={accountMappingState}
+          changeSettings={changeAccountMapping}
+          isLoading={accountMappingIsLoading}
+          error={accountMappingError}
+          isDisconnected={accountMappingIsDisconnected}
         />
       ),
     },
@@ -170,19 +170,19 @@ export default function SettingAccordion({
                     />
                   </>
                 )}
-              {index === 2 && syncFlag && showOtherButton && (
+              {index === 2 && syncFlag && showAccountMappingButton && (
                 <>
                   <Button
                     label="Cancel"
                     variant="text"
                     className="me-2"
-                    onClick={cancelOtherSettings}
+                    onClick={cancelAccountMapping}
                   />
                   <Button
                     label="Update Setting"
                     variant="primary"
                     prefixIcon="Check"
-                    onClick={submitOtherSettings}
+                    onClick={submitAccountMapping}
                   />
                 </>
               )}
