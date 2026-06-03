@@ -4,12 +4,6 @@ export const ProductFlattenResponseSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().nullish(),
-  priceId: z.string(),
-  amount: z.number(),
-  type: z.string(),
-  interval: z.string().nullish(),
-  intervalCount: z.number().nullish(),
-  currency: z.string(),
   createdAt: z.string().datetime(),
 })
 export type ProductFlattenResponseType = z.infer<

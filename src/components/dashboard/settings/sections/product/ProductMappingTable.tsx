@@ -15,37 +15,19 @@ import { CalloutVariant } from '@/components/type/callout'
 const MapItemComponent = ({
   mappingItems,
   productId,
-  priceId,
   qbItems,
 }: {
   mappingItems: ProductMappingItemType[] | undefined
   productId: string
-  priceId: string
   qbItems: QBItemDataType[] | undefined
 }) => {
-  const { currentlyMapped } = useMapItem(
-    mappingItems,
-    productId,
-    priceId,
-    qbItems,
-  )
+  const { currentlyMapped } = useMapItem(mappingItems, productId, qbItems)
   return (
     <>
       {currentlyMapped ? (
-        <div className="text-left">
+        <div className="text-left py-2.5">
           <div className="text-sm leading-5 break-all lg:break-normal">
             {currentlyMapped?.name}
-          </div>
-          <div className="text-body-xs leading-5 text-gray-500">
-            {currentlyMapped.unitPrice &&
-              new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-              }).format(
-                currentlyMapped.unitPrice
-                  ? parseFloat(currentlyMapped.unitPrice) / 100
-                  : 0,
-              )}
           </div>
         </div>
       ) : (
@@ -146,9 +128,6 @@ export default function ProductMappingTable({
                         </span>
                       )}
                     </div>
-                    <div className="text-body-xs leading-5 text-gray-500">
-                      {product.price}
-                    </div>
                   </td>
 
                   {/* Arrow Column */}
@@ -171,19 +150,15 @@ export default function ProductMappingTable({
                       <div className="col-span-5 md:col-span-13 text-left">
                         {selectedItems[index] &&
                         Object.keys(selectedItems[index]).length > 0 ? (
-                          <div className="text-left">
+                          <div className="text-left py-2.5">
                             <div className="text-sm leading-5 text-gray-600 break-all lg:break-normal">
                               {selectedItems[index].name}
-                            </div>
-                            <div className="text-body-xs leading-5 text-gray-500">
-                              {selectedItems[index].price}
                             </div>
                           </div>
                         ) : (
                           <MapItemComponent
                             mappingItems={mappingItems}
                             productId={product.id}
-                            priceId={product.priceId}
                             qbItems={quickbooksItems}
                           />
                         )}
@@ -235,7 +210,6 @@ export default function ProductMappingTable({
                                         id: item.id,
                                         name: item.name,
                                         description: item.description,
-                                        price: item.price,
                                         syncToken: item.syncToken,
                                         numericPrice: item.numericPrice,
                                       },
@@ -246,9 +220,6 @@ export default function ProductMappingTable({
                                 >
                                   <span className="text-gray-600 line-clamp-1 break-all lg:break-normal">
                                     {item.name}
-                                  </span>
-                                  <span className="text-gray-500 text-body-micro leading-body-micro">
-                                    {item.price}
                                   </span>
                                 </button>
                               ),

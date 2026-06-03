@@ -12,7 +12,7 @@ import {
   ProductChangedItemReferenceType,
   ProductMappingSchemaType,
 } from '@/db/schema/qbProductSync'
-import { PriceResponse, WhereClause } from '@/type/common'
+import { WhereClause } from '@/type/common'
 import { ProductFlattenArrayResponseType } from '@/type/dto/api.dto'
 import { QBItemFullUpdatePayloadType } from '@/type/dto/intuitAPI.dto'
 import {
@@ -323,73 +323,27 @@ export class ProductService extends BaseService {
     return await intuitApi.createItem(qbItemPayload)
   }
 
-  async getProductsWithPrices(): Promise<ProductFlattenArrayResponseType> {
-    const copilot = new CopilotAPI(this.user.token)
-
-    const [products, pricesByProduct] = await Promise.all([
-      copilot.getProducts(undefined, undefined, MAX_PRODUCT_LIST_LIMIT),
-      this.fetchAllPricesGroupedByProduct(copilot),
-    ])
-
-    const flattened = (products?.data ?? []).flatMap((product) => {
-      const prices = pricesByProduct.get(product.id) ?? []
-      const productDescription = convert(product.description)
-      return prices
-        .map((price) => ({
-          ...product,
-          description: productDescription,
-          priceId: price.id,
-          amount: price.amount,
-          type: price.type,
-          interval: price.interval,
-          intervalCount: price.intervalCount,
-          currency: price.currency,
-        }))
-        .sort((a, b) => a.amount - b.amount) // sort by amount in asc order
-    })
-
-    return { products: flattened }
-  }
-
   /**
-   * Walks every page of the workspace's /prices endpoint and groups by
-   * productId. Replaces the prior bottleneck-throttled N+1 per-product fetch
-   * with ceil(totalPrices / MAX_PRODUCT_LIST_LIMIT) sequential calls, which is
-   * dramatically faster for the single-page workload getProductsWithPrices
-   * actually serves. If product pagination is ever reintroduced, revisit:
-   * caller would repeat this full walk per page with no cross-call cache.
+   * Returns one row per Assembly product for the mapping table. Prices are no
+   * longer fetched — one product maps to one QB item, and invoice lines carry
+   * their own UnitPrice, so the table is product-to-item only.
    */
-  private async fetchAllPricesGroupedByProduct(
-    copilot: CopilotAPI,
-  ): Promise<Map<string, PriceResponse[]>> {
-    const grouped = new Map<string, PriceResponse[]>()
-    let nextToken: string | undefined
-    do {
-      const page = await copilot.getPrices(
-        undefined,
-        nextToken,
-        MAX_PRODUCT_LIST_LIMIT.toString(),
-      )
-      if (!page) {
-        // Transient SDK failure: bail rather than silently dropping every
-        // product on the page from the flattened response.
-        console.warn(
-          'fetchAllPricesGroupedByProduct | getPrices returned undefined; aborting pagination',
-        )
-        break
-      }
-      for (const price of page.data ?? []) {
-        const list = grouped.get(price.productId)
-        if (list) {
-          list.push(price)
-        } else {
-          grouped.set(price.productId, [price])
-        }
-      }
-      nextToken = page.nextToken
-    } while (nextToken)
+  async getProductsForMapping(): Promise<ProductFlattenArrayResponseType> {
+    const copilot = new CopilotAPI(this.user.token)
+    const products = await copilot.getProducts(
+      undefined,
+      undefined,
+      MAX_PRODUCT_LIST_LIMIT,
+    )
 
-    return grouped
+    const formatted = (products?.data ?? []).map((product) => ({
+      id: product.id,
+      name: product.name,
+      description: convert(product.description),
+      createdAt: product.createdAt,
+    }))
+
+    return { products: formatted }
   }
 
   /**
@@ -669,20 +623,16 @@ export class ProductService extends BaseService {
       productName: string | null
     },
   ) {
-    const conditions: SQL[] = [eq(QBSyncLog.portalId, this.user.workspaceId)]
+    const conditions: SQL[] = [
+      eq(QBSyncLog.portalId, this.user.workspaceId),
+      eq(QBSyncLog.copilotId, copilotId), // one item per product, so the update log is keyed on the product
+      eq(QBSyncLog.eventType, eventType),
+    ]
 
     if (eventType === EventType.UPDATED) {
       conditions.push(
-        eq(QBSyncLog.copilotId, copilotId), // one item per product, so the update log is keyed on the product
-        eq(QBSyncLog.eventType, eventType),
-        eq(QBSyncLog.status, LogStatus.FAILED),
         eq(QBSyncLog.quickbooksId, quickbooksId),
-      )
-    } else {
-      // product.created: one item per product, so key the upsert on the product
-      conditions.push(
-        eq(QBSyncLog.copilotId, copilotId),
-        eq(QBSyncLog.eventType, eventType),
+        eq(QBSyncLog.status, LogStatus.FAILED),
       )
     }
 

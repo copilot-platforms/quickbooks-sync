@@ -6,7 +6,6 @@ import {
   ProductFlattenArrayResponseType,
   ProductFlattenResponseType,
 } from '@/type/dto/api.dto'
-import { getTimeInterval } from '@/utils/common'
 import { QBO_ITEM_NAME_MAX_LENGTH } from '@/utils/string'
 import { ProductMappingItemType } from '@/db/schema/qbProductSync'
 import { patchFetcher, postFetcher } from '@/helper/fetch.helper'
@@ -31,9 +30,6 @@ export type QuickbooksItemType = {
 export type ProductDataType = {
   id: string
   name: string
-  price: string
-  priceId: string
-  numericPrice: number
   description?: string
   isNameTooLong: boolean
 }
@@ -194,11 +190,7 @@ export const useProductMappingSettings = () => {
       [index]: '',
     }))
     const fileteredChangedItem = changedItemReference.filter(
-      (item) =>
-        !(
-          item.id === products[index].id &&
-          item.priceId === products[index].priceId
-        ),
+      (item) => item.id !== products[index].id,
     )
     const newVal = [
       ...fileteredChangedItem,
@@ -210,18 +202,13 @@ export const useProductMappingSettings = () => {
 
     // update the mapped array
     const mappedArray = mappingItems.map((mapItem) => {
-      if (
-        mapItem.productId === products[index].id &&
-        mapItem.priceId === products[index].priceId
-      ) {
+      if (mapItem.productId === products[index].id) {
         return {
           ...mapItem,
           name: item.name || null,
           description: item.description || '',
-          priceId: products[index].priceId,
           productId: products[index].id,
           unitPrice: item.numericPrice?.toFixed() || null,
-          copilotUnitPrice: products[index].numericPrice.toFixed(),
           copilotName: products[index].name,
           qbItemId: item.id || null,
           qbSyncToken: item.syncToken || null,
@@ -279,22 +266,12 @@ function formatProductDataForListing(
   data: ProductFlattenArrayResponseType,
 ): ProductDataType[] | undefined {
   return data?.products?.length
-    ? data.products.map((product) => {
-        const price = new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD',
-        }).format(product.amount / 100)
-        const newPrice = `${price} ${product?.interval && product?.intervalCount ? `/ ${getTimeInterval(product.interval, product.intervalCount)}` : ''}`
-        return {
-          id: product.id,
-          name: product.name,
-          description: product.description || '',
-          price: newPrice,
-          numericPrice: product.amount,
-          priceId: product.priceId,
-          isNameTooLong: product.name.length > QBO_ITEM_NAME_MAX_LENGTH,
-        }
-      })
+    ? data.products.map((product) => ({
+        id: product.id,
+        name: product.name,
+        description: product.description || '',
+        isNameTooLong: product.name.length > QBO_ITEM_NAME_MAX_LENGTH,
+      }))
     : undefined
 }
 
@@ -325,7 +302,6 @@ export const useProductTableSetting = (
   const emptyMappedItem = {
     name: null,
     description: '',
-    priceId: null,
     productId: null,
     unitPrice: null,
     qbItemId: null,
@@ -356,9 +332,7 @@ export const useProductTableSetting = (
           (product: ProductFlattenResponseType) => {
             return {
               ...emptyMappedItem,
-              priceId: product.priceId,
               productId: product.id,
-              copilotUnitPrice: product.amount.toFixed(),
               copilotName: product.name,
             }
           },
@@ -369,31 +343,25 @@ export const useProductTableSetting = (
             const mappedItem = mappedItems.find(
               // search for the already mapped product from the mapped list
               (item: ProductMappingItemType) =>
-                item.productId === product.id &&
-                item.priceId === product.priceId &&
-                item.qbItemId,
+                item.productId === product.id && item.qbItemId,
             )
             if (mappedItem) {
               // if found, return with the mapped product in mapping item
               return {
                 name: mappedItem.name,
                 description: mappedItem.description,
-                priceId: product.priceId,
                 productId: product.id,
                 unitPrice:
                   mappedItem.unitPrice && mappedItem.unitPrice.toString(),
                 qbItemId: mappedItem.qbItemId,
                 qbSyncToken: mappedItem.qbSyncToken,
-                copilotUnitPrice: product.amount.toFixed(),
                 copilotName: product.name,
                 isExcluded: false,
               }
             }
             return {
               ...emptyMappedItem,
-              priceId: product.priceId,
               productId: product.id,
-              copilotUnitPrice: product.amount.toFixed(),
               copilotName: product.name,
             }
           },
@@ -440,34 +408,24 @@ export const useProductTableSetting = (
 export const useMapItem = (
   mappingItems: ProductMappingItemType[] | undefined,
   productId: string,
-  priceId: string,
   qbItems: QBItemDataType[] | undefined,
 ) => {
   const [currentlyMapped, setCurrentlyMapped] = useState<
-    ProductMappingItemType | undefined
+    { name: string } | undefined
   >()
   const checkIfMappedItemExists = () => {
     const currentMapItem = mappingItems?.find((item) => {
-      return (
-        item.productId === productId &&
-        item.priceId === priceId &&
-        item.qbItemId
-      )
+      return item.productId === productId && item.qbItemId
     })
     const currentQbItem = qbItems?.find((item) => {
       return item.id === currentMapItem?.qbItemId
     })
 
-    let itemToReturn: { name: string; unitPrice: string } | undefined
+    let itemToReturn: { name: string } | undefined
     const itemName = currentQbItem?.name || currentMapItem?.name
-    const itemUnitPrice =
-      currentQbItem?.numericPrice.toFixed(2) || currentMapItem?.unitPrice
 
-    if (itemName && itemUnitPrice) {
-      itemToReturn = {
-        name: itemName,
-        unitPrice: itemUnitPrice,
-      }
+    if (itemName) {
+      itemToReturn = { name: itemName }
     }
 
     setCurrentlyMapped(itemToReturn)
