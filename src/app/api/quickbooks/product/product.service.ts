@@ -546,7 +546,7 @@ export class ProductService extends BaseService {
     qbTokenInfo: IntuitAPITokensType,
   ): Promise<void> {
     const productResource = resource.data
-    addSyncBreadcrumb('Product created flow started', {
+    addSyncBreadcrumb('Product creation flow started', {
       productId: productResource.id,
     })
     const intuitApi = new IntuitAPI(qbTokenInfo)
@@ -554,17 +554,19 @@ export class ProductService extends BaseService {
     await this.db.transaction(async (tx) => {
       this.setTransaction(tx)
 
-      // 01. if this product is already mapped to a QB item, do nothing.
-      const mappedProducts = await this.getAllByProductId(
-        productResource.id,
-        undefined,
+      const mappedProduct = await this.getOne(
+        // 01. if this product is already mapped to a QB item, do nothing.
+        and(
+          eq(QBProductSync.portalId, this.user.workspaceId),
+          eq(QBProductSync.productId, productResource.id),
+        ) as WhereClause,
         ['id'],
       )
 
       addSyncBreadcrumb('Product mapping check', {
-        alreadyMapped: !!mappedProducts?.length,
+        alreadyMapped: !!mappedProduct,
       })
-      if (mappedProducts && mappedProducts.length > 0) {
+      if (mappedProduct) {
         console.info('Product already mapped to a QB item; skipping')
         return
       }
