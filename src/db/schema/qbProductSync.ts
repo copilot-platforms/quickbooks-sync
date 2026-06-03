@@ -90,8 +90,6 @@ const ProductChangedItemReferenceSchema = z.object({
   id: z.string(),
   isExcluded: z.boolean(),
   name: z.string(),
-  numericPrice: z.number(),
-  priceId: z.string(),
   qbItem: QBItemSchema.nullish(),
 })
 

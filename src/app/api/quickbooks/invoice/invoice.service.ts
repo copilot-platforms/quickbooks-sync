@@ -63,7 +63,6 @@ type OneOffItemType = {
 
 type InvoiceItemRefAndDescriptionType = {
   ref: QBNameValueSchemaType
-  amount?: number
   productDescription?: string
   classRef?: QBNameValueSchemaType
 }
@@ -148,51 +147,11 @@ export class InvoiceService extends BaseService {
     })
   }
 
-  private async handleItemAmount({
-    copilotUnitPrice,
-    priceId,
-    mappingId,
-    productService,
-  }: {
-    copilotUnitPrice: string | null
-    priceId: string
-    mappingId: string
-    productService: ProductService
-  }) {
-    console.log(
-      'Checking if Assembly item unit price is available and not zero.',
-    )
-    if (copilotUnitPrice && copilotUnitPrice !== '0') return copilotUnitPrice
-
-    // fetch price amount from copilot if copilotUnitPrice is null
-    console.info(
-      'Copilot product price not found in mapping table. Fetching from copilot SDK',
-    )
-    const copilotPriceRes = await this.copilot.getPrice(priceId)
-    if (!copilotPriceRes)
-      throw new APIError(
-        httpStatus.NOT_FOUND,
-        'Price not found. Id: ' + priceId,
-      )
-    const itemAmount = copilotPriceRes.amount.toFixed()
-
-    // update the price amount in our DB
-    const priceUpdatePayload = {
-      copilotUnitPrice: itemAmount,
-    }
-    const conditions = eq(QBProductSync.id, mappingId)
-
-    await productService.updateQBProduct(priceUpdatePayload, conditions)
-    console.info('Copilot unit price updated in mapping table')
-    return itemAmount
-  }
-
   /**
-   * Returns the invoice item reference (QB) for the given product and price
+   * Returns the invoice item reference (QB) for the given product.
    */
   private async getInvoiceItemRef(
     productId: string,
-    priceId: string,
     intuitApi: IntuitAPI,
     oneOffItem: OneOffItemType,
     incomeAccRef: string,
@@ -213,7 +172,6 @@ export class InvoiceService extends BaseService {
 
     const mapping = await productService.ensureProductExistsAndSyncToken(
       productId,
-      priceId,
       intuitApi,
     )
     if (mapping) {
@@ -225,13 +183,6 @@ export class InvoiceService extends BaseService {
       if (mapping.qbItemId) {
         console.info('InvoiceService#getInvoiceItemRef | Product map found')
 
-        const itemAmount = await this.handleItemAmount({
-          copilotUnitPrice: mapping.copilotUnitPrice,
-          priceId,
-          mappingId: mapping.id,
-          productService,
-        })
-
         const intuitItem = await intuitApi.getAnItem(
           undefined,
           mapping.qbItemId,
@@ -240,7 +191,6 @@ export class InvoiceService extends BaseService {
 
         return {
           ref: { value: mapping.qbItemId },
-          amount: parseFloat(itemAmount) / 100,
           productDescription,
           // classRef is optional. A classRef to the mapped QB item is checked every time for each item when creating an invoice.
           classRef: intuitItem.ClassRef,
@@ -261,23 +211,11 @@ export class InvoiceService extends BaseService {
       return { ref: oneOffItem }
     }
 
-    // 2. create a new product in QB company
-    const priceInfo = await this.copilot.getPrice(priceId)
-    if (!priceInfo) {
-      throw new APIError(httpStatus.NOT_FOUND, 'Price not found. Id:' + priceId)
-    }
+    // 2. create a new product in QB company. No price here — invoice lines
+    // carry their own UnitPrice, matching product.created behavior.
     const incomeAccRefVal = incomeAccRef
 
-    // total products with the same product id
-    const itemsCount = await productService.getProductCount(
-      eq(QBProductSync.productId, productId),
-    )
-
-    const sanitizedName = replaceSpecialCharsForQB(productInfo.name)
-    const newName =
-      itemsCount > 0
-        ? truncateForQB(sanitizedName, ` (${itemsCount})`)
-        : truncateForQB(sanitizedName)
+    const newName = truncateForQB(replaceSpecialCharsForQB(productInfo.name))
 
     // check if item exist with name in QB. If yes, map in mapping table
     let qbItem = await intuitApi.getAnItem(newName)
@@ -287,7 +225,7 @@ export class InvoiceService extends BaseService {
       qbItem = await productService.createItemInQB(
         {
           productName: newName,
-          unitPrice: priceInfo.amount,
+          unitPrice: 0,
           incomeAccRefVal,
           productDescription,
         },
@@ -299,19 +237,15 @@ export class InvoiceService extends BaseService {
     const productMappingPayload = {
       portalId: this.user.workspaceId,
       productId,
-      priceId,
       qbItemId: qbItem.Id,
       qbSyncToken: qbItem.SyncToken,
       copilotName: productInfo.name,
       name: qbItem.Name,
       description: productDescription,
-      unitPrice: Number(priceInfo.amount).toFixed(), // decimal datatype expects string
-      copilotUnitPrice: Number(priceInfo.amount).toFixed(), // decimal datatype expects string
     }
     const conditions = and(
       eq(QBProductSync.portalId, this.user.workspaceId),
       eq(QBProductSync.productId, productId),
-      eq(QBProductSync.priceId, priceId),
     ) as WhereClause
     await productService.updateOrCreateQBProduct(
       productMappingPayload,
@@ -326,16 +260,14 @@ export class InvoiceService extends BaseService {
       syncAt: dayjs().toDate(),
       quickbooksId: qbItem.Id,
       productName: productInfo.name,
-      productPrice: Number(priceInfo.amount).toFixed(2),
       qbItemName: qbItem.Name,
-      copilotPriceId: priceId,
       errorMessage: null,
     }
 
     // insert or update the sync log for product creation
     const syncLogConditions = and(
       eq(QBSyncLog.portalId, this.user.workspaceId),
-      eq(QBSyncLog.copilotPriceId, priceId),
+      eq(QBSyncLog.copilotId, productId),
       eq(QBSyncLog.eventType, EventType.CREATED),
     ) as WhereClause
     await this.syncLogService.updateOrCreateQBSyncLog(
@@ -366,7 +298,6 @@ export class InvoiceService extends BaseService {
     if (lineItem.productId && lineItem.priceId) {
       itemRef = await this.getInvoiceItemRef(
         lineItem.productId,
-        lineItem.priceId,
         intuitApi,
         oneOffItem,
         incomeAccRef,
@@ -374,11 +305,11 @@ export class InvoiceService extends BaseService {
     }
     return {
       DetailType: 'SalesItemLineDetail',
-      Amount: (itemRef.amount ?? actualAmount) * lineItem.quantity,
+      Amount: actualAmount * lineItem.quantity,
       SalesItemLineDetail: {
         ItemRef: itemRef.ref,
         Qty: lineItem.quantity,
-        UnitPrice: itemRef.amount ?? actualAmount,
+        UnitPrice: actualAmount,
         TaxCodeRef: {
           // required to enable tax for the product.
           // Doc reference: https://developer.intuit.com/app/developer/qbo/docs/workflows/manage-sales-tax-for-us-locales#specifying-sales-tax
@@ -742,7 +673,8 @@ export class InvoiceService extends BaseService {
       await Promise.all(lineItemPromises)
 
     const subtotal = lineItems.reduce((acc, item) => {
-      // calculate the actual tax amount from the lineItems. Not using invoiceResource amount directly as the amount for mapped items can be different (mapped QB amount).
+      // Sum the per-line amounts (each line's UnitPrice comes from the invoice
+      // line itself) rather than trusting invoiceResource's total.
       return acc + item.Amount
     }, 0)
     let actualTotalAmount = subtotal

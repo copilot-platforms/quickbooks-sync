@@ -16,19 +16,27 @@ import { PriceResponse, WhereClause } from '@/type/common'
 import { ProductFlattenArrayResponseType } from '@/type/dto/api.dto'
 import { QBItemFullUpdatePayloadType } from '@/type/dto/intuitAPI.dto'
 import {
-  PriceCreatedResponseType,
+  ProductCreatedResponseType,
   ProductUpdatedResponseType,
 } from '@/type/dto/webhook.dto'
 import { CopilotAPI } from '@/utils/copilotAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
-import { and, count, desc, eq, inArray, isNull, not, SQL } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  not,
+  SQL,
+} from 'drizzle-orm'
 import { convert } from 'html-to-text'
 import { z } from 'zod'
 import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
 import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 import dayjs from 'dayjs'
-import APIError from '@/app/api/core/exceptions/api'
-import httpStatus from 'http-status'
 import { QBSyncLog, QBSyncLogWithEntityType } from '@/db/schema/qbSyncLogs'
 import User from '@/app/api/core/models/User.model'
 import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
@@ -54,9 +62,8 @@ export class ProductService extends BaseService {
     this.syncLogService = new SyncLogService(user)
   }
 
-  async getMappingByProductPriceId(
+  async getMappingByProductId(
     productId: string,
-    priceId: string,
     returningFields?: (keyof typeof QBProductSync)[],
   ): Promise<QBProductSelectSchemaType | undefined> {
     let columns = null
@@ -64,14 +71,15 @@ export class ProductService extends BaseService {
       columns = buildReturningFields(QBProductSync, returningFields, true)
     }
 
+    // One row per product is the target grain; order ascending so that we pick up the first created
     return await this.db.query.QBProductSync.findFirst({
       where: (QBProductSync, { eq }) =>
         and(
           isNull(QBProductSync.deletedAt),
           eq(QBProductSync.productId, productId),
-          eq(QBProductSync.priceId, priceId),
           eq(QBProductSync.portalId, this.user.workspaceId),
         ),
+      orderBy: [asc(QBProductSync.createdAt)],
       ...columns,
     })
   }
@@ -86,7 +94,7 @@ export class ProductService extends BaseService {
     }
 
     return await this.db.query.QBProductSync.findFirst({
-      where: conditions,
+      where: and(conditions, isNull(QBProductSync.deletedAt)),
       orderBy: [desc(QBProductSync.createdAt)],
       ...columns,
     })
@@ -108,6 +116,7 @@ export class ProductService extends BaseService {
     return await this.db.query.QBProductSync.findMany({
       where: (QBProductSync, { eq }) =>
         and(
+          isNull(QBProductSync.deletedAt),
           eq(QBProductSync.productId, productId),
           eq(QBProductSync.portalId, this.user.workspaceId),
           conditions,
@@ -234,7 +243,6 @@ export class ProductService extends BaseService {
             const payload = {
               portalId: this.user.workspaceId,
               productId: item.id,
-              priceId: item.priceId,
               name: item.isExcluded ? null : item.qbItem?.name,
               description: item.isExcluded ? null : item.description,
               qbItemId: item.isExcluded ? null : item.qbItem?.id,
@@ -243,13 +251,11 @@ export class ProductService extends BaseService {
               unitPrice: item.isExcluded
                 ? null
                 : item.qbItem?.numericPrice.toString(),
-              copilotUnitPrice: item.numericPrice.toFixed(),
               isExcluded: item.isExcluded,
             }
             const conditions = and(
               eq(QBProductSync.portalId, this.user.workspaceId),
               eq(QBProductSync.productId, item.id),
-              eq(QBProductSync.priceId, item.priceId),
             ) as WhereClause
             await this.updateOrCreateQBProduct(payload, conditions)
           }),
@@ -536,62 +542,39 @@ export class ProductService extends BaseService {
     }
   }
 
-  // handles product created
-  async webhookPriceCreated(
-    resource: PriceCreatedResponseType,
+  // handles product.created — one Assembly product maps to one QB item.
+  async webhookProductCreated(
+    resource: ProductCreatedResponseType,
     qbTokenInfo: IntuitAPITokensType,
   ): Promise<void> {
-    const priceResource = resource.data
-    addSyncBreadcrumb('Price created flow started', {
-      priceId: priceResource.id,
-      productId: priceResource.productId,
+    const productResource = resource.data
+    addSyncBreadcrumb('Product created flow started', {
+      productId: productResource.id,
     })
     const intuitApi = new IntuitAPI(qbTokenInfo)
 
     await this.db.transaction(async (tx) => {
       this.setTransaction(tx)
 
-      // 01. get all unmapped by product id
-      const mappedProducts: QBProductSelectSchemaType[] | undefined =
-        await this.getAllByProductId(priceResource.productId, undefined, [
-          'id',
-          'productId',
-          'priceId',
-        ])
-
-      // total products with the same product id
-      const itemsCount = mappedProducts?.length
-
-      // filter out with priceId
-      const productWithPriceCount = mappedProducts?.filter(
-        (product) => product.priceId === priceResource.id,
-      ).length
+      // 01. if this product is already mapped to a QB item, do nothing.
+      const mappedProducts = await this.getAllByProductId(
+        productResource.id,
+        undefined,
+        ['id'],
+      )
 
       addSyncBreadcrumb('Product mapping check', {
-        alreadyMapped: !!productWithPriceCount,
+        alreadyMapped: !!mappedProducts?.length,
       })
-      if (productWithPriceCount && productWithPriceCount > 0) {
-        console.info('Product already mapped with price')
+      if (mappedProducts && mappedProducts.length > 0) {
+        console.info('Product already mapped to a QB item; skipping')
         return
       }
 
-      // get product from copilot
-      const copilot = new CopilotAPI(this.user.token)
-      const copilotProduct = await copilot.getProduct(priceResource.productId)
-
-      if (!copilotProduct) {
-        throw new APIError(
-          httpStatus.NOT_FOUND,
-          'Product not found. Id: ' + priceResource.productId,
-        )
-      }
-
-      const sanitizedName = replaceSpecialCharsForQB(copilotProduct.name)
-      const qbItemName =
-        itemsCount && itemsCount > 0
-          ? truncateForQB(sanitizedName, ` (${itemsCount})`)
-          : truncateForQB(sanitizedName)
-      const productDescription = convert(copilotProduct.description)
+      const qbItemName = truncateForQB(
+        replaceSpecialCharsForQB(productResource.name),
+      )
+      const productDescription = convert(productResource.description)
 
       // check if item with name exists in QBO
       let qbItem = await intuitApi.getAnItem(qbItemName, undefined, true)
@@ -604,11 +587,12 @@ export class ProductService extends BaseService {
           intuitApi,
           qbTokenInfo.incomeAccountRef,
         )
-        // create item in QB
+        // create item in QB. No price at product.created time — invoice lines
+        // carry their own UnitPrice, so the item's catalog price is 0.
         qbItem = await this.createItemInQB(
           {
             productName: z.string().parse(qbItemName),
-            unitPrice: priceResource.amount,
+            unitPrice: 0,
             incomeAccRefVal: z.string().parse(incomeAccountRef),
             productDescription,
           },
@@ -616,31 +600,24 @@ export class ProductService extends BaseService {
         )
       }
 
-      // map product and price
+      // map product to the QB item
       await this.createQBProduct({
         portalId: this.user.workspaceId,
-        productId: priceResource.productId,
-        priceId: priceResource.id,
-        unitPrice: priceResource.amount.toFixed(2),
+        productId: productResource.id,
         qbItemId: qbItem.Id,
         qbSyncToken: qbItem.SyncToken,
         name: qbItemName,
-        copilotName: copilotProduct.name,
+        copilotName: productResource.name,
         description: productDescription,
       })
 
-      console.info('WebhookService#webhookPriceCreated | Product created in QB')
-      await this.logSync(
-        priceResource.productId,
-        qbItem.Id,
-        EventType.CREATED,
-        {
-          productName: copilotProduct.name,
-          productPrice: priceResource.amount.toFixed(2),
-          qbItemName: qbItem.Name,
-          copilotPriceId: priceResource.id,
-        },
+      console.info(
+        'WebhookService#webhookProductCreated | Product created in QB',
       )
+      await this.logSync(productResource.id, qbItem.Id, EventType.CREATED, {
+        productName: productResource.name,
+        qbItemName: qbItem.Name,
+      })
 
       this.unsetTransaction()
     })
@@ -666,7 +643,6 @@ export class ProductService extends BaseService {
           quickbooksId: item.qbItem?.id || null,
           qbItemName: item.qbItem?.name || null,
           productName: item.name,
-          productPrice: item.numericPrice.toFixed(2),
         }
         if (!item.isExcluded) {
           payload.eventType = EventType.MAPPED
@@ -690,24 +666,24 @@ export class ProductService extends BaseService {
     quickbooksId: string,
     eventType: EventType,
     opts: {
-      copilotPriceId?: string
       qbItemName: string | null
       productName: string | null
-      productPrice?: string
     },
   ) {
     const conditions: SQL[] = [eq(QBSyncLog.portalId, this.user.workspaceId)]
 
     if (eventType === EventType.UPDATED) {
       conditions.push(
-        eq(QBSyncLog.copilotId, copilotId), // product update should be reflected to all the products with multiple prices
+        eq(QBSyncLog.copilotId, copilotId), // one item per product, so the update log is keyed on the product
         eq(QBSyncLog.eventType, eventType),
         eq(QBSyncLog.status, LogStatus.FAILED),
         eq(QBSyncLog.quickbooksId, quickbooksId),
       )
     } else {
+      // product.created: one item per product, so key the upsert on the product
       conditions.push(
-        eq(QBSyncLog.copilotPriceId, z.string().parse(opts.copilotPriceId)), // product create should have different price Id,
+        eq(QBSyncLog.copilotId, copilotId),
+        eq(QBSyncLog.eventType, eventType),
       )
     }
 
@@ -797,10 +773,9 @@ export class ProductService extends BaseService {
 
   async ensureProductExistsAndSyncToken(
     productId: string,
-    priceId: string,
     intuitAPI: IntuitAPI,
   ) {
-    const map = await this.getMappingByProductPriceId(productId, priceId)
+    const map = await this.getMappingByProductId(productId)
 
     if (!map) return
     if (!map.qbItemId || map.isExcluded) return map
@@ -809,6 +784,6 @@ export class ProductService extends BaseService {
       qbItemId: map.qbItemId,
       intuitApi: intuitAPI,
     })
-    return await this.getMappingByProductPriceId(productId, priceId)
+    return await this.getMappingByProductId(productId)
   }
 }

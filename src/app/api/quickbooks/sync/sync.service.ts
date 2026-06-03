@@ -314,17 +314,17 @@ export class SyncService extends BaseService {
     const productService = new ProductService(this.user)
     const copilotApi = new CopilotAPI(this.user.token)
 
-    const priceResponse = await copilotApi.getPrice(
-      z.string().parse(record.copilotPriceId),
+    const productResponse = await copilotApi.getProduct(
+      z.string().parse(record.copilotId),
     )
-    if (!priceResponse) {
+    if (!productResponse) {
       await this.syncLogService.deleteQBSyncLog(record.id)
       return
     }
 
     try {
-      await productService.webhookPriceCreated(
-        { data: priceResponse },
+      await productService.webhookProductCreated(
+        { data: productResponse },
         qbTokenInfo,
       )
     } catch (error: unknown) {

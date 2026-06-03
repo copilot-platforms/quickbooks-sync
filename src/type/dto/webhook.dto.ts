@@ -99,18 +99,6 @@ export type ProductUpdatedResponseType = z.infer<
   typeof ProductUpdatedResponseSchema
 >
 
-export const PriceCreatedResponseSchema = z.object({
-  data: z.object({
-    id: z.string(),
-    productId: z.string(),
-    amount: z.number(),
-    type: z.string(),
-  }),
-})
-export type PriceCreatedResponseType = z.infer<
-  typeof PriceCreatedResponseSchema
->
-
 export const InvoiceResponseSchema = z.object({
   data: z.object({
     id: z.string(),
