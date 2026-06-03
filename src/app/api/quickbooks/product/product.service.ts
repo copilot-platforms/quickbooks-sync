@@ -304,17 +304,15 @@ export class ProductService extends BaseService {
   async createItemInQB(
     opts: {
       productName: string
-      unitPrice: number
       incomeAccRefVal: string
       productDescription?: string
     },
     intuitApi: IntuitAPI,
     taxable: boolean = true,
   ) {
-    // create item in QB
+    // create item in QB. No UnitPrice — invoice lines carry their own price.
     const qbItemPayload = {
       Name: opts.productName,
-      UnitPrice: opts.unitPrice / 100,
       IncomeAccountRef: {
         value: opts.incomeAccRefVal, // required to enable sales in QB company
       },
@@ -588,11 +586,10 @@ export class ProductService extends BaseService {
           qbTokenInfo.incomeAccountRef,
         )
         // create item in QB. No price at product.created time — invoice lines
-        // carry their own UnitPrice, so the item's catalog price is 0.
+        // carry their own UnitPrice.
         qbItem = await this.createItemInQB(
           {
             productName: z.string().parse(qbItemName),
-            unitPrice: 0,
             incomeAccRefVal: z.string().parse(incomeAccountRef),
             productDescription,
           },

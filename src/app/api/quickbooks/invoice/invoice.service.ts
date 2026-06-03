@@ -225,7 +225,6 @@ export class InvoiceService extends BaseService {
       qbItem = await productService.createItemInQB(
         {
           productName: newName,
-          unitPrice: 0,
           incomeAccRefVal,
           productDescription,
         },
@@ -345,7 +344,6 @@ export class InvoiceService extends BaseService {
       const qbItem = await productService.createItemInQB(
         {
           productName,
-          unitPrice: 0,
           incomeAccRefVal,
         },
         intuitService,
@@ -388,7 +386,6 @@ export class InvoiceService extends BaseService {
       const qbItem = await productService.createItemInQB(
         {
           productName,
-          unitPrice: 0,
           incomeAccRefVal,
         },
         intuitService,

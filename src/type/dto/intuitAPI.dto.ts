@@ -101,7 +101,6 @@ export type QBCustomerSparseUpdatePayloadType = z.infer<
 
 export const QBItemCreatePayloadSchema = z.object({
   Name: z.string(),
-  UnitPrice: z.number(),
   IncomeAccountRef: QBNameValueSchema.optional(),
   Type: z.nativeEnum(QBItemType),
   Taxable: z.boolean(),
