@@ -30,7 +30,6 @@ describe('POST /api/quickbooks/product/map — product-keyed upsert', () => {
             id: '777',
             name: 'Test Product',
             syncToken: '0',
-            numericPrice: 1499,
             description: '',
           },
         },

@@ -206,7 +206,7 @@ export class ProductService extends BaseService {
 
   /**
    * On intial save, save all flatten products. If mapped, we include and if not, those are excluded
-   * On every save after that, we update the record on the basis of productId and priceId
+   * On every save after that, we update the record on the basis of productId
    */
   async handleProductMap(
     body: ProductMappingSchemaType,
@@ -234,6 +234,7 @@ export class ProductService extends BaseService {
               buildReturningFields(QBProductSync, returningFields),
             )
           : await query.returning()
+        this.unsetTransaction()
         return products
       }
 
@@ -338,7 +339,6 @@ export class ProductService extends BaseService {
       id: product.id,
       name: product.name,
       description: convert(product.description),
-      createdAt: product.createdAt,
     }))
 
     return { products: formatted }
@@ -447,10 +447,11 @@ export class ProductService extends BaseService {
           qbTokenInfo.incomeAccountRef,
         )
 
-        const fullUpdatePayload: QBItemFullUpdatePayloadType = {
+        const updatePayload: QBItemFullUpdatePayloadType = {
           Id: qbItemId,
           SyncToken: syncToken,
           Name: qbItemName,
+          sparse: true,
           ...(productDescription && { Description: productDescription }),
           ...(product.unitPrice
             ? { UnitPrice: parseFloat(product.unitPrice) / 100 }
@@ -462,7 +463,7 @@ export class ProductService extends BaseService {
           Type: QBItemType.SERVICE,
         }
 
-        const itemRes = await intuitApi.itemFullUpdate(fullUpdatePayload)
+        const itemRes = await intuitApi.itemFullUpdate(updatePayload)
 
         // update the product map in db
         const mapUpdatePayload = {

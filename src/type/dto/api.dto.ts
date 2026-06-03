@@ -4,7 +4,6 @@ export const ProductFlattenResponseSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().nullish(),
-  createdAt: z.string().datetime(),
 })
 export type ProductFlattenResponseType = z.infer<
   typeof ProductFlattenResponseSchema
