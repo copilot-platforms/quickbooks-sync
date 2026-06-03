@@ -37,10 +37,8 @@ export type ProductDataType = {
 export type QBItemDataType = {
   name: string
   description: string
-  price: string
   syncToken: string
   id: string
-  numericPrice: number
 }
 
 export const useProductMappingSettings = () => {
@@ -208,7 +206,7 @@ export const useProductMappingSettings = () => {
           name: item.name || null,
           description: item.description || '',
           productId: products[index].id,
-          unitPrice: item.numericPrice?.toFixed() || null,
+          unitPrice: null,
           copilotName: products[index].name,
           qbItemId: item.id || null,
           qbSyncToken: item.syncToken || null,
@@ -280,16 +278,10 @@ function formatQBItemForListing(
 ): QBItemDataType[] | undefined {
   return data?.length
     ? data.map((product) => {
-        const price = new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD',
-        }).format(product.UnitPrice)
         return {
           id: product.Id,
           name: product.Name,
           description: product?.Description || '',
-          price: price,
-          numericPrice: product.UnitPrice * 100,
           syncToken: product.SyncToken,
         }
       })
@@ -351,8 +343,7 @@ export const useProductTableSetting = (
                 name: mappedItem.name,
                 description: mappedItem.description,
                 productId: product.id,
-                unitPrice:
-                  mappedItem.unitPrice && mappedItem.unitPrice.toString(),
+                unitPrice: null,
                 qbItemId: mappedItem.qbItemId,
                 qbSyncToken: mappedItem.qbSyncToken,
                 copilotName: product.name,

@@ -211,7 +211,6 @@ export default function ProductMappingTable({
                                         name: item.name,
                                         description: item.description,
                                         syncToken: item.syncToken,
-                                        numericPrice: item.numericPrice,
                                       },
                                       products,
                                     )
