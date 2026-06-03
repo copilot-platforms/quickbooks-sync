@@ -68,7 +68,7 @@ export function createMockCopilotAPI(overrides: CopilotAPIOverrides = {}) {
 /**
  * Factory for a mocked IntuitAPI instance.
  *
- * Defaults represent the happy path for `price.created`:
+ * Defaults represent the happy path for `product.created`:
  *  - getAnItem returns undefined (no existing item in QB)
  *  - getAnAccount returns an active income account matching the seeded ref
  *  - createItem returns a freshly-created QB item
@@ -133,23 +133,12 @@ export type MockCopilotAPI = ReturnType<typeof createMockCopilotAPI>
 export type MockIntuitAPI = ReturnType<typeof createMockIntuitAPI>
 
 /**
- * Wires the module-mocked CopilotAPI + IntuitAPI to return shared instances
- * for the duration of a test. Pass pre-built instances (e.g., with overrides)
- * or accept the defaults.
+ * Wires the module-mocked CopilotAPI + IntuitAPI to shared instances and
+ * returns them so tests can assert on calls. Uses `function` (not arrow) so
+ * the mock is callable with `new`.
  *
- * Returns the instances so tests can assert on call counts / arguments.
- *
- * Must use `function` (not arrow) so the mock is callable with `new`.
- *
- * CAVEAT — shared instance across multiple `new` sites:
- * The price.created flow constructs `new CopilotAPI(...)` TWICE per request —
- * once in `authenticate()` (calls `.getTokenPayload()`) and once in
- * `webhookPriceCreated` (calls `.getProduct()`). Both sites receive the SAME
- * `copilot` mock object returned here. This is fine when asserting on
- * different methods (e.g., `getProduct` only fires from the service call),
- * but be careful with shared methods: `toHaveBeenCalledTimes(1)` on a method
- * both sites touch would reflect the sum of both call sites. Same applies to
- * IntuitAPI if/when it gets instantiated more than once per request.
+ * Caveat: one request may `new CopilotAPI(...)` several times (auth +
+ * invoice flow) — all share this instance, so call counts sum across sites.
  */
 export function installMockApis(
   opts: {

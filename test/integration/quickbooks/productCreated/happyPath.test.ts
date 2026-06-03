@@ -6,36 +6,33 @@ import { QBProductSync } from '@/db/schema/qbProductSync'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 
-import priceCreatedPayload from '@test/fixtures/priceCreated.webhook'
+import productCreatedPayload from '@test/fixtures/productCreated.webhook'
 import { seedHealthyPortal, TEST_PORTAL_ID } from '@test/helpers/seed'
-import { setupPriceCreatedTest } from '@test/helpers/priceCreatedTestSetup'
+import { setupProductCreatedTest } from '@test/helpers/productCreatedTestSetup'
 import { postWebhook } from '@test/helpers/webhook'
 
-describe('POST /api/quickbooks/webhook — price.created (happy path)', () => {
-  setupPriceCreatedTest()
+describe('POST /api/quickbooks/webhook — product.created (happy path)', () => {
+  setupProductCreatedTest()
 
   it('creates the QB item, writes qb_product_sync row, and logs SUCCESS', async () => {
     await seedHealthyPortal()
 
-    const res = await postWebhook(priceCreatedPayload)
+    const res = await postWebhook(productCreatedPayload)
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toEqual({ ok: true })
 
-    // ---- Assert the product mapping was persisted ----
+    // ---- Assert the product mapping was persisted (one row per product) ----
     const productSyncRows = await db
       .select()
       .from(QBProductSync)
-      .where(eq(QBProductSync.priceId, priceCreatedPayload.data.id))
+      .where(eq(QBProductSync.productId, productCreatedPayload.data.id))
 
     expect(productSyncRows).toHaveLength(1)
     expect(productSyncRows[0]).toMatchObject({
       portalId: TEST_PORTAL_ID,
-      productId: priceCreatedPayload.data.productId,
-      priceId: priceCreatedPayload.data.id,
+      productId: productCreatedPayload.data.id,
       qbItemId: '999',
       qbSyncToken: '0',
-      // price is stored in cents as a decimal string
-      unitPrice: '60000.00',
       copilotName: 'Test Product',
     })
 
@@ -43,7 +40,7 @@ describe('POST /api/quickbooks/webhook — price.created (happy path)', () => {
     const syncLogs = await db
       .select()
       .from(QBSyncLog)
-      .where(eq(QBSyncLog.copilotPriceId, priceCreatedPayload.data.id))
+      .where(eq(QBSyncLog.copilotId, productCreatedPayload.data.id))
 
     expect(syncLogs).toHaveLength(1)
     expect(syncLogs[0]).toMatchObject({
@@ -51,8 +48,7 @@ describe('POST /api/quickbooks/webhook — price.created (happy path)', () => {
       entityType: EntityType.PRODUCT,
       eventType: EventType.CREATED,
       status: LogStatus.SUCCESS,
-      copilotId: priceCreatedPayload.data.productId,
-      copilotPriceId: priceCreatedPayload.data.id,
+      copilotId: productCreatedPayload.data.id,
       quickbooksId: '999',
     })
   })

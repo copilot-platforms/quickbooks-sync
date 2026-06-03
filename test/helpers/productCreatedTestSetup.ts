@@ -8,25 +8,20 @@ import {
 
 type InstallOpts = Parameters<typeof installMockApis>[0]
 
-export interface InvoiceCreatedTestHandle {
+export interface ProductCreatedTestHandle {
   copilot: MockCopilotAPI
   intuit: MockIntuitAPI
 }
 
 /**
- * Registers the standard `beforeEach` (truncate + installMockApis) and
- * `afterEach` (clearAllMocks) hooks used by every invoice.created integration
- * test. Returns a live handle whose `copilot` / `intuit` properties are
- * replaced with fresh mock instances before each test.
- *
- * Mirrors `setupProductCreatedTest`. The `optsFactory` is invoked once per test
- * so callers can supply overrides whose underlying `vi.fn()`s are freshly
- * instantiated.
+ * beforeEach (truncate + installMockApis) / afterEach (clearAllMocks) for
+ * product.created tests. Returns a handle with fresh copilot/intuit mocks per
+ * test. optsFactory runs per test so overrides get fresh vi.fn()s.
  */
-export function setupInvoiceCreatedTest(
+export function setupProductCreatedTest(
   optsFactory?: () => InstallOpts,
-): InvoiceCreatedTestHandle {
-  const handle = {} as InvoiceCreatedTestHandle
+): ProductCreatedTestHandle {
+  const handle = {} as ProductCreatedTestHandle
 
   beforeEach(async () => {
     await truncateAllTestTables()
@@ -36,6 +31,7 @@ export function setupInvoiceCreatedTest(
   })
 
   afterEach(() => {
+    // clearAllMocks (not restoreAllMocks): keep the module-level factories installed.
     vi.clearAllMocks()
   })
 

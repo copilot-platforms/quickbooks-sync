@@ -74,7 +74,6 @@ export async function seedSetting(overrides: SettingOverrides = {}) {
 const baseProductSync: InferInsertModel<typeof QBProductSync> = {
   portalId: TEST_PORTAL_ID,
   productId: '2cf93cf0-45fa-485f-b584-03c2c38a3999',
-  priceId: 'C-wch-eSg',
   name: 'Test Product',
   copilotName: 'Test Product',
   unitPrice: '60000.00',
