@@ -344,9 +344,6 @@ export class ProductService extends BaseService {
     return { products: formatted }
   }
 
-  /**
-   * Updates the cached product list in redis
-   */
   async webhookProductUpdated(
     resource: ProductUpdatedResponseType,
     qbTokenInfo: IntuitAPITokensType,
@@ -357,9 +354,10 @@ export class ProductService extends BaseService {
     })
 
     // 01. get all the mapped product ids with qb id
-    const mappedConditions =
-      (not(isNull(QBProductSync.qbItemId)),
-      not(isNull(QBProductSync.qbSyncToken)))
+    const mappedConditions = and(
+      not(isNull(QBProductSync.qbItemId)),
+      not(isNull(QBProductSync.qbSyncToken)),
+    )
 
     const mappedProducts = await this.getAllByProductId(
       productResource.id,
