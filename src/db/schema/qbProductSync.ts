@@ -48,13 +48,6 @@ export const QBProductCreateArraySchema = z.array(
           message: 'qbSyncToken is required when isExcluded is false',
         })
       }
-      if (!val.unitPrice) {
-        ctx.addIssue({
-          path: ['unitPrice'],
-          code: z.ZodIssueCode.custom,
-          message: 'unitPrice is required when isExcluded is false',
-        })
-      }
     }
   }),
 )
@@ -81,7 +74,6 @@ const QBItemSchema = z.object({
   id: z.string(),
   name: z.string(),
   syncToken: z.string(),
-  numericPrice: z.number(),
   description: z.string(),
 })
 

@@ -248,9 +248,7 @@ export class ProductService extends BaseService {
               qbItemId: item.isExcluded ? null : item.qbItem?.id,
               qbSyncToken: item.isExcluded ? null : item.qbItem?.syncToken,
               copilotName: item.name,
-              unitPrice: item.isExcluded
-                ? null
-                : item.qbItem?.numericPrice.toString(),
+              unitPrice: null,
               isExcluded: item.isExcluded,
             }
             const conditions = and(
