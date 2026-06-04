@@ -21,7 +21,7 @@ describe('POST /api/quickbooks/webhook — invoice.created (UnitPrice comes from
 
   it('bills the line at the line amount even when it differs from the mapped item price', async () => {
     await seedHealthyPortal()
-    await seedProductSync() // qbItemId '999', stored unitPrice '60000.00'
+    await seedProductSync() // qbItemId '999'
 
     const payload = {
       ...invoiceCreatedPayload,

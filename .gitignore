@@ -45,3 +45,4 @@ next-env.d.ts
 
 # local decision notes (not published)
 /docs
+/supabase/snippets

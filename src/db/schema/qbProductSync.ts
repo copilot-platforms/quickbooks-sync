@@ -1,24 +1,33 @@
 import { timestamps } from '@/db/helper/column.helper'
+import { isNull } from 'drizzle-orm'
 import { pgTable as table } from 'drizzle-orm/pg-core'
 import * as t from 'drizzle-orm/pg-core'
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
 import { z } from 'zod'
 
-export const QBProductSync = table('qb_product_sync', {
-  id: t.uuid().defaultRandom().primaryKey(),
-  portalId: t.varchar('portal_id', { length: 255 }).notNull(),
-  productId: t.uuid('product_id'),
-  priceId: t.varchar('price_id'),
-  name: t.varchar(),
-  description: t.text(),
-  copilotName: t.varchar('copilot_name'),
-  unitPrice: t.decimal('unit_price'),
-  copilotUnitPrice: t.decimal('copilot_unit_price'),
-  qbItemId: t.varchar('qb_item_id'),
-  qbSyncToken: t.varchar('qb_sync_token', { length: 100 }),
-  isExcluded: t.boolean('is_excluded').default(false),
-  ...timestamps,
-})
+export const QBProductSync = table(
+  'qb_product_sync',
+  {
+    id: t.uuid().defaultRandom().primaryKey(),
+    portalId: t.varchar('portal_id', { length: 255 }).notNull(),
+    productId: t.uuid('product_id'),
+    name: t.varchar(),
+    description: t.text(),
+    copilotName: t.varchar('copilot_name'),
+    qbItemId: t.varchar('qb_item_id'),
+    qbSyncToken: t.varchar('qb_sync_token', { length: 100 }),
+    isExcluded: t.boolean('is_excluded').default(false),
+    ...timestamps,
+  },
+  (table) => [
+    // One canonical live row per product (one-item-per-product, OUT-3787).
+    // Partial so soft-deleted rows don't block re-mapping the same product.
+    t
+      .uniqueIndex('uq_qb_product_sync_product_active')
+      .on(table.portalId, table.productId)
+      .where(isNull(table.deletedAt)),
+  ],
+)
 
 export const QBProductCreateSchema = createInsertSchema(QBProductSync)
 export type QBProductCreateSchemaType = z.infer<typeof QBProductCreateSchema>

@@ -76,7 +76,6 @@ const baseProductSync: InferInsertModel<typeof QBProductSync> = {
   productId: '2cf93cf0-45fa-485f-b584-03c2c38a3999',
   name: 'Test Product',
   copilotName: 'Test Product',
-  unitPrice: '60000.00',
   qbItemId: '999',
   qbSyncToken: '0',
 }

@@ -1,5 +1,5 @@
 {
-  "id": "8e35c514-410e-448e-8113-7c44cc19dfb1",
+  "id": "9dfe5213-8442-4637-946c-257a8f151d40",
   "prevId": "60eb52cf-4582-44bd-b5da-2b4e7a5c5403",
   "version": "7",
   "dialect": "postgresql",
@@ -497,12 +497,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "bank_account_ref": {
-          "name": "bank_account_ref",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false
-        },
         "is_suspended": {
           "name": "is_suspended",
           "type": "boolean",
@@ -578,12 +572,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "price_id": {
-          "name": "price_id",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
         "name": {
           "name": "name",
           "type": "varchar",
@@ -599,18 +587,6 @@
         "copilot_name": {
           "name": "copilot_name",
           "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "unit_price": {
-          "name": "unit_price",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "copilot_unit_price": {
-          "name": "copilot_unit_price",
-          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -654,7 +630,30 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "uq_qb_product_sync_product_active": {
+          "name": "uq_qb_product_sync_product_active",
+          "columns": [
+            {
+              "expression": "portal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "product_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"qb_product_sync\".\"deleted_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -681,13 +680,6 @@
         },
         "absorbed_fee_flag": {
           "name": "absorbed_fee_flag",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "bank_deposit_fee_flag": {
-          "name": "bank_deposit_fee_flag",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
@@ -1099,8 +1091,7 @@
         "deleted",
         "succeeded",
         "mapped",
-        "unmapped",
-        "deposited"
+        "unmapped"
       ]
     },
     "public.failed_record_category_types": {
