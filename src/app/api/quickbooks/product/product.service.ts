@@ -208,10 +208,7 @@ export class ProductService extends BaseService {
    * On intial save, save all flatten products. If mapped, we include and if not, those are excluded
    * On every save after that, we update the record on the basis of productId
    */
-  async handleProductMap(
-    body: ProductMappingSchemaType,
-    returningFields?: (keyof typeof QBProductSync)[],
-  ) {
+  async handleProductMap(body: ProductMappingSchemaType) {
     const { mappingItems, changedItemReference } = body
     const settingService = new SettingService(this.user)
     const setting = await settingService.getOneByPortalId([
@@ -228,22 +225,15 @@ export class ProductService extends BaseService {
               portalId: this.user.workspaceId,
             }
           })
-          // onConflictDoNothing: a re-fired / concurrent initial save would
-          // otherwise violate the (portal_id, product_id) unique index and 500.
-          // where mirrors the partial index predicate so it's the arbiter.
-          const query = this.db
+          // Skip products already saved so a repeated save doesn't error.
+          await this.db
             .insert(QBProductSync)
             .values(formattedPayload)
             .onConflictDoNothing({
               target: [QBProductSync.portalId, QBProductSync.productId],
               where: isNull(QBProductSync.deletedAt),
             })
-          const products = returningFields?.length
-            ? await query.returning(
-                buildReturningFields(QBProductSync, returningFields),
-              )
-            : await query.returning()
-          return products
+          return await this.getAll()
         }
 
         if (changedItemReference.length > 0) {
