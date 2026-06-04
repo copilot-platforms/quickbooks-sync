@@ -329,11 +329,9 @@ export class ProductService extends BaseService {
    */
   async getProductsForMapping(): Promise<ProductFlattenArrayResponseType> {
     const copilot = new CopilotAPI(this.user.token)
-    const products = await copilot.getProducts(
-      undefined,
-      undefined,
-      MAX_PRODUCT_LIST_LIMIT,
-    )
+    const products = await copilot.getProducts({
+      limit: MAX_PRODUCT_LIST_LIMIT,
+    })
 
     const formatted = (products?.data ?? []).map((product) => ({
       id: product.id,

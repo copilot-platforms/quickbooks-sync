@@ -40,11 +40,7 @@ export class BackfillProductInfoService extends BaseService {
       // 2. get all products from assembly
       const copilotApi = new CopilotAPI(this.user.token)
       const assemblyProducts = (
-        await copilotApi.getProducts(
-          undefined,
-          undefined,
-          MAX_PRODUCT_LIST_LIMIT,
-        )
+        await copilotApi.getProducts({ limit: MAX_PRODUCT_LIST_LIMIT })
       )?.data
 
       if (!assemblyProducts) {

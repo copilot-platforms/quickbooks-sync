@@ -188,7 +188,7 @@ export const useProductMappingSettings = () => {
       [index]: '',
     }))
     const fileteredChangedItem = changedItemReference.filter(
-      (item) => item.id !== products[index].id,
+      (item) => item.id !== products[index]?.id,
     )
     const newVal = [
       ...fileteredChangedItem,
@@ -200,7 +200,7 @@ export const useProductMappingSettings = () => {
 
     // update the mapped array
     const mappedArray = mappingItems.map((mapItem) => {
-      if (mapItem.productId === products[index].id) {
+      if (mapItem.productId === products[index]?.id) {
         return {
           ...mapItem,
           name: item.name || null,

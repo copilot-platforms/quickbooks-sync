@@ -27,11 +27,9 @@ export class SyncMissedProductsService extends BaseService {
 
       // 1. Get all the products for the portal
       const copilotApi = new CopilotAPI(this.user.token)
-      const allProducts = await copilotApi.getProducts(
-        undefined,
-        undefined,
-        MAX_PRODUCT_LIST_LIMIT,
-      )
+      const allProducts = await copilotApi.getProducts({
+        limit: MAX_PRODUCT_LIST_LIMIT,
+      })
 
       const filteredProducts = allProducts?.data?.filter(
         (product) =>

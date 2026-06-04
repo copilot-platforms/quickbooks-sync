@@ -397,11 +397,15 @@ export class CopilotAPI {
     )
   }
 
-  async _getProducts(
-    name?: string,
-    nextToken?: string,
-    limit?: number,
-  ): Promise<ProductsResponse | undefined> {
+  async _getProducts({
+    name,
+    nextToken,
+    limit,
+  }: {
+    name?: string
+    nextToken?: string
+    limit?: number
+  }): Promise<ProductsResponse | undefined> {
     console.info('CopilotAPI#getProducts | token =', this.token)
     return ProductsResponseSchema.parse(
       await this.copilot.listProducts({ name, nextToken, limit }),
