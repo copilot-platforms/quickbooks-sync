@@ -30,11 +30,12 @@ describe('POST /api/quickbooks/webhook — payment.succeeded (inner log write fa
 
     // Fail only the SUCCESS log write; mockImplementationOnce is one-shot, so
     // the outer catch's FAILED log falls through to the real impl.
-    vi.spyOn(SyncLogService.prototype, 'updateOrCreateQBSyncLog').mockImplementationOnce(
-      async () => {
-        throw new Error('Sync log write failed')
-      },
-    )
+    vi.spyOn(
+      SyncLogService.prototype,
+      'updateOrCreateQBSyncLog',
+    ).mockImplementationOnce(async () => {
+      throw new Error('Sync log write failed')
+    })
 
     const res = await postWebhook(paymentSucceededPayload)
     expect(res.status).toBe(200)
