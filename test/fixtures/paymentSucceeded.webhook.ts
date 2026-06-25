@@ -15,7 +15,7 @@ type Envelope = {
 type PaymentSucceededFixture = Envelope &
   z.input<typeof PaymentSucceededResponseSchema>
 
-const paymentSucceededPayload: PaymentSucceededFixture = {
+export const paymentSucceededPayload: PaymentSucceededFixture = {
   eventType: 'payment.succeeded',
   object: 'payment',
   data: {
@@ -28,5 +28,3 @@ const paymentSucceededPayload: PaymentSucceededFixture = {
     createdAt: '2024-02-21T15:31:16.789Z',
   },
 }
-
-export default paymentSucceededPayload

@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { db } from '@/db'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 
-import paymentSucceededPayload from '@test/fixtures/paymentSucceeded.webhook'
+import { paymentSucceededPayload } from '@test/fixtures/paymentSucceeded.webhook'
 import { seedHealthyPortal, seedQBInvoiceSync } from '@test/helpers/seed'
 import { setupPaymentSucceededTest } from '@test/helpers/paymentSucceededTestSetup'
 import { postWebhook } from '@test/helpers/webhook'

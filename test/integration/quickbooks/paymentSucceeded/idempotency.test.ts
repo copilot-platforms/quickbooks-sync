@@ -4,7 +4,7 @@ import { db } from '@/db'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 
-import paymentSucceededPayload from '@test/fixtures/paymentSucceeded.webhook'
+import { paymentSucceededPayload } from '@test/fixtures/paymentSucceeded.webhook'
 import {
   seedHealthyPortal,
   seedQBInvoiceSync,
