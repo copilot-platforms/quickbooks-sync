@@ -31,7 +31,9 @@ describe('POST /api/quickbooks/webhook — invoice.paid (payment recorded in Qui
     await seedHealthyPortal()
     const customer = await seedQBCustomer()
     await seedQBInvoiceSync({ customerId: customer.id })
-    await seedInvoiceCreatedLog()
+    // Non-zero, non-round tax so the assertion below catches a dropped or
+    // mis-scaled tax column (0 would scale to 0 and hide a ×100 / ÷100 bug).
+    await seedInvoiceCreatedLog({ taxAmount: '4200.00' })
 
     const res = await postWebhook(invoicePaidPayload)
     expect(res.status).toBe(200)
@@ -57,6 +59,7 @@ describe('POST /api/quickbooks/webhook — invoice.paid (payment recorded in Qui
       quickbooksId: TEST_QB_PAYMENT_ID,
       invoiceNumber: TEST_INVOICE_NUMBER,
       amount: '60000.00',
+      taxAmount: '4200.00',
     })
 
     // Invoice sync row flipped to paid.
