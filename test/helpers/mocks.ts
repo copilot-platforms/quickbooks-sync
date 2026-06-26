@@ -8,6 +8,7 @@ import {
   TEST_COPILOT_INVOICE_ID,
   TEST_INVOICE_NUMBER,
   TEST_QB_PURCHASE_ID,
+  TEST_QB_PAYMENT_ID,
 } from './seed'
 
 // Restricts override keys to the actual method names of the underlying class
@@ -126,7 +127,7 @@ export function createMockIntuitAPI(overrides: IntuitAPIOverrides = {}) {
       Invoice: { Id: 'qb-inv-1', SyncToken: '0' },
     }),
     createPayment: vi.fn().mockResolvedValue({
-      Payment: { Id: 'qb-pay-1', SyncToken: '0' },
+      Payment: { Id: TEST_QB_PAYMENT_ID, SyncToken: '0' },
     }),
     createPurchase: vi.fn().mockResolvedValue({
       Purchase: { Id: TEST_QB_PURCHASE_ID, SyncToken: '0' },

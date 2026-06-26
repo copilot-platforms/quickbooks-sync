@@ -9,7 +9,9 @@ import { QBProductSync } from '@/db/schema/qbProductSync'
 import { QBSetting, QBSettingCreateSchema } from '@/db/schema/qbSettings'
 import { QBCustomers } from '@/db/schema/qbCustomers'
 import { QBInvoiceSync } from '@/db/schema/qbInvoiceSync'
+import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import { InvoiceStatus } from '@/app/api/core/types/invoice'
+import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 
 export const TEST_PORTAL_ID = 'test-portal-00000001'
 export const TEST_REALM_ID = 'test-realm-123'
@@ -111,6 +113,8 @@ export const TEST_INVOICE_NUMBER = 'INV-0001'
 export const TEST_COPILOT_INVOICE_ID = 'inv-cop-0001'
 export const TEST_COPILOT_PAYMENT_ID = 'pay-cop-0001'
 export const TEST_QB_PURCHASE_ID = 'qb-purch-1'
+// Matches the Payment.Id returned by createMockIntuitAPI().createPayment.
+export const TEST_QB_PAYMENT_ID = 'qb-pay-1'
 
 type CustomerOverrides = Partial<InferInsertModel<typeof QBCustomers>>
 type InvoiceSyncOverrides = Partial<InferInsertModel<typeof QBInvoiceSync>>
@@ -155,6 +159,31 @@ export async function seedQBInvoiceSync(overrides: InvoiceSyncOverrides = {}) {
   const [row] = await db
     .insert(QBInvoiceSync)
     .values({ ...baseInvoiceSync, ...overrides })
+    .returning()
+  return row
+}
+
+type SyncLogOverrides = Partial<InferInsertModel<typeof QBSyncLog>>
+
+// A successful INVOICE/CREATED log is a precondition for invoice.paid:
+// webhookInvoicePaid reads `amount` off it to size the QB payment. `amount`
+// is stored in cents (decimal string); '60000.00' → $600 payment.
+const baseInvoiceCreatedLog: InferInsertModel<typeof QBSyncLog> = {
+  portalId: TEST_PORTAL_ID,
+  entityType: EntityType.INVOICE,
+  eventType: EventType.CREATED,
+  status: LogStatus.SUCCESS,
+  copilotId: TEST_COPILOT_INVOICE_ID,
+  invoiceNumber: TEST_INVOICE_NUMBER,
+  quickbooksId: TEST_QB_INVOICE_ID,
+  amount: '60000.00',
+  taxAmount: '0.00',
+}
+
+export async function seedInvoiceCreatedLog(overrides: SyncLogOverrides = {}) {
+  const [row] = await db
+    .insert(QBSyncLog)
+    .values({ ...baseInvoiceCreatedLog, ...overrides })
     .returning()
   return row
 }
