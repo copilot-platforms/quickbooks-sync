@@ -49,7 +49,7 @@ describe('POST /api/quickbooks/webhook — invoice.paid (created sync still in f
       eventType: EventType.PAID,
       status: LogStatus.FAILED,
     })
-    expect(paidLogs[0].errorMessage).toContain('still pending')
+    expect(paidLogs[0].errorMessage).toContain('Invoice sync log still pending')
 
     expect(apis.intuit.createPayment).not.toHaveBeenCalled()
   })

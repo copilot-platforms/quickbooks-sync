@@ -910,15 +910,21 @@ export class InvoiceService extends BaseService {
       entityType: EntityType.INVOICE,
     })
 
-    if (!invoiceLog || invoiceLog.status === LogStatus.PENDING) {
-      // PENDING means the CREATED webhook claim was written but the handler
-      // hasn't finalised yet (or died mid-flight). amount/taxAmount are null
-      // on a claim row, so we can't proceed. Fail this PAID event so resync
-      // retries it once CREATED has resolved.
+    // Distinct messages so a FAILED PAID log tells the resync cron which case
+    // it hit: a missing CREATED log (CREATE never claimed) vs a PENDING one
+    // (CREATE claimed but hasn't finalised / died mid-flight). amount/taxAmount
+    // are null on a claim row either way, so we can't proceed.
+    if (!invoiceLog) {
       console.error(
-        'InvoiceService#webhookInvoicePaid | Invoice sync log not found or still pending',
+        'InvoiceService#webhookInvoicePaid | Invoice sync log not found',
       )
-      throw Error('Invoice sync log not found or still pending')
+      throw Error('Invoice sync log not found')
+    }
+    if (invoiceLog.status === LogStatus.PENDING) {
+      console.error(
+        'InvoiceService#webhookInvoicePaid | Invoice sync log still pending',
+      )
+      throw Error('Invoice sync log still pending')
     }
 
     const invoiceAmount = Number(z.string().parse(invoiceLog.amount)) / 100
