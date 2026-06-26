@@ -14,11 +14,9 @@ export interface InvoicePaidTestHandle {
 }
 
 /**
- * Registers the standard `beforeEach` (truncate + installMockApis) and
- * `afterEach` (clearAllMocks) hooks used by every invoice.paid integration
- * test. Mirrors `setupPaymentSucceededTest`. The `optsFactory` is invoked
- * once per test so callers can supply overrides whose underlying `vi.fn()`s
- * are freshly instantiated.
+ * beforeEach (truncate + installMockApis) and afterEach (clearAllMocks) hooks
+ * for invoice.paid tests. Mirrors `setupPaymentSucceededTest`; `optsFactory`
+ * runs once per test so override `vi.fn()`s are freshly instantiated.
  */
 export function setupInvoicePaidTest(
   optsFactory?: () => InstallOpts,
@@ -33,9 +31,7 @@ export function setupInvoicePaidTest(
   })
 
   afterEach(() => {
-    // clearAllMocks (not restoreAllMocks) — the module-level mock factories in
-    // test/integration/setup.ts must stay installed across tests; we only want
-    // to reset call counts and implementations set in beforeEach.
+    // clearAllMocks (not restoreAllMocks) keeps the module-level mock factories installed.
     vi.clearAllMocks()
   })
 

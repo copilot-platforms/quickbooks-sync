@@ -165,9 +165,7 @@ export async function seedQBInvoiceSync(overrides: InvoiceSyncOverrides = {}) {
 
 type SyncLogOverrides = Partial<InferInsertModel<typeof QBSyncLog>>
 
-// A successful INVOICE/CREATED log is a precondition for invoice.paid:
-// webhookInvoicePaid reads `amount` off it to size the QB payment. `amount`
-// is stored in cents (decimal string); '60000.00' → $600 payment.
+// Precondition for invoice.paid: webhookInvoicePaid reads `amount` (cents) off it.
 const baseInvoiceCreatedLog: InferInsertModel<typeof QBSyncLog> = {
   portalId: TEST_PORTAL_ID,
   entityType: EntityType.INVOICE,

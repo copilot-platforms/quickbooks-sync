@@ -910,10 +910,8 @@ export class InvoiceService extends BaseService {
       entityType: EntityType.INVOICE,
     })
 
-    // Distinct messages so a FAILED PAID log tells the resync cron which case
-    // it hit: a missing CREATED log (CREATE never claimed) vs a PENDING one
-    // (CREATE claimed but hasn't finalised / died mid-flight). amount/taxAmount
-    // are null on a claim row either way, so we can't proceed.
+    // Distinct messages so a FAILED PAID log shows which case it hit: a missing
+    // CREATED log vs a PENDING one (no usable amount on a claim row either way).
     if (!invoiceLog) {
       console.error(
         'InvoiceService#webhookInvoicePaid | Invoice sync log not found',

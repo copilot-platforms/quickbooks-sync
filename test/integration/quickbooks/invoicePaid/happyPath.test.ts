@@ -31,15 +31,13 @@ describe('POST /api/quickbooks/webhook — invoice.paid (payment recorded in Qui
     await seedHealthyPortal()
     const customer = await seedQBCustomer()
     await seedQBInvoiceSync({ customerId: customer.id })
-    // Non-zero, non-round tax so the assertion below catches a dropped or
-    // mis-scaled tax column (0 would scale to 0 and hide a ×100 / ÷100 bug).
+    // Non-zero tax so the assertion catches a dropped or mis-scaled tax column.
     await seedInvoiceCreatedLog({ taxAmount: '4200.00' })
 
     const res = await postWebhook(invoicePaidPayload)
     expect(res.status).toBe(200)
 
-    // For (invoice, paid) the polymorphic `quickbooks_id` column holds the QBO
-    // Payment id, not the invoice id. See memory/project_qb_sync_logs_semantics.md.
+    // (invoice, paid) stores the QBO Payment id in quickbooks_id, not the invoice id.
     const paidLogs = await db
       .select()
       .from(QBSyncLog)

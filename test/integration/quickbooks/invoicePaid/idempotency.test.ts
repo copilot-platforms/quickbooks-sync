@@ -20,13 +20,10 @@ describe('POST /api/quickbooks/webhook — invoice.paid (same webhook delivered 
   const apis = setupInvoicePaidTest()
 
   it('processes the payment only once when a paid log for the invoice already exists', async () => {
-    // The claim conflict short-circuits the handler before any invoice or
-    // customer lookup, so only the portal (for auth) and the existing PAID log
-    // are needed.
+    // The claim conflict short-circuits before any lookup; only portal + PAID log needed.
     await seedHealthyPortal()
 
-    // Simulate a prior successful delivery that already claimed and processed
-    // this invoice's payment.
+    // Simulate a prior successful delivery of this invoice's payment.
     await db.insert(QBSyncLog).values({
       portalId: TEST_PORTAL_ID,
       entityType: EntityType.INVOICE,
