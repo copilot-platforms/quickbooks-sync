@@ -22,7 +22,7 @@ export const invoiceVoidedPayload: InvoiceVoidedFixture = {
   data: {
     id: TEST_COPILOT_INVOICE_ID,
     number: TEST_INVOICE_NUMBER,
-    status: InvoiceStatus.OPEN,
+    status: InvoiceStatus.VOID,
     total: 60000,
     taxPercentage: 0,
     // Payload tax field; the real tax comes from the CREATED log.
