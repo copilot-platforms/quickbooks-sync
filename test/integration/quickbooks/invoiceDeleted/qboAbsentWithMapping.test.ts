@@ -65,8 +65,9 @@ describe('POST /api/quickbooks/webhook — invoice.deleted (invoice already gone
     expect(successLog).toBeDefined()
     expect(successLog?.deletedAt).not.toBeNull()
     expect(successLog?.amount).toBe('60000.00')
-    // No QBO delete happened, so no QuickBooks id is recorded.
+    // No QBO delete happened, so no QuickBooks id or tax is recorded.
     expect(successLog?.quickbooksId).toBeNull()
+    expect(successLog?.taxAmount).toBeNull()
 
     // The prior CREATED log was soft-deleted too.
     const [createdLog] = await db
