@@ -903,27 +903,7 @@ export class InvoiceService extends BaseService {
       )
     }
 
-    // get invoice sync log
-    const invoiceLog = await this.syncLogService.getOneByCopilotIdAndEventType({
-      copilotId: payload.data.id,
-      eventType: EventType.CREATED,
-      entityType: EntityType.INVOICE,
-    })
-
-    // Distinct messages so a FAILED PAID log shows which case it hit: a missing
-    // CREATED log vs a PENDING one (no usable amount on a claim row either way).
-    if (!invoiceLog) {
-      console.error(
-        'InvoiceService#webhookInvoicePaid | Invoice sync log not found',
-      )
-      throw Error('Invoice sync log not found')
-    }
-    if (invoiceLog.status === LogStatus.PENDING) {
-      console.error(
-        'InvoiceService#webhookInvoicePaid | Invoice sync log still pending',
-      )
-      throw Error('Invoice sync log still pending')
-    }
+    const invoiceLog = await this.getCreatedInvoiceLogOrThrow(payload.data.id)
 
     const invoiceAmount = Number(z.string().parse(invoiceLog.amount)) / 100
 
@@ -1030,41 +1010,16 @@ export class InvoiceService extends BaseService {
       return // return early if invoice is not open
     }
 
-    // get invoice sync log
-    const invoiceLog = await this.syncLogService.getOneByCopilotIdAndEventType({
-      copilotId: payload.id,
-      eventType: EventType.CREATED,
-      entityType: EntityType.INVOICE,
-    })
-
-    if (!invoiceLog || invoiceLog.status === LogStatus.PENDING) {
-      console.error(
-        'InvoiceService#webhookInvoiceVoided | Invoice sync log not found or still pending',
-      )
-      throw Error('Invoice sync log not found or still pending')
-    }
+    const invoiceLog = await this.getCreatedInvoiceLogOrThrow(payload.id)
 
     // only implement void if invoice has open status
     const intuitApi = new IntuitAPI(qbTokenInfo)
-    const voidPayload = {
-      Id: invoiceSync.qbInvoiceId,
-      SyncToken: invoiceSync.qbSyncToken,
-    }
-    const safeParsedPayload =
-      QBDestructiveInvoicePayloadSchema.safeParse(voidPayload)
+    const voidPayload = this.buildDestructivePayloadOrThrow(
+      invoiceSync,
+      payload.number,
+    )
 
-    if (!safeParsedPayload.success || !safeParsedPayload.data) {
-      console.error(
-        'InvoiceService#webhookInvoiceVoided | Could not parse invoice void payload',
-      )
-      throw new APIError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        'Could not parse invoice void payload. Invoice number: ' +
-          payload.number,
-      )
-    }
-
-    await intuitApi.voidInvoice(safeParsedPayload.data)
+    await intuitApi.voidInvoice(voidPayload)
     const customerService = new CustomerService(this.user)
     const { recipientInfo } = await customerService.getRecipientInfo({
       clientId: payload.clientId,
@@ -1173,36 +1128,12 @@ export class InvoiceService extends BaseService {
       throw new Error('Invoices delete was requested for non-voided record')
     }
 
-    // get invoice sync log
-    const invoiceLog = await this.syncLogService.getOneByCopilotIdAndEventType({
-      copilotId: payload.id,
-      eventType: EventType.CREATED,
-      entityType: EntityType.INVOICE,
-    })
+    const invoiceLog = await this.getCreatedInvoiceLogOrThrow(payload.id)
 
-    if (!invoiceLog || invoiceLog.status === LogStatus.PENDING) {
-      console.error(
-        'InvoiceService#handleInvoiceDeleted | Invoice sync log not found or still pending',
-      )
-      throw new Error('Invoice sync log not found or still pending')
-    }
-
-    const deletePayload = {
-      Id: syncedInvoice.qbInvoiceId,
-      SyncToken: syncedInvoice.qbSyncToken,
-    }
-    const safeParsedPayload =
-      QBDestructiveInvoicePayloadSchema.safeParse(deletePayload)
-    if (!safeParsedPayload.success) {
-      console.error(
-        'InvoiceService#handleInvoiceDeleted | Could not parse invoice delete payload',
-      )
-      throw new APIError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        'Could not parse invoice delete payload. Invoice number: ' +
-          payload.number,
-      )
-    }
+    const deletePayload = this.buildDestructivePayloadOrThrow(
+      syncedInvoice,
+      payload.number,
+    )
 
     const customerService = new CustomerService(this.user)
     const { recipientInfo } = await customerService.getRecipientInfo({
@@ -1210,7 +1141,7 @@ export class InvoiceService extends BaseService {
       companyId: payload.companyId,
     })
 
-    await intuitApi.deleteInvoice(safeParsedPayload.data)
+    await intuitApi.deleteInvoice(deletePayload)
 
     await Promise.all([
       this.updateQBInvoice(
@@ -1227,6 +1158,39 @@ export class InvoiceService extends BaseService {
         customerEmail: recipientInfo.email,
       }),
     ])
+  }
+
+  // Gets the CREATED sync log. Paid/voided/deleted all need it settled.
+  // Separate messages so the FAILED log shows which case it hit.
+  private async getCreatedInvoiceLogOrThrow(copilotId: string) {
+    const invoiceLog = await this.syncLogService.getOneByCopilotIdAndEventType({
+      copilotId,
+      eventType: EventType.CREATED,
+      entityType: EntityType.INVOICE,
+    })
+    if (!invoiceLog) throw Error('Invoice sync log not found')
+    if (invoiceLog.status === LogStatus.PENDING)
+      throw Error('Invoice sync log still pending')
+    return invoiceLog
+  }
+
+  // Builds the { Id, SyncToken } payload QBO needs to void or delete an
+  // invoice. Throws if the synced invoice has no id/token.
+  private buildDestructivePayloadOrThrow(
+    syncedInvoice: { qbInvoiceId: string | null; qbSyncToken: string | null },
+    invoiceNumber: string,
+  ): QBDestructiveInvoicePayloadSchema {
+    const parsedPayload = QBDestructiveInvoicePayloadSchema.safeParse({
+      Id: syncedInvoice.qbInvoiceId,
+      SyncToken: syncedInvoice.qbSyncToken,
+    })
+    if (!parsedPayload.success) {
+      throw new APIError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        `Could not parse invoice destructive payload. Invoice number: ${invoiceNumber}`,
+      )
+    }
+    return parsedPayload.data
   }
 
   private async logSync(
