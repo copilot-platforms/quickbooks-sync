@@ -15,28 +15,28 @@ import {
   seedInvoiceCreatedLog,
   TEST_INVOICE_NUMBER,
   TEST_COPILOT_INVOICE_ID,
+  TEST_QB_INVOICE_ID,
 } from '@test/helpers/seed'
 import { setupInvoiceVoidedTest } from '@test/helpers/invoiceVoidedTestSetup'
 import { postWebhook } from '@test/helpers/webhook'
 
-describe('POST /api/quickbooks/webhook — invoice.voided (invoice already paid)', () => {
+describe('POST /api/quickbooks/webhook — invoice.voided (sync row already void)', () => {
   const apis = setupInvoiceVoidedTest()
 
-  it('records a non-retryable FAILED log and voids nothing when the sync row is paid, not open', async () => {
+  it('finalizes the voided log as SUCCESS without re-voiding when the sync row is already void', async () => {
     await seedHealthyPortal()
     const customer = await seedQBCustomer()
-    // Paid invoices can't be voided and never become OPEN again — terminal.
+    // Mapping already VOID with no terminal log to dedupe the claim — voiding
+    // again is an idempotent no-op that should finalize the log, not leave it PENDING.
     await seedQBInvoiceSync({
       customerId: customer.id,
-      status: InvoiceStatus.PAID,
+      status: InvoiceStatus.VOID,
     })
     await seedInvoiceCreatedLog()
 
     const res = await postWebhook(invoiceVoidedPayload)
     expect(res.status).toBe(200)
 
-    // Finalized as a FAILED log with a message — never a stale PENDING claim
-    // the reaper flips into a message-less, retryable row (OUT-3867).
     const voidedLogs = await db
       .select()
       .from(QBSyncLog)
@@ -47,17 +47,15 @@ describe('POST /api/quickbooks/webhook — invoice.voided (invoice already paid)
         ),
       )
     expect(voidedLogs).toHaveLength(1)
-    expect(voidedLogs[0].status).toBe(LogStatus.FAILED)
-    // Non-retryable so the resync cron never picks it up — no 25-retry storm.
-    expect(voidedLogs[0].shouldRetry).toBe(false)
-    expect(voidedLogs[0].errorMessage).toContain('non-open invoice (status=')
+    expect(voidedLogs[0].status).toBe(LogStatus.SUCCESS)
+    expect(voidedLogs[0].quickbooksId).toBe(TEST_QB_INVOICE_ID)
 
-    // Sync row status is unchanged and nothing was voided in QBO.
+    // Already void in QBO — nothing re-voided.
     const [invoiceSync] = await db
       .select()
       .from(QBInvoiceSync)
       .where(eq(QBInvoiceSync.invoiceNumber, TEST_INVOICE_NUMBER))
-    expect(invoiceSync.status).toBe(InvoiceStatus.PAID)
+    expect(invoiceSync.status).toBe(InvoiceStatus.VOID)
     expect(apis.intuit.voidInvoice).not.toHaveBeenCalled()
   })
 })

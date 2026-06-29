@@ -2,7 +2,12 @@ import APIError from '@/app/api/core/exceptions/api'
 import User from '@/app/api/core/models/User.model'
 import { BaseService } from '@/app/api/core/services/base.service'
 import { InvoiceStatus, SyncableEntity } from '@/app/api/core/types/invoice'
-import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
+import {
+  EntityType,
+  EventType,
+  FailedRecordCategoryType,
+  LogStatus,
+} from '@/app/api/core/types/log'
 import { CustomerService } from '@/app/api/quickbooks/customer/customer.service'
 import {
   findNextAvailableDocNumber,
@@ -1007,10 +1012,30 @@ export class InvoiceService extends BaseService {
     }
 
     if (invoiceSync.status !== InvoiceStatus.OPEN) {
+      // Non-OPEN is terminal — finalize the log so the claim isn't left PENDING
+      // to be reaped into a retryable, message-less FAILED row (OUT-3867).
+      if (invoiceSync.status === InvoiceStatus.VOID) {
+        // Already void in QBO — idempotent success, no re-void.
+        await this.logSync(payload.id, invoiceSync, EventType.VOIDED)
+        return
+      }
+      // Never voidable — non-retryable failure, not a 25-retry loop. No
+      // errorCode so the IU notifier stays a no-op.
       console.error(
-        'InvoiceService#handleInvoiceVoided | Invoices void was requested for non-open record',
+        'InvoiceService#webhookInvoiceVoided | Void requested on non-open invoice',
       )
-      return // return early if invoice is not open
+      await this.syncLogService.updateOrCreateQBSyncLog({
+        portalId: this.user.workspaceId,
+        entityType: EntityType.INVOICE,
+        eventType: EventType.VOIDED,
+        status: LogStatus.FAILED,
+        copilotId: payload.id,
+        invoiceNumber: payload.number,
+        errorMessage: `Void requested on non-open invoice (status=${invoiceSync.status}). Invoice number: ${payload.number}`,
+        shouldRetry: false,
+        category: FailedRecordCategoryType.VALIDATION,
+      })
+      return
     }
 
     const invoiceLog = await this.getCreatedInvoiceLogOrThrow(
