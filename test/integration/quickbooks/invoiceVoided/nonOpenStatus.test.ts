@@ -4,7 +4,11 @@ import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import { QBInvoiceSync } from '@/db/schema/qbInvoiceSync'
-import { EventType, LogStatus } from '@/app/api/core/types/log'
+import {
+  EventType,
+  FailedRecordCategoryType,
+  LogStatus,
+} from '@/app/api/core/types/log'
 import { InvoiceStatus } from '@/app/api/core/types/invoice'
 
 import { invoiceVoidedPayload } from '@test/fixtures/invoiceVoided.webhook'
@@ -50,6 +54,7 @@ describe('POST /api/quickbooks/webhook — invoice.voided (invoice already paid)
     expect(voidedLogs[0].status).toBe(LogStatus.FAILED)
     // Non-retryable so the resync cron never picks it up — no 25-retry storm.
     expect(voidedLogs[0].shouldRetry).toBe(false)
+    expect(voidedLogs[0].category).toBe(FailedRecordCategoryType.VALIDATION)
     expect(voidedLogs[0].errorMessage).toContain('non-open invoice (status=')
 
     // Sync row status is unchanged and nothing was voided in QBO.
