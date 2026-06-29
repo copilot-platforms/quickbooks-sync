@@ -50,6 +50,8 @@ describe('POST /api/quickbooks/webhook — invoice.deleted (invoice not voided f
     })
     expect(deletedLogs[0].errorMessage).toContain('non-voided record')
 
+    // QBO is checked before the status guard, but nothing is deleted.
+    expect(apis.intuit.getInvoice).toHaveBeenCalledTimes(1)
     expect(apis.intuit.deleteInvoice).not.toHaveBeenCalled()
 
     // Sync row status is unchanged.
