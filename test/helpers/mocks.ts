@@ -134,6 +134,14 @@ export function createMockIntuitAPI(overrides: IntuitAPIOverrides = {}) {
     voidInvoice: vi.fn().mockResolvedValue({
       Invoice: { Id: TEST_QB_INVOICE_ID, SyncToken: '1' },
     }),
+    // invoice.deleted checks QBO first; null = the QBO-absent path.
+    getInvoice: vi.fn().mockResolvedValue({
+      Id: TEST_QB_INVOICE_ID,
+      SyncToken: '0',
+    }),
+    deleteInvoice: vi.fn().mockResolvedValue({
+      Invoice: { Id: TEST_QB_INVOICE_ID, status: 'Deleted' },
+    }),
     createPurchase: vi.fn().mockResolvedValue({
       Purchase: { Id: TEST_QB_PURCHASE_ID, SyncToken: '0' },
     }),
