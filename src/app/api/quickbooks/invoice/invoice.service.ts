@@ -903,7 +903,10 @@ export class InvoiceService extends BaseService {
       )
     }
 
-    const invoiceLog = await this.getCreatedInvoiceLogOrThrow(payload.data.id)
+    const invoiceLog = await this.getCreatedInvoiceLogOrThrow(
+      payload.data.id,
+      'InvoiceService#webhookInvoicePaid',
+    )
 
     const invoiceAmount = Number(z.string().parse(invoiceLog.amount)) / 100
 
@@ -1010,13 +1013,17 @@ export class InvoiceService extends BaseService {
       return // return early if invoice is not open
     }
 
-    const invoiceLog = await this.getCreatedInvoiceLogOrThrow(payload.id)
+    const invoiceLog = await this.getCreatedInvoiceLogOrThrow(
+      payload.id,
+      'InvoiceService#webhookInvoiceVoided',
+    )
 
     // only implement void if invoice has open status
     const intuitApi = new IntuitAPI(qbTokenInfo)
     const voidPayload = this.buildDestructivePayloadOrThrow(
       invoiceSync,
       payload.number,
+      'InvoiceService#webhookInvoiceVoided',
     )
 
     await intuitApi.voidInvoice(voidPayload)
@@ -1128,11 +1135,15 @@ export class InvoiceService extends BaseService {
       throw new Error('Invoices delete was requested for non-voided record')
     }
 
-    const invoiceLog = await this.getCreatedInvoiceLogOrThrow(payload.id)
+    const invoiceLog = await this.getCreatedInvoiceLogOrThrow(
+      payload.id,
+      'InvoiceService#handleInvoiceDeleted',
+    )
 
     const deletePayload = this.buildDestructivePayloadOrThrow(
       syncedInvoice,
       payload.number,
+      'InvoiceService#handleInvoiceDeleted',
     )
 
     const customerService = new CustomerService(this.user)
@@ -1161,30 +1172,39 @@ export class InvoiceService extends BaseService {
   }
 
   // Gets the CREATED sync log. Paid/voided/deleted all need it settled.
-  // Separate messages so the FAILED log shows which case it hit.
-  private async getCreatedInvoiceLogOrThrow(copilotId: string) {
+  // Separate messages so the FAILED log shows which case it hit. `caller`
+  // names the originating handler in server logs.
+  private async getCreatedInvoiceLogOrThrow(copilotId: string, caller: string) {
     const invoiceLog = await this.syncLogService.getOneByCopilotIdAndEventType({
       copilotId,
       eventType: EventType.CREATED,
       entityType: EntityType.INVOICE,
     })
-    if (!invoiceLog) throw Error('Invoice sync log not found')
-    if (invoiceLog.status === LogStatus.PENDING)
+    if (!invoiceLog) {
+      console.error(`${caller} | Invoice sync log not found`)
+      throw Error('Invoice sync log not found')
+    }
+    if (invoiceLog.status === LogStatus.PENDING) {
+      console.error(`${caller} | Invoice sync log still pending`)
       throw Error('Invoice sync log still pending')
+    }
     return invoiceLog
   }
 
   // Builds the { Id, SyncToken } payload QBO needs to void or delete an
-  // invoice. Throws if the synced invoice has no id/token.
+  // invoice. Throws if the synced invoice has no id/token. `caller` names
+  // the originating handler in server logs.
   private buildDestructivePayloadOrThrow(
     syncedInvoice: { qbInvoiceId: string | null; qbSyncToken: string | null },
     invoiceNumber: string,
+    caller: string,
   ): QBDestructiveInvoicePayloadSchema {
     const parsedPayload = QBDestructiveInvoicePayloadSchema.safeParse({
       Id: syncedInvoice.qbInvoiceId,
       SyncToken: syncedInvoice.qbSyncToken,
     })
     if (!parsedPayload.success) {
+      console.error(`${caller} | Could not parse invoice destructive payload`)
       throw new APIError(
         httpStatus.INTERNAL_SERVER_ERROR,
         `Could not parse invoice destructive payload. Invoice number: ${invoiceNumber}`,
