@@ -1,6 +1,6 @@
 import type { z } from 'zod'
 
-import { InvoiceDeletedResponseSchema } from '@/type/dto/webhook.dto'
+import { InvoiceDestructiveResponseSchema } from '@/type/dto/webhook.dto'
 import {
   TEST_CLIENT_ID,
   TEST_COPILOT_INVOICE_ID,
@@ -14,7 +14,7 @@ type Envelope = {
 
 // Deleted is dispatched as `payload.data` and parsed flat (no status/tax).
 type InvoiceDeletedFixture = Envelope & {
-  data: z.input<typeof InvoiceDeletedResponseSchema>
+  data: z.input<typeof InvoiceDestructiveResponseSchema>
 }
 
 export const invoiceDeletedPayload: InvoiceDeletedFixture = {

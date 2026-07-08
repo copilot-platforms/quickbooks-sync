@@ -6280,6 +6280,7 @@ __metadata:
     tailwindcss: "npm:^4.1.5"
     tsx: "npm:^4.21.0"
     typescript: "npm:^5.8.3"
+    us-state-converter: "npm:^1.0.8"
     vitest: "npm:^4.1.3"
     zod: "npm:^3.22.4"
   languageName: unknown
@@ -14125,6 +14126,13 @@ __metadata:
   version: 10.1.0
   resolution: "urlpattern-polyfill@npm:10.1.0"
   checksum: 10c0/5b124fd8d0ae920aa2a48b49a7a3b9ad1643b5ce7217b808fb6877826e751cabc01897fd4c85cd1989c4e729072b63aad5c3ba1c1325e4433e0d2f6329156bf1
+  languageName: node
+  linkType: hard
+
+"us-state-converter@npm:^1.0.8":
+  version: 1.0.8
+  resolution: "us-state-converter@npm:1.0.8"
+  checksum: 10c0/2743aa213de51cd97d82a12ff13b39b5aa79c297ffaf67014986aa5f86a283683850abb0c58220b6d3744baf4ba116fd48117db43034b6816ddcea00804514e9
   languageName: node
   linkType: hard
 

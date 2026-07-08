@@ -1,4 +1,5 @@
 import { TimeInterval } from '@/type/copilot'
+import { abbr } from 'us-state-converter'
 
 export const getTimeInterval = (interval: string, intervalCount: number) => {
   switch (interval) {
@@ -20,4 +21,13 @@ export const getTimeInterval = (interval: string, intervalCount: number) => {
     default:
       return TimeInterval.MONTHLY
   }
+}
+
+export const getUsStateCode = (state?: string): string | null => {
+  const fullStateName = state?.trim()
+  if (!fullStateName) return null
+  // abbr() returns a >2-char sentence when the name isn't a known US state.
+  const abbreviation = abbr(fullStateName)
+  if (abbreviation.length > 2) return null
+  return abbreviation
 }

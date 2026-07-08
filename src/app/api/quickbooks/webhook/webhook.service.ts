@@ -11,7 +11,7 @@ import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import {
   InvoiceCreatedResponseSchema,
-  InvoiceDeletedResponseSchema,
+  InvoiceDestructiveResponseSchema,
   InvoiceResponseSchema,
   PaymentSucceededResponseSchema,
   ProductCreatedResponseSchema,
@@ -259,7 +259,7 @@ export class WebhookService extends BaseService {
     payload: unknown,
     qbTokenInfo: IntuitAPITokensType,
   ) {
-    const parsedPayload = InvoiceDeletedResponseSchema.safeParse(payload)
+    const parsedPayload = InvoiceDestructiveResponseSchema.safeParse(payload)
     if (!parsedPayload.success) {
       throw new APIError(
         httpStatus.BAD_REQUEST,

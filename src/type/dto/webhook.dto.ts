@@ -38,6 +38,18 @@ export const InvoiceCreatedResponseSchema = z.object({
     taxAmount: z.number().default(0).nullable(),
     sentDate: z.string().datetime().nullish(),
     dueDate: z.string().datetime().nullish(),
+    // Sub-fields are individually optional: REST fetch paths (_getInvoice /
+    // _getInvoices) parse with .parse() and would throw on a partial address,
+    // aborting bulk resync. BillAddr/ShipAddr are only built when present.
+    address: z
+      .object({
+        addressLine1: z.string().optional(),
+        city: z.string().optional(),
+        country: z.string().optional(),
+        region: z.string().optional(),
+        postalCode: z.string().optional(),
+      })
+      .optional(),
     paymentMethodPreferences: z
       .array(
         z.object({
@@ -53,7 +65,7 @@ export type InvoiceCreatedResponseType = z.infer<
   typeof InvoiceCreatedResponseSchema
 >
 
-export const InvoiceDeletedResponseSchema = z.object({
+export const InvoiceDestructiveResponseSchema = z.object({
   id: z.string(),
   number: z.string(),
   total: z.number(),
@@ -61,18 +73,9 @@ export const InvoiceDeletedResponseSchema = z.object({
   clientId: z.string().uuid().or(z.literal('')), // allow uuid or empty string
   companyId: z.string().uuid().or(z.literal('')), // allow uuid or empty string
 })
-export type InvoiceDeletedResponse = z.infer<
-  typeof InvoiceDeletedResponseSchema
+export type InvoiceDestructiveResponse = z.infer<
+  typeof InvoiceDestructiveResponseSchema
 >
-
-export const InvoiceVoidedResponseSchema = z.object({
-  id: z.string(),
-  number: z.string(),
-  total: z.number(),
-  clientId: z.string().uuid().or(z.literal('')), // allow uuid or empty string
-  companyId: z.string().uuid().or(z.literal('')), // allow uuid or empty string
-})
-export type InvoiceVoidedResponse = z.infer<typeof InvoiceDeletedResponseSchema>
 
 /** Product */
 export const ProductCreatedResponseSchema = z.object({
