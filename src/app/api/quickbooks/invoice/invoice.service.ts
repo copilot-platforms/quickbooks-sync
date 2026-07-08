@@ -725,9 +725,7 @@ export class InvoiceService extends BaseService {
       invoiceResource.address?.region,
     )
 
-    // State + postal code are the two fields QBO needs to resolve a sales-tax
-    // jurisdiction; without both it falls back to a coarser rate, so only send
-    // the address when both are present.
+    // QBO needs both state and postal code to resolve a tax jurisdiction.
     const addressPayload =
       invoiceResource.address?.postalCode && countrySubDivisionCode
         ? {

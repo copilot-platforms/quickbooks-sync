@@ -1,7 +1,7 @@
 import { InvoiceStatus, PaymentStatus } from '@/app/api/core/types/invoice'
 import { ProductStatus } from '@/app/api/core/types/product'
 import { AccountTypeObj } from '@/constant/qbConnection'
-import { InvoiceLineItemSchema } from '@/type/dto/webhook.dto'
+import { AddressSchema, InvoiceLineItemSchema } from '@/type/dto/webhook.dto'
 import { SQL } from 'drizzle-orm'
 import { z } from 'zod'
 
@@ -367,18 +367,7 @@ export const InvoiceResponseSchema = z.object({
   taxAmount: z.number().default(0).nullable(),
   sentDate: z.string().datetime().nullish(),
   dueDate: z.string().datetime().nullish(),
-  // Sub-fields are individually optional: REST fetch paths (_getInvoice /
-  // _getInvoices) parse with .parse() and would throw on a partial address,
-  // aborting bulk resync. BillAddr/ShipAddr are only built when present.
-  address: z
-    .object({
-      addressLine1: z.string().optional(),
-      city: z.string().optional(),
-      country: z.string().optional(),
-      region: z.string().optional(),
-      postalCode: z.string().optional(),
-    })
-    .optional(),
+  address: AddressSchema.optional(),
   paymentMethodPreferences: z.array(
     z.object({
       type: z.string(),

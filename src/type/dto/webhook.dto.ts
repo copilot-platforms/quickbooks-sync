@@ -24,6 +24,16 @@ export const InvoiceLineItemSchema = z.object({
 
 export type InvoiceLineItemSchemaType = z.infer<typeof InvoiceLineItemSchema>
 
+// Shared by the webhook and REST invoice payloads. Sub-fields are optional so
+// a partial address doesn't throw on the REST .parse() paths.
+export const AddressSchema = z.object({
+  addressLine1: z.string().optional(),
+  city: z.string().optional(),
+  country: z.string().optional(),
+  region: z.string().optional(),
+  postalCode: z.string().optional(),
+})
+
 export const InvoiceCreatedResponseSchema = z.object({
   data: z.object({
     id: z.string(),
@@ -38,18 +48,7 @@ export const InvoiceCreatedResponseSchema = z.object({
     taxAmount: z.number().default(0).nullable(),
     sentDate: z.string().datetime().nullish(),
     dueDate: z.string().datetime().nullish(),
-    // Sub-fields are individually optional: REST fetch paths (_getInvoice /
-    // _getInvoices) parse with .parse() and would throw on a partial address,
-    // aborting bulk resync. BillAddr/ShipAddr are only built when present.
-    address: z
-      .object({
-        addressLine1: z.string().optional(),
-        city: z.string().optional(),
-        country: z.string().optional(),
-        region: z.string().optional(),
-        postalCode: z.string().optional(),
-      })
-      .optional(),
+    address: AddressSchema.optional(),
     paymentMethodPreferences: z
       .array(
         z.object({
