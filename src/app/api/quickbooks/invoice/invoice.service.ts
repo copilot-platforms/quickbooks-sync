@@ -831,7 +831,9 @@ export class InvoiceService extends BaseService {
     }
 
     // update/ create the record in sync log table
-    const totalWithTax = actualTotalAmount + totalTax
+    const totalWithTax =
+      invoiceRes.Invoice.TotalAmt ?? actualTotalAmount + totalTax
+    const taxForLog = invoiceRes.Invoice.TxnTaxDetail?.TotalTax ?? totalTax
     await this.logSync(
       invoiceResource.id,
       {
@@ -841,7 +843,7 @@ export class InvoiceService extends BaseService {
       EventType.CREATED,
       {
         amount: (totalWithTax * 100).toFixed(2),
-        taxAmount: (totalTax * 100).toFixed(2), // convert to cents for logs
+        taxAmount: (taxForLog * 100).toFixed(2), // convert to cents for logs
         customerName: recipientInfo.displayName,
         customerEmail: recipientInfo.email,
       },
@@ -885,7 +887,7 @@ export class InvoiceService extends BaseService {
         {
           invoiceNumber: invoiceResource.number,
           invoiceId: invoiceResource.id,
-          taxAmount: (totalTax * 100).toFixed(2),
+          taxAmount: (taxForLog * 100).toFixed(2),
         },
         {
           displayName: recipientInfo.displayName,
