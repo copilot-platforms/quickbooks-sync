@@ -26,8 +26,9 @@ export const getTimeInterval = (interval: string, intervalCount: number) => {
 export const getUsStateCode = (state?: string): string | null => {
   const fullStateName = state?.trim()
   if (!fullStateName) return null
-  // abbr() returns a >2-char sentence when the name isn't a known US state.
+  // abbr() returns a sentence when the name isn't a known US state; a valid
+  // USPS code is always exactly 2 chars, so reject anything else.
   const abbreviation = abbr(fullStateName)
-  if (abbreviation.length > 2) return null
+  if (abbreviation.length !== 2) return null
   return abbreviation
 }
