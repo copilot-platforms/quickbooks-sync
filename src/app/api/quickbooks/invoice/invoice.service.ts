@@ -41,13 +41,13 @@ import {
   QBDestructiveInvoicePayloadSchema,
   QBNameValueSchemaType,
   QBInvoiceLineItemSchemaType,
+  QBInvoiceResponseType,
 } from '@/type/dto/intuitAPI.dto'
 import {
   InvoiceCreatedResponseType,
-  InvoiceDeletedResponse,
+  InvoiceDestructiveResponse,
   InvoiceLineItemSchemaType,
   InvoiceResponseType,
-  InvoiceVoidedResponse,
 } from '@/type/dto/webhook.dto'
 import { bottleneck } from '@/utils/bottleneck'
 import { CopilotAPI } from '@/utils/copilotAPI'
@@ -60,6 +60,7 @@ import { z } from 'zod'
 import { addSyncBreadcrumb, captureSyncError } from '@/utils/sentry'
 import { replaceSpecialCharsForQB, truncateForQB } from '@/utils/string'
 import { AccountTypeObj } from '@/constant/qbConnection'
+import { getUsStateCode } from '@/utils/common'
 
 type OneOffItemType = {
   name?: string
@@ -720,6 +721,28 @@ export class InvoiceService extends BaseService {
     const billEmailAddress =
       customer?.PrimaryEmailAddr?.Address || existingCustomer?.email
 
+    const countrySubDivisionCode = getUsStateCode(
+      invoiceResource.address?.region,
+    )
+
+    // State + postal code are the two fields QBO needs to resolve a sales-tax
+    // jurisdiction; without both it falls back to a coarser rate, so only send
+    // the address when both are present.
+    const addressPayload =
+      invoiceResource.address?.postalCode && countrySubDivisionCode
+        ? {
+            Line1: invoiceResource.address.addressLine1,
+            City: invoiceResource.address.city,
+            CountrySubDivisionCode: countrySubDivisionCode,
+            PostalCode: invoiceResource.address.postalCode,
+            Country: invoiceResource.address.country,
+          }
+        : null
+
+    // TODO: tax-exempt invoices also have totalTax === 0 and currently fall
+    // into QBO-computes; gate on an explicit exempt flag when that's needed.
+    const overrideTax = totalTax > 0 || !addressPayload
+
     const buildPayload = (resolvedDocNumber: string) => ({
       Line: lineItems,
       CustomerRef: {
@@ -728,9 +751,11 @@ export class InvoiceService extends BaseService {
       DocNumber: resolvedDocNumber,
       PrivateNote: formatAssemblyInvoicePrivateNote(assemblyInvoiceNumber),
       // include tax and dates
-      TxnTaxDetail: {
-        TotalTax: totalTax,
-      },
+      ...(overrideTax && {
+        TxnTaxDetail: {
+          TotalTax: totalTax,
+        },
+      }),
       ...(invoiceResource?.sentDate && {
         TxnDate: dayjs(invoiceResource.sentDate).format('YYYY/MM/DD'), // Valid date format for TxnDate is YYYY/MM/DD. For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice#the-invoice-object
       }),
@@ -740,6 +765,10 @@ export class InvoiceService extends BaseService {
       BillEmail: {
         Address: billEmailAddress,
       },
+      ...(addressPayload && {
+        BillAddr: addressPayload,
+        ShipAddr: addressPayload,
+      }),
     })
 
     // 6. create invoice in QB
@@ -748,7 +777,7 @@ export class InvoiceService extends BaseService {
       docNumber,
     })
 
-    let invoiceRes
+    let invoiceRes: QBInvoiceResponseType
     try {
       invoiceRes = await intuitApiService.createInvoice(buildPayload(docNumber))
     } catch (err) {
@@ -793,7 +822,9 @@ export class InvoiceService extends BaseService {
     }
 
     // update/ create the record in sync log table
-    const totalWithTax = actualTotalAmount + totalTax
+    const totalWithTax =
+      invoiceRes.Invoice.TotalAmt ?? actualTotalAmount + totalTax
+    const taxForLog = invoiceRes.Invoice.TxnTaxDetail?.TotalTax ?? totalTax
     await this.logSync(
       invoiceResource.id,
       {
@@ -803,7 +834,7 @@ export class InvoiceService extends BaseService {
       EventType.CREATED,
       {
         amount: (totalWithTax * 100).toFixed(2),
-        taxAmount: (totalTax * 100).toFixed(2), // convert to cents for logs
+        taxAmount: (taxForLog * 100).toFixed(2), // convert to cents for logs
         customerName: recipientInfo.displayName,
         customerEmail: recipientInfo.email,
       },
@@ -838,7 +869,7 @@ export class InvoiceService extends BaseService {
         {
           invoiceNumber: invoiceResource.number,
           invoiceId: invoiceResource.id,
-          taxAmount: (totalTax * 100).toFixed(2),
+          taxAmount: (taxForLog * 100).toFixed(2),
         },
         {
           displayName: recipientInfo.displayName,
@@ -967,7 +998,7 @@ export class InvoiceService extends BaseService {
   }
 
   async webhookInvoiceVoided(
-    payload: InvoiceVoidedResponse,
+    payload: InvoiceDestructiveResponse,
     qbTokenInfo: IntuitAPITokensType,
   ): Promise<void> {
     addSyncBreadcrumb('Invoice voided flow started', {
@@ -1058,7 +1089,7 @@ export class InvoiceService extends BaseService {
   }
 
   async handleInvoiceDeleted(
-    payload: InvoiceDeletedResponse,
+    payload: InvoiceDestructiveResponse,
     qbTokenInfo: IntuitAPITokensType,
   ): Promise<void> {
     addSyncBreadcrumb('Invoice deleted flow started', {
