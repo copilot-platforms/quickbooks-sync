@@ -28,6 +28,7 @@ export type InvoiceLineItemSchemaType = z.infer<typeof InvoiceLineItemSchema>
 // a partial address doesn't throw on the REST .parse() paths.
 export const AddressSchema = z.object({
   addressLine1: z.string().optional(),
+  addressLine2: z.string().optional(),
   city: z.string().optional(),
   country: z.string().optional(),
   region: z.string().optional(),
