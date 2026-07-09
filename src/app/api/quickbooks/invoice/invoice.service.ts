@@ -729,17 +729,15 @@ export class InvoiceService extends BaseService {
     const addressPayload =
       invoiceResource.address?.postalCode && countrySubDivisionCode
         ? {
-            Line1: invoiceResource.address.addressLine1,
+            Line1:
+              invoiceResource.address.addressLine1 ||
+              invoiceResource.address.addressLine2,
             City: invoiceResource.address.city,
             CountrySubDivisionCode: countrySubDivisionCode,
             PostalCode: invoiceResource.address.postalCode,
             Country: invoiceResource.address.country,
           }
         : null
-
-    // TODO: tax-exempt invoices also have totalTax === 0 and currently fall
-    // into QBO-computes; gate on an explicit exempt flag when that's needed.
-    const overrideTax = totalTax > 0 || !addressPayload
 
     const buildPayload = (resolvedDocNumber: string) => ({
       Line: lineItems,
@@ -749,11 +747,9 @@ export class InvoiceService extends BaseService {
       DocNumber: resolvedDocNumber,
       PrivateNote: formatAssemblyInvoicePrivateNote(assemblyInvoiceNumber),
       // include tax and dates
-      ...(overrideTax && {
-        TxnTaxDetail: {
-          TotalTax: totalTax,
-        },
-      }),
+      TxnTaxDetail: {
+        TotalTax: totalTax, // Always override tax total. Address tax jurisdiction is only for report purpose. We dont actually calculate tax with address.
+      },
       ...(invoiceResource?.sentDate && {
         TxnDate: dayjs(invoiceResource.sentDate).format('YYYY/MM/DD'), // Valid date format for TxnDate is YYYY/MM/DD. For more info: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice#the-invoice-object
       }),
@@ -820,9 +816,7 @@ export class InvoiceService extends BaseService {
     }
 
     // update/ create the record in sync log table
-    const totalWithTax =
-      invoiceRes.Invoice.TotalAmt ?? actualTotalAmount + totalTax
-    const taxForLog = invoiceRes.Invoice.TxnTaxDetail?.TotalTax ?? totalTax
+    const totalWithTax = actualTotalAmount + totalTax
     await this.logSync(
       invoiceResource.id,
       {
@@ -832,7 +826,7 @@ export class InvoiceService extends BaseService {
       EventType.CREATED,
       {
         amount: (totalWithTax * 100).toFixed(2),
-        taxAmount: (taxForLog * 100).toFixed(2), // convert to cents for logs
+        taxAmount: (totalTax * 100).toFixed(2), // convert to cents for logs
         customerName: recipientInfo.displayName,
         customerEmail: recipientInfo.email,
       },
@@ -867,7 +861,7 @@ export class InvoiceService extends BaseService {
         {
           invoiceNumber: invoiceResource.number,
           invoiceId: invoiceResource.id,
-          taxAmount: (taxForLog * 100).toFixed(2),
+          taxAmount: (totalTax * 100).toFixed(2),
         },
         {
           displayName: recipientInfo.displayName,
