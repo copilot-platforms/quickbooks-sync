@@ -38,7 +38,7 @@ const withAddress = (extraData: Record<string, unknown> = {}) => ({
   data: { ...invoiceCreatedPayload.data, address, ...extraData },
 })
 
-describe('POST /api/quickbooks/webhook — invoice.created (address drives tax jurisdiction)', () => {
+describe('POST /api/quickbooks/webhook — invoice.created (customer address on the invoice)', () => {
   const apis = setupInvoiceCreatedTest(() => ({
     intuit: createMockIntuitAPI({
       getAnItem: vi
@@ -48,19 +48,10 @@ describe('POST /api/quickbooks/webhook — invoice.created (address drives tax j
             ? { Id: '999', SyncToken: '0', Active: true }
             : undefined,
         ),
-      // QBO computes its own tax from the jurisdiction and echoes it back.
-      createInvoice: vi.fn().mockResolvedValue({
-        Invoice: {
-          Id: 'qb-inv-1',
-          SyncToken: '0',
-          TotalAmt: 630,
-          TxnTaxDetail: { TotalTax: 30 },
-        },
-      }),
     }),
   }))
 
-  it('sends the address as ShipAddr and BillAddr and lets QBO compute tax when Assembly tax is zero', async () => {
+  it('sends the address as BillAddr and ShipAddr and always reports Assembly tax', async () => {
     await seedHealthyPortal()
     await seedProductSync()
 
@@ -68,22 +59,23 @@ describe('POST /api/quickbooks/webhook — invoice.created (address drives tax j
     expect(res.status).toBe(200)
 
     const [invoicePayload] = apis.intuit.createInvoice.mock.calls[0]
-    expect(invoicePayload.ShipAddr).toEqual(expectedQbAddress)
     expect(invoicePayload.BillAddr).toEqual(expectedQbAddress)
-    // Address present + zero Assembly tax => defer to QBO's automated sales tax.
-    expect(invoicePayload.TxnTaxDetail).toBeUndefined()
+    expect(invoicePayload.ShipAddr).toEqual(expectedQbAddress)
+    // Address is for the QBO record only; tax always comes from Assembly, so
+    // TxnTaxDetail is sent even when the amount is zero.
+    expect(invoicePayload.TxnTaxDetail).toEqual({ TotalTax: 0 })
 
-    // The sync log records the tax QBO actually computed, not Assembly's zero.
+    // The sync log records Assembly's own subtotal and tax, not QBO's numbers.
     const logs = await db
       .select()
       .from(QBSyncLog)
       .where(eq(QBSyncLog.copilotId, TEST_COPILOT_INVOICE_ID))
     expect(logs).toHaveLength(1)
-    expect(Number(logs[0].amount)).toBe(63000)
-    expect(Number(logs[0].taxAmount)).toBe(3000)
+    expect(Number(logs[0].amount)).toBe(60000)
+    expect(Number(logs[0].taxAmount)).toBe(0)
   })
 
-  it('overrides QBO with Assembly tax when Assembly reports a non-zero tax', async () => {
+  it('sends Assembly non-zero tax as the invoice tax total', async () => {
     await seedHealthyPortal()
     await seedProductSync()
 
@@ -91,12 +83,11 @@ describe('POST /api/quickbooks/webhook — invoice.created (address drives tax j
     expect(res.status).toBe(200)
 
     const [invoicePayload] = apis.intuit.createInvoice.mock.calls[0]
-    // Address is still sent for the record, but we force our own tax total.
     expect(invoicePayload.ShipAddr).toEqual(expectedQbAddress)
     expect(invoicePayload.TxnTaxDetail).toEqual({ TotalTax: 30 })
   })
 
-  it('omits the address when the postal code is missing, since QBO needs it to resolve the jurisdiction', async () => {
+  it('omits the address when the postal code is missing', async () => {
     await seedHealthyPortal()
     await seedProductSync()
 
@@ -109,11 +100,11 @@ describe('POST /api/quickbooks/webhook — invoice.created (address drives tax j
     const [invoicePayload] = apis.intuit.createInvoice.mock.calls[0]
     expect(invoicePayload.ShipAddr).toBeUndefined()
     expect(invoicePayload.BillAddr).toBeUndefined()
-    // No usable address => fall back to sending our own (zero) tax total.
+    // Tax total is still sent regardless of whether the address made the cut.
     expect(invoicePayload.TxnTaxDetail).toEqual({ TotalTax: 0 })
   })
 
-  it('records the payment for a paid invoice using the tax-inclusive total QBO returned', async () => {
+  it('records the payment for a paid invoice using the invoice total', async () => {
     await seedHealthyPortal()
     await seedProductSync()
 
@@ -122,10 +113,9 @@ describe('POST /api/quickbooks/webhook — invoice.created (address drives tax j
 
     expect(apis.intuit.createPayment).toHaveBeenCalledTimes(1)
     const [paymentPayload] = apis.intuit.createPayment.mock.calls[0]
-    // 630 is QBO's tax-inclusive TotalAmt, not the locally-computed 600
-    // subtotal. Using the subtotal here would under-record the payment.
-    expect(paymentPayload.TotalAmt).toBe(630)
-    expect(paymentPayload.Line[0].Amount).toBe(630)
+    // 600 subtotal + 0 tax; both fields use the same Assembly-derived total.
+    expect(paymentPayload.TotalAmt).toBe(600)
+    expect(paymentPayload.Line[0].Amount).toBe(600)
     expect(paymentPayload.Line[0].LinkedTxn[0]).toMatchObject({
       TxnId: TEST_QB_INVOICE_ID,
       TxnType: 'Invoice',
