@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "./scripts/build.sh",
   "crons": [
     {
       "path": "/api/quickbooks/cron",
