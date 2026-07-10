@@ -19,6 +19,7 @@
     "supabase:dev": "supabase start --ignore-health-check",
     "cmd:rename-qb-accounts": "tsx src/cmd/renameQbAccount/index.ts",
     "patch-assembly-node-sdk": "cp ./lib-patches/assembly-js-node-sdk.js ./node_modules/@assembly-js/node-sdk/dist/api/init.js",
+    "patch-copilot-node-sdk": "cp ./lib-patches/copilot-node-sdk.js ./node_modules/copilot-node-sdk/dist/api/init.js",
     "cmd:backfill-product-info": "tsx src/cmd/backfillProductInfo/index.ts",
     "cmd:sync-missed-invoices": "tsx src/cmd/syncMissedInvoices/index.ts",
     "cmd:sync-missed-products": "tsx src/cmd/syncMissedProducts/index.ts",
