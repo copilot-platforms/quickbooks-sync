@@ -300,11 +300,6 @@ export const QBInvoiceRowSchema = z.object({
   DueDate: z.string().optional(),
   PrivateNote: z.string().optional(),
   CustomerRef: QBNameValueSchema.optional(),
-  TxnTaxDetail: z
-    .object({
-      TotalTax: z.number(),
-    })
-    .optional(),
 })
 export type QBInvoiceRowType = z.infer<typeof QBInvoiceRowSchema>
 
