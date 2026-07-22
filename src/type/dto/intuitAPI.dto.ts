@@ -147,6 +147,11 @@ export const QBPaymentCreatePayloadSchema = z.object({
   CustomerRef: z.object({
     value: z.string(),
   }),
+  DepositToAccountRef: z
+    .object({
+      value: z.string(),
+    })
+    .optional(),
   Line: z.array(
     z.object({
       Amount: z.number(),
