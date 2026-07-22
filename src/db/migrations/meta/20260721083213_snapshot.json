@@ -1,6 +1,6 @@
 {
-  "id": "21b9376f-a29d-4c58-9bf2-dd10a8a85e04",
-  "prevId": "9dfe5213-8442-4637-946c-257a8f151d40",
+  "id": "f6fc3d84-0b56-4a66-a843-b2f84bf4f83d",
+  "prevId": "21b9376f-a29d-4c58-9bf2-dd10a8a85e04",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1090,7 +1090,8 @@
       "values": [
         "invoice",
         "product",
-        "payment"
+        "payment",
+        "payout"
       ]
     },
     "public.event_types": {
@@ -1104,7 +1105,8 @@
         "deleted",
         "succeeded",
         "mapped",
-        "unmapped"
+        "unmapped",
+        "settled"
       ]
     },
     "public.failed_record_category_types": {

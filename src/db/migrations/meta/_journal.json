@@ -176,6 +176,20 @@
       "when": 1784286072146,
       "tag": "20260717110112_add_bank_deposit_fee_column",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1784622733206,
+      "tag": "20260721083213_add_payout_settled_enums",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1784628005402,
+      "tag": "20260721100005_extend_oneshot_index_payout",
+      "breakpoints": true
     }
   ]
 }

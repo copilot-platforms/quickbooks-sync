@@ -1,6 +1,6 @@
 {
-  "id": "21b9376f-a29d-4c58-9bf2-dd10a8a85e04",
-  "prevId": "9dfe5213-8442-4637-946c-257a8f151d40",
+  "id": "9be3cb25-9fd3-4903-92e9-9d9cb0f197ff",
+  "prevId": "f6fc3d84-0b56-4a66-a843-b2f84bf4f83d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1049,7 +1049,7 @@
             }
           ],
           "isUnique": true,
-          "where": "\"qb_sync_logs\".\"deleted_at\" IS NULL AND (\n          (\"qb_sync_logs\".\"entity_type\" = 'invoice' AND \"qb_sync_logs\".\"event_type\" IN ('created','paid','voided','deleted'))\n          OR (\"qb_sync_logs\".\"entity_type\" = 'payment' AND \"qb_sync_logs\".\"event_type\" = 'succeeded')\n        )",
+          "where": "\"qb_sync_logs\".\"deleted_at\" IS NULL AND (\n          (\"qb_sync_logs\".\"entity_type\" = 'invoice' AND \"qb_sync_logs\".\"event_type\" IN ('created','paid','voided','deleted'))\n          OR (\"qb_sync_logs\".\"entity_type\" = 'payment' AND \"qb_sync_logs\".\"event_type\" = 'succeeded')\n          OR (\"qb_sync_logs\".\"entity_type\" = 'payout' AND \"qb_sync_logs\".\"event_type\" = 'settled')\n        )",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1090,7 +1090,8 @@
       "values": [
         "invoice",
         "product",
-        "payment"
+        "payment",
+        "payout"
       ]
     },
     "public.event_types": {
@@ -1104,7 +1105,8 @@
         "deleted",
         "succeeded",
         "mapped",
-        "unmapped"
+        "unmapped",
+        "settled"
       ]
     },
     "public.failed_record_category_types": {

@@ -2,6 +2,7 @@ export enum EntityType {
   INVOICE = 'invoice',
   PRODUCT = 'product',
   PAYMENT = 'payment',
+  PAYOUT = 'payout',
 }
 
 export enum LogStatus {
@@ -20,7 +21,7 @@ export enum EventType {
   SUCCEEDED = 'succeeded',
   MAPPED = 'mapped',
   UNMAPPED = 'unmapped',
-  DEPOSITED = 'deposited',
+  SETTLED = 'settled',
 }
 
 /**
