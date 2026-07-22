@@ -21,7 +21,7 @@ import { WhereClause } from '@/type/common'
 import { orderMap } from '@/utils/drizzle'
 import CustomLogger from '@/utils/logger'
 import dayjs from 'dayjs'
-import { and, eq, isNull, lt, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull, lt, sql } from 'drizzle-orm'
 import { captureException } from '@sentry/nextjs'
 import { json2csv } from 'json-2-csv'
 
@@ -225,8 +225,8 @@ export class SyncLogService extends BaseService {
 
   /**
    * Atomic idempotency claim via the partial unique index
-   * `uq_qb_sync_logs_oneshot_active` (covers active invoice one-shot events
-   * and all payment events). For rows in that slice, ON CONFLICT DO NOTHING
+   * `uq_qb_sync_logs_oneshot_active` (covers active invoice one-shot events,
+   * all payment events, and payout/settled). For rows in that slice, ON CONFLICT DO NOTHING
    * yields no row when another worker has already claimed the tuple, so
    * `claimed: false` is returned. For rows outside the slice
    * (INVOICE/UPDATED, PRODUCT, PRICE), the partial index does not apply and
@@ -264,6 +264,7 @@ export class SyncLogService extends BaseService {
         where: sql`deleted_at IS NULL AND (
           (entity_type = 'invoice' AND event_type IN ('created','paid','voided','deleted'))
           OR (entity_type = 'payment' AND event_type = 'succeeded')
+          OR (entity_type = 'payout' AND event_type = 'settled')
         )`,
       })
       .returning({ id: QBSyncLog.id })
@@ -285,6 +286,9 @@ export class SyncLogService extends BaseService {
       .set({
         status: LogStatus.FAILED,
         category: FailedRecordCategoryType.OTHERS,
+        // Stale payout claims can't be retried (no resync path), so make them
+        // terminal; other entity types keep their retryability.
+        shouldRetry: sql`CASE WHEN ${QBSyncLog.entityType} = 'payout' THEN false ELSE ${QBSyncLog.shouldRetry} END`,
       })
       .where(
         and(
@@ -374,6 +378,40 @@ export class SyncLogService extends BaseService {
       })
     }
     return log || null
+  }
+
+  /**
+   * Maps Copilot invoice IDs → QBO Payment IDs from this portal's
+   * INVOICE/PAID/SUCCESS rows (quickbooksId holds the Payment ID there).
+   */
+  async getSuccessfulPaidPaymentIds(
+    copilotInvoiceIds: string[],
+  ): Promise<Map<string, string>> {
+    if (copilotInvoiceIds.length === 0) return new Map()
+
+    const rows = await this.db
+      .select({
+        copilotId: QBSyncLog.copilotId,
+        quickbooksId: QBSyncLog.quickbooksId,
+      })
+      .from(QBSyncLog)
+      .where(
+        and(
+          eq(QBSyncLog.portalId, this.user.workspaceId),
+          eq(QBSyncLog.entityType, EntityType.INVOICE),
+          eq(QBSyncLog.eventType, EventType.PAID),
+          eq(QBSyncLog.status, LogStatus.SUCCESS),
+          inArray(QBSyncLog.copilotId, copilotInvoiceIds),
+          isNull(QBSyncLog.deletedAt),
+        ),
+      )
+
+    const paymentIdByInvoice = new Map<string, string>()
+    for (const row of rows) {
+      if (row.quickbooksId)
+        paymentIdByInvoice.set(row.copilotId, row.quickbooksId)
+    }
+    return paymentIdByInvoice
   }
 
   async prepareSyncLogsForDownload() {

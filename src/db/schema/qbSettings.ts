@@ -15,6 +15,10 @@ export const QBSetting = table('qb_settings', {
     .references(() => QBPortalConnection.portalId, { onDelete: 'cascade' })
     .notNull(),
   absorbedFeeFlag: t.boolean('absorbed_fee_flag').default(false).notNull(),
+  bankDepositFeeFlag: t
+    .boolean('bank_deposit_fee_flag')
+    .default(false)
+    .notNull(),
   useCompanyNameFlag: t.boolean('company_name_flag').default(false).notNull(),
   createNewProductFlag: t
     .boolean('create_new_product_flag')
