@@ -60,6 +60,7 @@ function extractTokens(
     assetAccountRef: row.assetAccountRef,
     serviceItemRef: row.serviceItemRef,
     clientFeeRef: row.clientFeeRef,
+    bankAccountRef: row.bankAccountRef,
   }
 }
 
@@ -161,6 +162,7 @@ export async function getRefreshedQbTokenInfo(
     assetAccountRef: portalConnection.assetAccountRef,
     serviceItemRef: portalConnection.serviceItemRef,
     clientFeeRef: portalConnection.clientFeeRef,
+    bankAccountRef: portalConnection.bankAccountRef,
   }
 
   const updatedPayload: QBPortalConnectionUpdateSchemaType = {
