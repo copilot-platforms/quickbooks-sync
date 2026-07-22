@@ -13,6 +13,9 @@ import {
   QBPaymentCreatePayloadType,
   QBAccountCreatePayloadType,
   QBPurchaseCreatePayloadType,
+  QBDepositCreatePayloadType,
+  QBDepositResponseSchema,
+  QBDepositResponseType,
   QBDeletePayloadType,
   QBDestructiveInvoicePayloadSchema,
   QBItemRowType,
@@ -64,6 +67,7 @@ export type IntuitAPITokensType = Pick<
   | 'assetAccountRef'
   | 'serviceItemRef'
   | 'clientFeeRef'
+  | 'bankAccountRef'
 > & { isSuspended?: boolean }
 
 export const IntuitAPIErrorMessage = '#IntuitAPIErrorMessage#'
@@ -976,6 +980,32 @@ export default class IntuitAPI {
     return parsed
   }
 
+  async _createDeposit(
+    payload: QBDepositCreatePayloadType,
+  ): Promise<QBDepositResponseType> {
+    CustomLogger.info({
+      obj: { payload },
+      message: `IntuitAPI#createDeposit | Deposit create start for realmId: ${this.tokens.intuitRealmId}.`,
+    })
+    const url = `${intuitBaseUrl}/v3/company/${this.tokens.intuitRealmId}/deposit?minorversion=${intuitApiMinorVersion}`
+    const deposit = await this.postFetchWithHeaders(url, payload)
+
+    if (!deposit)
+      throw new APIError(
+        httpStatus.BAD_REQUEST,
+        'IntuitAPI#createDeposit | message = no response',
+      )
+
+    assertNotQBFault(deposit, 'createDeposit')
+
+    const parsed = QBDepositResponseSchema.parse(deposit)
+    CustomLogger.info({
+      obj: { response: parsed.Deposit },
+      message: `IntuitAPI#createDeposit | Deposit created with Id = ${parsed.Deposit.Id}.`,
+    })
+    return parsed
+  }
+
   async _deletePurchase(
     payload: QBDeletePayloadType,
   ): Promise<QBPurchaseDeleteResponseType> {
@@ -1014,6 +1044,33 @@ export default class IntuitAPI {
 
     const parsedCompanyInfo = CompanyInfoSchema.parse(companyInfo)
     return parsedCompanyInfo.CompanyInfo[0]
+  }
+
+  /**
+   * Look up the QBO system "Undeposited Funds" account.
+   * Every QBO company has exactly one — it cannot be deleted or recreated.
+   * Queries by AccountSubType first (survives user renames), falls back to name.
+   */
+  async getUndepositedFundsAccountId(): Promise<string> {
+    const rawResult = await this.customQuery(
+      `SELECT Id FROM Account WHERE AccountSubType = 'UndepositedFunds' AND Active = true maxresults 1`,
+    )
+    const undepositedAccount = QBAccountQueryResponseSchema.parse(
+      rawResult ?? {},
+    ).Account?.[0]
+    if (undepositedAccount?.Id) {
+      return undepositedAccount.Id
+    }
+
+    const byName = await this.getAnAccount('Undeposited Funds')
+    if (byName?.Id) {
+      return byName.Id
+    }
+
+    throw new APIError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'IntuitAPI#getUndepositedFundsAccountId | Undeposited Funds account not found in QuickBooks',
+    )
   }
 
   private wrapWithRetry<Args extends unknown[], R>(
@@ -1062,5 +1119,6 @@ export default class IntuitAPI {
   createPurchase = this.wrapWithRetry(this._createPurchase)
   deletePayment = this.wrapWithRetry(this._deletePayment)
   deletePurchase = this.wrapWithRetry(this._deletePurchase)
+  createDeposit = this.wrapWithRetry(this._createDeposit)
   getCompanyInfo = this._getCompanyInfo.bind(this)
 }
