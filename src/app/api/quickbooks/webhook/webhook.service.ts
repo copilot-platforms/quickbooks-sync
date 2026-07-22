@@ -14,7 +14,7 @@ import {
   InvoiceDeletedResponseSchema,
   InvoiceResponseSchema,
   PaymentSucceededResponseSchema,
-  PaymentSucceededResponseType,
+  PayoutReconciliationCompletedSchema,
   ProductCreatedResponseSchema,
   ProductUpdatedResponseSchema,
   WebhookEventResponseSchema,
@@ -111,6 +111,12 @@ export class WebhookService extends BaseService {
         return await this.handlePaymentSucceeded(payload, qbTokenInfo, {
           delayMs: 7000,
         })
+
+      case WebhookEvents.PAYOUT_RECONCILIATION_COMPLETED:
+        return await this.handlePayoutReconciliationCompleted(
+          payload,
+          qbTokenInfo,
+        )
 
       default:
         console.error('WebhookService#handleWebhookEvent | Unknown event type')
@@ -502,17 +508,21 @@ export class WebhookService extends BaseService {
         return
       }
 
-      if (opts.delayMs) await sleep(opts.delayMs)
+      if (setting.bankDepositFeeFlag) {
+        // Batched mode: deposit happens on payout.reconciliation_completed.
+        // Return before claiming so no stale PENDING row is left behind.
+        console.info(
+          'WebhookService#handlePaymentSucceeded | Batched-deposit mode; deferring deposit to payout event',
+        )
+        return
+      }
 
-      const useBankDepositFlow = setting.bankDepositFeeFlag
-      const idempotencyEventType = useBankDepositFlow
-        ? EventType.DEPOSITED
-        : EventType.SUCCEEDED
+      if (opts.delayMs) await sleep(opts.delayMs)
 
       const syncLogService = new SyncLogService(this.user)
       const { claimed } = await syncLogService.claimWebhookEvent({
         copilotId: parsedPaymentSucceedResource.data.id,
-        eventType: idempotencyEventType,
+        eventType: EventType.SUCCEEDED,
         entityType: EntityType.PAYMENT,
       })
       if (!claimed) {
@@ -546,23 +556,13 @@ export class WebhookService extends BaseService {
         // only track if the fee amount is paid by platform
         const paymentService = new PaymentService(this.user)
 
-        if (useBankDepositFlow) {
-          // Bank deposit flow: create a QBO Bank Deposit that matches the net bank amount
-          await this.handleBankDepositFlow(
-            parsedPaymentSucceedResource,
-            qbTokenInfo,
-            invoice,
-            paymentService,
-          )
-        } else {
-          // Legacy flow: create a standalone expense for absorbed fees
-          await paymentService.webhookPaymentSucceeded({
-            parsedPaymentSucceedResource,
-            qbTokenInfo,
-            qbDocNumber: invoiceSync.qbDocNumber ?? invoice.number,
-            invoiceNumber: invoice.number,
-          })
-        }
+        // Legacy flow: create a standalone expense for absorbed fees
+        await paymentService.webhookPaymentSucceeded({
+          parsedPaymentSucceedResource,
+          qbTokenInfo,
+          qbDocNumber: invoiceSync.qbDocNumber ?? invoice.number,
+          invoiceNumber: invoice.number,
+        })
       } catch (error: unknown) {
         CustomLogger.error({ message: 'Webhook handler failed', obj: error })
         const errorWithCode = getMessageAndCodeFromError(error)
@@ -572,14 +572,12 @@ export class WebhookService extends BaseService {
         await syncLogService.updateOrCreateQBSyncLog({
           portalId: this.user.workspaceId,
           entityType: EntityType.PAYMENT,
-          eventType: idempotencyEventType,
+          eventType: EventType.SUCCEEDED,
           status: LogStatus.FAILED,
           copilotId: parsedPaymentSucceedResource.data.id,
           invoiceNumber: invoice?.number,
           feeAmount: feeAmount ? feeAmount.paidByPlatform.toFixed(2) : '0',
-          remark: useBankDepositFlow
-            ? 'Bank deposit with fee deduction'
-            : 'Absorbed fees',
+          remark: 'Absorbed fees',
           qbItemName: 'Assembly Fees',
           errorMessage,
           errorCode: errorWithCode.code?.toString(),
@@ -594,95 +592,182 @@ export class WebhookService extends BaseService {
     }
   }
 
-  /**
-   * Creates a QBO Bank Deposit that moves the payment from Undeposited Funds
-   * to the customer's bank account, deducting Stripe fees.
-   * This makes the deposit amount match the actual bank transaction.
-   */
-  private async handleBankDepositFlow(
-    parsedPaymentSucceedResource: PaymentSucceededResponseType,
+  private async handlePayoutReconciliationCompleted(
+    payload: unknown,
     qbTokenInfo: IntuitAPITokensType,
-    invoice: { number: string },
-    paymentService: PaymentService,
   ) {
-    const paymentId = parsedPaymentSucceedResource.data.id
-    const invoiceId = parsedPaymentSucceedResource.data.invoiceId
+    console.info('###### PAYOUT RECONCILIATION COMPLETED ######')
+    const parsedPayout = PayoutReconciliationCompletedSchema.safeParse(payload)
+    if (!parsedPayout.success) {
+      console.error(
+        'WebhookService#handlePayoutReconciliationCompleted | Could not parse payout payload',
+      )
+      return
+    }
+    const {
+      data: { payout, lineItems },
+    } = parsedPayout.data
 
-    addSyncBreadcrumb('Bank deposit flow started', {
-      paymentId,
-      invoiceId,
-      invoiceNumber: invoice.number,
-      portalId: this.user.workspaceId,
-    })
+    const settingService = new SettingService(this.user)
+    const setting = await settingService.getOneByPortalId([
+      'bankDepositFeeFlag',
+    ])
+    if (!setting?.bankDepositFeeFlag) {
+      console.info(
+        'WebhookService#handlePayoutReconciliationCompleted | Batching disabled (bankDepositFeeFlag off)',
+      )
+      return
+    }
 
-    const feeAmount = parsedPaymentSucceedResource.data.feeAmount
-    if (!feeAmount)
-      throw new APIError(httpStatus.BAD_REQUEST, 'Fee amount is not found')
-
-    // Look up the QBO Payment ID from the sync log (created by webhookInvoicePaid)
     const syncLogService = new SyncLogService(this.user)
-    const paidSyncLog = await syncLogService.getOneByCopilotIdAndEventType({
-      copilotId: invoiceId,
-      eventType: EventType.PAID,
-      entityType: EntityType.INVOICE,
+    const { claimed } = await syncLogService.claimWebhookEvent({
+      copilotId: payout.id,
+      entityType: EntityType.PAYOUT,
+      eventType: EventType.SETTLED,
     })
-
-    if (!paidSyncLog?.quickbooksId) {
-      throw new APIError(
-        httpStatus.NOT_FOUND,
-        `QBO Payment not found in sync log for invoice: ${invoiceId}. The invoice.paid event may not have been processed yet.`,
+    if (!claimed) {
+      console.info(
+        `WebhookService#handlePayoutReconciliationCompleted | Already claimed (payout/${EventType.SETTLED}, copilotId=${payout.id}), skipping`,
       )
+      return
     }
 
-    const qbPaymentId = paidSyncLog.quickbooksId
-    if (!paidSyncLog.amount) {
-      throw new APIError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        `PAID sync log for invoice ${invoiceId} has no amount recorded`,
+    // Computed before the try so the FAILED-log path can record the amounts.
+    const grossCents = lineItems.reduce((sum, l) => sum + l.grossAmount, 0)
+    const feeCents = lineItems.reduce((sum, l) => sum + l.feeAmount, 0)
+
+    try {
+      validateAccessToken(qbTokenInfo)
+
+      // v1: refunds unsupported — a negative line means QBO cannot link to a Payment.
+      if (lineItems.some((line) => line.grossAmount < 0)) {
+        throw new APIError(
+          httpStatus.BAD_REQUEST,
+          `Payout ${payout.id} contains refund lines; batched deposit unsupported in v1`,
+        )
+      }
+
+      // A negative total fee would drop the fee line and unbalance the
+      // deposit. Abort instead (fee credits arrive with refund support).
+      if (feeCents < 0) {
+        throw new APIError(
+          httpStatus.BAD_REQUEST,
+          `Payout ${payout.id} has a negative aggregate fee (${feeCents}); unsupported in v1`,
+        )
+      }
+
+      const copilotInvoiceIds = lineItems.map((line) => line.copilotInvoiceId)
+      if (new Set(copilotInvoiceIds).size !== copilotInvoiceIds.length) {
+        throw new APIError(
+          httpStatus.BAD_REQUEST,
+          `Payout ${payout.id} contains duplicate invoice line items`,
+        )
+      }
+      const paymentIdByInvoice =
+        await syncLogService.getSuccessfulPaidPaymentIds(copilotInvoiceIds)
+      const unresolved = copilotInvoiceIds.filter(
+        (id) => !paymentIdByInvoice.has(id),
       )
-    }
-    const grossAmount = Number(paidSyncLog.amount) / 100
-    const platformFee = feeAmount.paidByPlatform / 100
+      if (unresolved.length > 0) {
+        throw new APIError(
+          httpStatus.NOT_FOUND,
+          `Payout ${payout.id}: no SUCCESS INVOICE/PAID sync log for invoices [${unresolved.join(', ')}]`,
+        )
+      }
 
-    addSyncBreadcrumb('Bank deposit payment resolved', {
-      qbPaymentId,
-      grossAmount,
-      platformFee,
-    })
+      if (grossCents - feeCents !== payout.netAmount) {
+        throw new APIError(
+          httpStatus.BAD_REQUEST,
+          `Payout ${payout.id}: deposit total ${grossCents - feeCents} != payout net ${payout.netAmount}`,
+        )
+      }
 
-    // Get or verify account refs
-    const intuitApi = new IntuitAPI(qbTokenInfo)
-    const tokenService = new TokenService(this.user)
+      // Fail fast on the free local check before any QBO round-trip.
+      const bankAccountRef = qbTokenInfo.bankAccountRef
+      if (!bankAccountRef) {
+        throw new APIError(
+          httpStatus.BAD_REQUEST,
+          `Bank account ref is not configured for portal ${this.user.workspaceId}. Please select a bank account in the QuickBooks integration settings.`,
+        )
+      }
 
-    const expenseAccountRef = await tokenService.checkAndUpdateAccountStatus(
-      AccountTypeObj.Expense,
-      qbTokenInfo.intuitRealmId,
-      intuitApi,
-      qbTokenInfo.expenseAccountRef,
-    )
-
-    const bankAccountRef = qbTokenInfo.bankAccountRef
-    if (!bankAccountRef) {
-      throw new APIError(
-        httpStatus.BAD_REQUEST,
-        `Bank account ref is not configured for portal ${this.user.workspaceId}. Please select a bank account in the QuickBooks integration settings.`,
+      const intuitApi = new IntuitAPI(qbTokenInfo)
+      const tokenService = new TokenService(this.user)
+      // Reactivates an archived bank account; a deleted one throws.
+      const verifiedBankAccountRef =
+        await tokenService.checkAndUpdateAccountStatus(
+          AccountTypeObj.Bank,
+          qbTokenInfo.intuitRealmId,
+          intuitApi,
+          bankAccountRef,
+        )
+      const expenseAccountRef = await tokenService.checkAndUpdateAccountStatus(
+        AccountTypeObj.Expense,
+        qbTokenInfo.intuitRealmId,
+        intuitApi,
+        qbTokenInfo.expenseAccountRef,
       )
+
+      const paymentService = new PaymentService(this.user)
+      const depositId = await paymentService.createBankDepositForPayment(
+        intuitApi,
+        {
+          lines: lineItems.map((line) => ({
+            qbPaymentId: paymentIdByInvoice.get(
+              line.copilotInvoiceId,
+            ) as string,
+            amount: line.grossAmount / 100,
+          })),
+          feeTotal: feeCents / 100,
+          bankAccountRef: verifiedBankAccountRef,
+          expenseAccountRef,
+          txnDate: new Date(payout.arrivalDate * 1000)
+            .toISOString()
+            .split('T')[0],
+          privateNote: `Stripe payout ${payout.id}`,
+        },
+      )
+
+      await syncLogService.updateOrCreateQBSyncLog({
+        portalId: this.user.workspaceId,
+        entityType: EntityType.PAYOUT,
+        eventType: EventType.SETTLED,
+        status: LogStatus.SUCCESS,
+        copilotId: payout.id,
+        quickbooksId: depositId,
+        amount: payout.netAmount.toFixed(2),
+        feeAmount: feeCents.toFixed(2),
+        remark: 'Stripe payout batched deposit',
+        qbItemName: 'Stripe payout',
+        errorMessage: '',
+      })
+    } catch (error: unknown) {
+      CustomLogger.error({
+        message: 'Payout reconciliation handler failed',
+        obj: error,
+      })
+      const errorWithCode = getMessageAndCodeFromError(error)
+      await syncLogService.updateOrCreateQBSyncLog({
+        portalId: this.user.workspaceId,
+        entityType: EntityType.PAYOUT,
+        eventType: EventType.SETTLED,
+        status: LogStatus.FAILED,
+        copilotId: payout.id,
+        amount: payout.netAmount.toFixed(2),
+        feeAmount: feeCents.toFixed(2),
+        remark: 'Stripe payout batched deposit',
+        qbItemName: 'Stripe payout',
+        errorMessage: errorWithCode.message,
+        errorCode: errorWithCode.code?.toString(),
+        // Terminal: no PAYOUT resync path yet, so retrying only burns
+        // attempts to a misleading alert. Recovery is manual for now.
+        shouldRetry: false,
+        category: getCategory(errorWithCode),
+      })
+      console.error(
+        `WebhookService#handlePayoutReconciliationCompleted :: Error | Portal Id: ${this.user.workspaceId} | Payout: ${payout.id}`,
+      )
+      return
     }
-
-    addSyncBreadcrumb('Bank deposit account refs verified', {
-      expenseAccountRef,
-      bankAccountRef,
-    })
-
-    await paymentService.createBankDepositForPayment(intuitApi, {
-      qbPaymentId,
-      grossAmount,
-      feeAmount: platformFee,
-      bankAccountRef,
-      expenseAccountRef,
-      txnDate: parsedPaymentSucceedResource.data.createdAt.split('T')[0],
-      invoiceNumber: invoice.number,
-      paymentId,
-    })
   }
 }

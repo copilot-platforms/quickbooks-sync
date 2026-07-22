@@ -201,47 +201,46 @@ export class PaymentService extends BaseService {
   async createBankDepositForPayment(
     intuitApi: IntuitAPI,
     opts: {
-      qbPaymentId: string
-      grossAmount: number
-      feeAmount: number
+      lines: Array<{ qbPaymentId: string; amount: number }>
+      feeTotal: number
       bankAccountRef: string
       expenseAccountRef: string
       txnDate: string
-      invoiceNumber: string
-      paymentId: string
+      privateNote: string
     },
-  ): Promise<void> {
-    addSyncBreadcrumb('Creating bank deposit in QBO', {
-      invoiceNumber: opts.invoiceNumber,
-      qbPaymentId: opts.qbPaymentId,
-      grossAmount: opts.grossAmount,
-      feeAmount: opts.feeAmount,
+  ): Promise<string> {
+    addSyncBreadcrumb('Creating batched bank deposit in QBO', {
+      privateNote: opts.privateNote,
+      lineCount: opts.lines.length,
+      feeTotal: opts.feeTotal,
     })
+
+    const paymentLines = opts.lines.map((line) => ({
+      Amount: line.amount,
+      LinkedTxn: [
+        {
+          TxnId: line.qbPaymentId,
+          TxnType: 'Payment' as const,
+          TxnLineId: '0',
+        },
+      ],
+    }))
+
+    const feeLine = {
+      Amount: -opts.feeTotal,
+      DetailType: 'DepositLineDetail' as const,
+      DepositLineDetail: {
+        AccountRef: { value: opts.expenseAccountRef },
+      },
+      Description: 'Stripe processing fees',
+    }
 
     const depositPayload: QBDepositCreatePayloadType = {
       DepositToAccountRef: { value: opts.bankAccountRef },
-      PrivateNote: `Payout for invoice number: ${opts.invoiceNumber}`,
+      PrivateNote: opts.privateNote,
       TxnDate: opts.txnDate,
-      Line: [
-        {
-          Amount: opts.grossAmount,
-          LinkedTxn: [
-            {
-              TxnId: opts.qbPaymentId,
-              TxnType: 'Payment' as const,
-              TxnLineId: '0',
-            },
-          ],
-        },
-        {
-          Amount: -opts.feeAmount,
-          DetailType: 'DepositLineDetail' as const,
-          DepositLineDetail: {
-            AccountRef: { value: opts.expenseAccountRef },
-          },
-          Description: 'Assembly processing fees',
-        },
-      ],
+      // feeTotal is always >= 0 (caller rejects negative): 0 = no fee line.
+      Line: opts.feeTotal > 0 ? [...paymentLines, feeLine] : paymentLines,
     }
 
     const parsedPayload = QBDepositCreatePayloadSchema.parse(depositPayload)
@@ -250,42 +249,16 @@ export class PaymentService extends BaseService {
     CustomLogger.info({
       obj: {
         depositId: res.Deposit?.Id,
-        grossAmount: opts.grossAmount,
-        feeAmount: opts.feeAmount,
-        netAmount: opts.grossAmount - opts.feeAmount,
+        lineCount: opts.lines.length,
+        feeTotal: opts.feeTotal,
       },
-      message: `PaymentService#createBankDepositForPayment | Bank deposit created for invoice ${opts.invoiceNumber}`,
+      message: `PaymentService#createBankDepositForPayment | Batched bank deposit created (${opts.privateNote})`,
     })
-
-    addSyncBreadcrumb('Bank deposit created in QBO', {
+    addSyncBreadcrumb('Batched bank deposit created in QBO', {
       depositId: res.Deposit?.Id,
-      invoiceNumber: opts.invoiceNumber,
     })
 
-    try {
-      await this.logSync(
-        opts.paymentId,
-        {
-          qbInvoiceId: res.Deposit.Id,
-          invoiceNumber: opts.invoiceNumber,
-        },
-        EventType.DEPOSITED,
-        EntityType.PAYMENT,
-        {
-          amount: (opts.grossAmount * 100).toFixed(2),
-          feeAmount: (opts.feeAmount * 100).toFixed(2),
-          remark: 'Bank deposit with fee deduction',
-          qbItemName: 'Assembly Fees',
-          errorMessage: '',
-        },
-      )
-    } catch (error: unknown) {
-      CustomLogger.error({
-        obj: error,
-        message: `PaymentService#createBankDepositForPayment | Failed to log sync for deposit ${res.Deposit?.Id}, but deposit was created in QBO`,
-      })
-      throw error
-    }
+    return res.Deposit.Id
   }
 
   async webhookPaymentSucceeded({
