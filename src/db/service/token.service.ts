@@ -122,5 +122,6 @@ export const getPortalTokens = async (
     assetAccountRef: portalConnection.assetAccountRef,
     serviceItemRef: portalConnection.serviceItemRef,
     clientFeeRef: portalConnection.clientFeeRef,
+    bankAccountRef: portalConnection.bankAccountRef,
   }
 }
