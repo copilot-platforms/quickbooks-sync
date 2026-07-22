@@ -13,8 +13,8 @@ else
   echo "[1/3] Skipping copilot-node-sdk patch (production)"
 fi
 
-echo "[2/3] Running drizzle-kit migrate"
-yarn drizzle-kit migrate
+echo "[2/3] Running db:migrate"
+yarn db:migrate
 
 echo "[3/3] Running next build"
 next build
