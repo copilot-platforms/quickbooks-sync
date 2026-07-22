@@ -401,6 +401,17 @@ export class SyncService extends BaseService {
     const authService = new AuthService(this.user)
 
     for (const log of logs) {
+      // TODO: no PAYOUT resync path yet — skip so terminal payout rows don't
+      // burn attempts to a misleading alert. Auto-recovery is a follow-up.
+      if (log.entityType === EntityType.PAYOUT) {
+        CustomLogger.info({
+          message:
+            'SyncService#intiateSync | Skipping payout log (no resync path)',
+          obj: { copilotId: log.copilotId, workspaceId: this.user.workspaceId },
+        })
+        continue
+      }
+
       // check and update attempt for failed logs
       const resyncAttemtps = await this.checkAndUpdateAttempt(log)
       if (resyncAttemtps.maxAttempts) {

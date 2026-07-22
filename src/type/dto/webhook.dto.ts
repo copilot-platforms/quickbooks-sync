@@ -1,4 +1,5 @@
 import { InvoiceStatus, PaymentStatus } from '@/app/api/core/types/invoice'
+import { WebhookEvents } from '@/app/api/core/types/webhook'
 import { ProductStatus } from '@/app/api/core/types/product'
 import { z } from 'zod'
 
@@ -132,4 +133,30 @@ export const PaymentSucceededResponseSchema = z.object({
 })
 export type PaymentSucceededResponseType = z.infer<
   typeof PaymentSucceededResponseSchema
+>
+
+export const PayoutReconciliationCompletedSchema = z.object({
+  eventType: z.literal(WebhookEvents.PAYOUT_RECONCILIATION_COMPLETED),
+  eventTime: z.string().optional(),
+  data: z.object({
+    payout: z.object({
+      id: z.string(),
+      arrivalDate: z.number(),
+      currency: z.string().optional(),
+      netAmount: z.number(),
+      status: z.string(),
+    }),
+    lineItems: z
+      .array(
+        z.object({
+          copilotInvoiceId: z.string(),
+          grossAmount: z.number(),
+          feeAmount: z.number(),
+        }),
+      )
+      .min(1),
+  }),
+})
+export type PayoutReconciliationCompletedType = z.infer<
+  typeof PayoutReconciliationCompletedSchema
 >
