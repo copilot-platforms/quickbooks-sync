@@ -14,6 +14,8 @@ import {
   QBAccountCreatePayloadType,
   QBPurchaseCreatePayloadType,
   QBDepositCreatePayloadType,
+  QBDepositResponseSchema,
+  QBDepositResponseType,
   QBDeletePayloadType,
   QBDestructiveInvoicePayloadSchema,
   QBItemRowType,
@@ -978,7 +980,9 @@ export default class IntuitAPI {
     return parsed
   }
 
-  async _createDeposit(payload: QBDepositCreatePayloadType) {
+  async _createDeposit(
+    payload: QBDepositCreatePayloadType,
+  ): Promise<QBDepositResponseType> {
     CustomLogger.info({
       obj: { payload },
       message: `IntuitAPI#createDeposit | Deposit create start for realmId: ${this.tokens.intuitRealmId}.`,
@@ -992,20 +996,14 @@ export default class IntuitAPI {
         'IntuitAPI#createDeposit | message = no response',
       )
 
-    if (deposit?.Fault) {
-      CustomLogger.error({ obj: deposit.Fault?.Error, message: 'Error: ' })
-      throw new APIError(
-        deposit.Fault?.Error?.code || httpStatus.BAD_REQUEST,
-        `${IntuitAPIErrorMessage}createDeposit`,
-        deposit.Fault?.Error,
-      )
-    }
+    assertNotQBFault(deposit, 'createDeposit')
 
+    const parsed = QBDepositResponseSchema.parse(deposit)
     CustomLogger.info({
-      obj: { response: deposit.Deposit },
-      message: `IntuitAPI#createDeposit | Deposit created with Id = ${deposit.Deposit?.Id}.`,
+      obj: { response: parsed.Deposit },
+      message: `IntuitAPI#createDeposit | Deposit created with Id = ${parsed.Deposit.Id}.`,
     })
-    return deposit
+    return parsed
   }
 
   async _deletePurchase(
@@ -1054,11 +1052,14 @@ export default class IntuitAPI {
    * Queries by AccountSubType first (survives user renames), falls back to name.
    */
   async getUndepositedFundsAccountId(): Promise<string> {
-    const result = await this.customQuery(
+    const rawResult = await this.customQuery(
       `SELECT Id FROM Account WHERE AccountSubType = 'UndepositedFunds' AND Active = true maxresults 1`,
     )
-    if (result?.Account?.[0]?.Id) {
-      return result.Account[0].Id
+    const undepositedAccount = QBAccountQueryResponseSchema.parse(
+      rawResult ?? {},
+    ).Account?.[0]
+    if (undepositedAccount?.Id) {
+      return undepositedAccount.Id
     }
 
     const byName = await this.getAnAccount('Undeposited Funds')

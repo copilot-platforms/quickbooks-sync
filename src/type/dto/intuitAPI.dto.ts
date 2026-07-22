@@ -279,6 +279,14 @@ export type QBDepositCreatePayloadType = z.infer<
   typeof QBDepositCreatePayloadSchema
 >
 
+export const QBDepositResponseSchema = z.object({
+  Deposit: z.object({
+    Id: z.string(),
+    SyncToken: z.string().optional(),
+  }),
+})
+export type QBDepositResponseType = z.infer<typeof QBDepositResponseSchema>
+
 export const QBDeletePayloadSchema = z.object({
   SyncToken: z.string(),
   Id: z.string(),
