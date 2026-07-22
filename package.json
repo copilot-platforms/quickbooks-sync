@@ -17,6 +17,7 @@
     "lint-staged": "npx lint-staged",
     "prepare": "husky",
     "supabase:dev": "supabase start --ignore-health-check",
+    "db:migrate": "tsx src/db/migrate.ts",
     "cmd:rename-qb-accounts": "tsx src/cmd/renameQbAccount/index.ts",
     "cmd:backfill-product-info": "tsx src/cmd/backfillProductInfo/index.ts",
     "cmd:sync-missed-invoices": "tsx src/cmd/syncMissedInvoices/index.ts",
