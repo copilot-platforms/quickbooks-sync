@@ -60,6 +60,7 @@ function extractTokens(
     assetAccountRef: row.assetAccountRef,
     serviceItemRef: row.serviceItemRef,
     clientFeeRef: row.clientFeeRef,
+    bankAccountRef: row.bankAccountRef,
   }
 }
 

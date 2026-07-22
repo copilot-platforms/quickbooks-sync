@@ -298,6 +298,13 @@ export class TokenService extends BaseService {
         return this.getOrCreateExpenseAccountRef(intuitApi)
       case AccountTypeObj.Asset:
         return this.getOrCreateAssetAccountRef(intuitApi)
+      case AccountTypeObj.Bank:
+        // Never auto-restore a bank account — that could deposit into the
+        // wrong one. Make the user reselect instead.
+        throw new APIError(
+          httpStatus.BAD_REQUEST,
+          'Bank account is missing or was deleted in QuickBooks. Please reselect a bank account in the QuickBooks integration settings.',
+        )
       default:
         throw new APIError(
           httpStatus.BAD_REQUEST,
