@@ -215,32 +215,35 @@ export class PaymentService extends BaseService {
       feeTotal: opts.feeTotal,
     })
 
-    const paymentLines = opts.lines.map((line) => ({
-      Amount: line.amount,
-      LinkedTxn: [
-        {
-          TxnId: line.qbPaymentId,
-          TxnType: 'Payment' as const,
-          TxnLineId: '0',
-        },
-      ],
-    }))
+    const paymentLines: Required<QBDepositCreatePayloadType>['Line'] =
+      opts.lines.map((line) => ({
+        Amount: line.amount,
+        LinkedTxn: [
+          {
+            TxnId: line.qbPaymentId,
+            TxnType: 'Payment' as const,
+            TxnLineId: '0',
+          },
+        ],
+      }))
 
-    const feeLine = {
-      Amount: -opts.feeTotal,
-      DetailType: 'DepositLineDetail' as const,
-      DepositLineDetail: {
-        AccountRef: { value: opts.expenseAccountRef },
-      },
-      Description: 'Stripe processing fees',
+    // feeTotal is always >= 0 (caller rejects negative): 0 = no fee line.
+    if (opts.feeTotal > 0) {
+      paymentLines.push({
+        Amount: -opts.feeTotal,
+        DetailType: 'DepositLineDetail' as const,
+        DepositLineDetail: {
+          AccountRef: { value: opts.expenseAccountRef },
+        },
+        Description: 'Stripe processing fees',
+      })
     }
 
     const depositPayload: QBDepositCreatePayloadType = {
       DepositToAccountRef: { value: opts.bankAccountRef },
       PrivateNote: opts.privateNote,
       TxnDate: opts.txnDate,
-      // feeTotal is always >= 0 (caller rejects negative): 0 = no fee line.
-      Line: opts.feeTotal > 0 ? [...paymentLines, feeLine] : paymentLines,
+      Line: paymentLines,
     }
 
     const parsedPayload = QBDepositCreatePayloadSchema.parse(depositPayload)

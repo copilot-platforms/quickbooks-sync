@@ -927,11 +927,9 @@ export class InvoiceService extends BaseService {
 
     const intuitApi = new IntuitAPI(qbTokenInfo)
 
-    let depositToAccountRef: { value: string } | undefined
-    if (useBankDepositFlow) {
-      const undepositedFundsRef = await intuitApi.getUndepositedFundsAccountId()
-      depositToAccountRef = { value: undepositedFundsRef }
-    }
+    const depositToAccountRef = useBankDepositFlow
+      ? await intuitApi.getUndepositedFundsAccountId()
+      : undefined
 
     const qbPaymentPayload = {
       TotalAmt: invoiceAmount,
@@ -939,7 +937,7 @@ export class InvoiceService extends BaseService {
         value: existingCustomer.qbCustomerId,
       },
       ...(depositToAccountRef && {
-        DepositToAccountRef: depositToAccountRef,
+        DepositToAccountRef: { value: depositToAccountRef },
       }),
       Line: [
         {

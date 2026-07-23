@@ -628,8 +628,14 @@ export class WebhookService extends BaseService {
     }
 
     // Computed before the try so the FAILED-log path can record the amounts.
-    const grossCents = lineItems.reduce((sum, l) => sum + l.grossAmount, 0)
-    const feeCents = lineItems.reduce((sum, l) => sum + l.feeAmount, 0)
+    const { grossCents, feeCents } = lineItems.reduce(
+      (acc, line) => {
+        acc.grossCents += line.grossAmount
+        acc.feeCents += line.feeAmount
+        return acc
+      },
+      { grossCents: 0, feeCents: 0 },
+    )
 
     try {
       validateAccessToken(qbTokenInfo)
