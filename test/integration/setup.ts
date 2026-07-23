@@ -48,6 +48,10 @@ vi.mock('@/utils/intuitAPI', () => ({
   // Named export used by src/utils/error.ts to detect Intuit-sourced APIErrors
   // when unwrapping error messages in the webhook catch block.
   IntuitAPIErrorMessage: '#IntuitAPIErrorMessage#',
+  // Named export consumed directly by controllers (e.g. bank-account) to
+  // build a customQuery SELECT list. Must be kept in sync with the real
+  // `QB_ACCOUNT_COLUMNS` in src/utils/intuitAPI.ts.
+  QB_ACCOUNT_COLUMNS: ['Id', 'Name', 'SyncToken', 'Active', 'AccountType'],
 }))
 
 // `@/utils/intuit` is the OAuth wrapper (separate from `@/utils/intuitAPI`,
