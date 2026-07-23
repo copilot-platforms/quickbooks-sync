@@ -20,6 +20,7 @@ export const TEST_REFRESH_TOKEN = 'test-refresh-token'
 export const TEST_INCOME_ACCOUNT_REF = '100'
 export const TEST_ASSET_ACCOUNT_REF = '101'
 export const TEST_EXPENSE_ACCOUNT_REF = '102'
+export const TEST_BANK_ACCOUNT_REF = '103'
 export const TEST_INTERNAL_USER_ID = 'test-internal-user-id'
 export const TEST_WEBHOOK_TOKEN = 'test-token-xyz'
 

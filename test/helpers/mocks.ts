@@ -145,6 +145,9 @@ export function createMockIntuitAPI(overrides: IntuitAPIOverrides = {}) {
     createPurchase: vi.fn().mockResolvedValue({
       Purchase: { Id: TEST_QB_PURCHASE_ID, SyncToken: '0' },
     }),
+    createDeposit: vi.fn().mockResolvedValue({
+      Deposit: { Id: 'qb-deposit-1', SyncToken: '0' },
+    }),
     deletePurchase: vi.fn().mockResolvedValue({
       Purchase: { Id: TEST_QB_PURCHASE_ID, status: 'Deleted' },
     }),
