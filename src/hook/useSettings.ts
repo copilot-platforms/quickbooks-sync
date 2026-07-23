@@ -432,9 +432,14 @@ export const useMapItem = (
 export const useInvoiceDetailSettings = () => {
   const initialInvoiceSetting = {
     absorbedFeeFlag: false,
+    bankDepositFeeFlag: false,
     useCompanyNameFlag: false,
+    bankAccountRef: '',
   }
-  const { token, setAppParams } = useApp()
+  const { token, setAppParams, syncFlag, portalConnectionStatus } = useApp()
+  // Skip the /bank-account fetch when QB isn't connected or sync is off, same
+  // rationale as useAccountMapping's isDisconnected.
+  const isDisconnected = !syncFlag || !portalConnectionStatus
   const [settingState, setSettingState] = useState<InvoiceSettingType>(
     initialInvoiceSetting,
   )
@@ -448,15 +453,30 @@ export const useInvoiceDetailSettings = () => {
     isLoading,
   } = useSwrHelper(`/api/quickbooks/setting?type=invoice&token=${token}`)
 
+  const { data: bankAccountsData, error: bankAccountsError } = useSwrHelper<{
+    accounts: { Id: string; Name: string }[]
+  }>(
+    isDisconnected
+      ? null
+      : `/api/quickbooks/setting/bank-account?token=${token}`,
+    { suspense: false, revalidateOnMount: true },
+  )
+  const bankAccountOptions: AccountOption[] | undefined =
+    bankAccountsData?.accounts.map((account) => ({
+      id: account.Id,
+      name: account.Name,
+    }))
+
   const changeSettings = async (
     flag: keyof InvoiceSettingType,
-    state: boolean,
+    value: boolean | string,
   ) => {
-    setSettingState((prev) => ({
-      ...prev,
-      [flag]: state,
-    }))
+    setSettingState((prev) => ({ ...prev, [flag]: value }))
   }
+
+  const canSave = !(
+    settingState.bankDepositFeeFlag && !settingState.bankAccountRef
+  )
 
   useEffect(() => {
     if (!settingState || !intialSettingState) return
@@ -466,8 +486,12 @@ export const useInvoiceDetailSettings = () => {
 
   useEffect(() => {
     if (setting && setting?.setting) {
-      setSettingState(setting.setting)
-      setIntialSettingState(structuredClone(setting.setting))
+      const hydratedSetting = {
+        ...setting.setting,
+        bankAccountRef: setting.bankAccountRef ?? '',
+      }
+      setSettingState(hydratedSetting)
+      setIntialSettingState(structuredClone(hydratedSetting))
       setAppParams((prev) => ({
         ...prev,
         initialInvoiceSettingMapFlag: setting.setting.initialInvoiceSettingMap,
@@ -508,6 +532,9 @@ export const useInvoiceDetailSettings = () => {
     error,
     isLoading,
     showButton,
+    bankAccountOptions,
+    bankAccountsError,
+    canSave,
   }
 }
 
