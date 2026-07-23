@@ -36,11 +36,10 @@ export async function getSettings(req: NextRequest) {
   }
   const setting = await settingService.getOneByPortalId(returningFields)
 
-  let bankAccountRef: string | null = null
-  if (parsedType.success && parsedType.data === SettingType.INVOICE) {
-    const portalConnection = await getPortalConnection(user.workspaceId)
-    bankAccountRef = portalConnection?.bankAccountRef || null
-  }
+  const bankAccountRef =
+    parsedType.success && parsedType.data === SettingType.INVOICE
+      ? (await getPortalConnection(user.workspaceId))?.bankAccountRef || null
+      : null
 
   return NextResponse.json({ setting, bankAccountRef })
 }
