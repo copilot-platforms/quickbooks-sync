@@ -6,9 +6,9 @@ import { Checkbox, Spinner } from 'copilot-design-system'
 
 type InvoiceDetailProps = {
   settingState: InvoiceSettingType
-  changeSettings: (
-    flag: keyof InvoiceSettingType,
-    value: boolean | string,
+  changeSettings: <K extends keyof InvoiceSettingType>(
+    flag: K,
+    value: InvoiceSettingType[K],
   ) => void
   isLoading: boolean
   bankAccountOptions: AccountOption[] | undefined
@@ -70,11 +70,12 @@ export default function InvoiceDetail({
                   placeholder="Select a deposit bank account"
                   onChange={(id) => changeSettings('bankAccountRef', id)}
                 />
-                {!settingState.bankAccountRef && (
-                  <p className="text-xs text-red-600">
-                    Select a deposit bank account to enable bank deposits.
-                  </p>
-                )}
+                {bankAccountOptions !== undefined &&
+                  !settingState.bankAccountRef && (
+                    <p className="text-xs text-red-600">
+                      Select a deposit bank account to enable bank deposits.
+                    </p>
+                  )}
               </>
             )}
           </div>
