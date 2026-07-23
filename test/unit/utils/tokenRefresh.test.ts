@@ -119,6 +119,7 @@ const basePortalRow = {
   assetAccountRef: 'asset-ref',
   serviceItemRef: 'service-ref',
   clientFeeRef: 'client-fee-ref',
+  bankAccountRef: 'bank-acc-ref-123',
   isSuspended: false,
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -162,6 +163,10 @@ describe('getValidQbTokens', () => {
     const tokens = await getValidQbTokens('portal-abc')
 
     expect(tokens.accessToken).toBe('stored-access')
+    // Regression guard: extractTokens() (the fresh-token path) once omitted
+    // bankAccountRef entirely, so the payout batched-deposit handler threw
+    // "Bank account ref is not configured" on every non-refreshing request.
+    expect(tokens.bankAccountRef).toBe('bank-acc-ref-123')
     expect(getRefreshedQBToken).not.toHaveBeenCalled()
     expect(dbUpdates).toHaveLength(0)
   })
@@ -187,6 +192,9 @@ describe('getValidQbTokens', () => {
 
     expect(tokens.accessToken).toBe('fresh-access')
     expect(tokens.refreshToken).toBe('fresh-refresh')
+    // The refresh path already carried bankAccountRef through; pinned here
+    // alongside the fresh-token-path assertion above so both paths are guarded.
+    expect(tokens.bankAccountRef).toBe('bank-acc-ref-123')
     expect(getPortalConnection).toHaveBeenCalledExactlyOnceWith('portal-abc')
     expect(getRefreshedQBToken).toHaveBeenCalledExactlyOnceWith(
       'stored-refresh',
@@ -248,6 +256,7 @@ describe('getRefreshedQbTokenInfo', () => {
     const tokens = await getRefreshedQbTokenInfo('portal-abc')
 
     expect(tokens.accessToken).toBe('fresh-access')
+    expect(tokens.bankAccountRef).toBe('bank-acc-ref-123')
     expect(dbUpdates).toEqual([
       expect.objectContaining({ table: QBPortalConnection }),
     ])
