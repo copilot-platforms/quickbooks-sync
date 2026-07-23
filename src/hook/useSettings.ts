@@ -467,9 +467,9 @@ export const useInvoiceDetailSettings = () => {
       name: account.Name,
     }))
 
-  const changeSettings = async (
-    flag: keyof InvoiceSettingType,
-    value: boolean | string,
+  const changeSettings = async <K extends keyof InvoiceSettingType>(
+    flag: K,
+    value: InvoiceSettingType[K],
   ) => {
     setSettingState((prev) => ({ ...prev, [flag]: value }))
   }
