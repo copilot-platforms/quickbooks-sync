@@ -6,8 +6,8 @@ import {
   StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql'
 import { drizzle } from 'drizzle-orm/postgres-js'
-import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import postgres from 'postgres'
+import { migratePerFile } from '@/db/migratePerFile'
 
 /**
  * Vitest globalSetup for integration tests.
@@ -15,7 +15,8 @@ import postgres from 'postgres'
  * Responsibilities:
  * - Start an ephemeral Postgres container via testcontainers
  * - Set process.env.DATABASE_URL before any test worker imports src/config
- * - Apply all Drizzle migrations from src/db/migrations to the fresh DB
+ * - Apply all Drizzle migrations from src/db/migrations to the fresh DB, one
+ *   file per transaction (see `migratePerFile` for why)
  * - Stub any src/config env vars that must be non-empty at import time
  * - Stop the container on teardown
  *
@@ -53,7 +54,7 @@ export default async function globalSetup() {
   const migrationClient = postgres(url, { max: 1, prepare: false })
   const migrationDb = drizzle(migrationClient)
   try {
-    await migrate(migrationDb, { migrationsFolder: MIGRATIONS_FOLDER })
+    await migratePerFile(migrationDb, MIGRATIONS_FOLDER)
   } finally {
     await migrationClient.end()
   }

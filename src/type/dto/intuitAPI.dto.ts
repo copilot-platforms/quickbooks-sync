@@ -147,6 +147,11 @@ export const QBPaymentCreatePayloadSchema = z.object({
   CustomerRef: z.object({
     value: z.string(),
   }),
+  DepositToAccountRef: z
+    .object({
+      value: z.string(),
+    })
+    .optional(),
   Line: z.array(
     z.object({
       Amount: z.number(),
@@ -239,6 +244,48 @@ export const QBPurchaseCreatePayloadSchema = z.object({
 export type QBPurchaseCreatePayloadType = z.infer<
   typeof QBPurchaseCreatePayloadSchema
 >
+
+export const QBDepositLineSchema = z.union([
+  z.object({
+    Amount: z.number(),
+    LinkedTxn: z.array(
+      z.object({
+        TxnId: z.string(),
+        TxnType: z.literal('Payment'),
+        TxnLineId: z.string(),
+      }),
+    ),
+  }),
+  z.object({
+    Amount: z.number(),
+    DetailType: z.literal('DepositLineDetail'),
+    DepositLineDetail: z.object({
+      AccountRef: QBNameValueSchema,
+    }),
+    Description: z.string().optional(),
+  }),
+])
+
+export const QBDepositCreatePayloadSchema = z.object({
+  DepositToAccountRef: z.object({
+    value: z.string(),
+  }),
+  PrivateNote: z.string().optional(),
+  TxnDate: z.string(),
+  Line: z.array(QBDepositLineSchema),
+})
+
+export type QBDepositCreatePayloadType = z.infer<
+  typeof QBDepositCreatePayloadSchema
+>
+
+export const QBDepositResponseSchema = z.object({
+  Deposit: z.object({
+    Id: z.string(),
+    SyncToken: z.string().optional(),
+  }),
+})
+export type QBDepositResponseType = z.infer<typeof QBDepositResponseSchema>
 
 export const QBDeletePayloadSchema = z.object({
   SyncToken: z.string(),

@@ -79,6 +79,7 @@ export const QBSyncLog = table(
     //   - INVOICE/{created,paid,voided,deleted}: one-shot per invoice; dual-fire
     //     would cause customer-visible duplicate QBO invoices.
     //   - PAYMENT/succeeded: one-shot per payment.
+    //   - PAYOUT/settled: one-shot per payout.
     // INVOICE/updated, PRODUCT, and PRICE events are excluded because repeated
     // edits / re-fires are legitimate for those entity-event combinations.
     t
@@ -88,6 +89,7 @@ export const QBSyncLog = table(
         sql`${table.deletedAt} IS NULL AND (
           (${table.entityType} = 'invoice' AND ${table.eventType} IN ('created','paid','voided','deleted'))
           OR (${table.entityType} = 'payment' AND ${table.eventType} = 'succeeded')
+          OR (${table.entityType} = 'payout' AND ${table.eventType} = 'settled')
         )`,
       ),
   ],

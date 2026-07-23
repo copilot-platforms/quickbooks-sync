@@ -914,11 +914,31 @@ export class InvoiceService extends BaseService {
     )
 
     const invoiceAmount = Number(z.string().parse(invoiceLog.amount)) / 100
+
+    // Batched-deposit mode routes the payment through Undeposited Funds so the
+    // payout deposit can later link and sweep it into the bank.
+    const settingService = new SettingService(this.user)
+    const setting = await settingService.getOneByPortalId([
+      'absorbedFeeFlag',
+      'bankDepositFeeFlag',
+    ])
+    const useBankDepositFlow =
+      setting?.absorbedFeeFlag && setting?.bankDepositFeeFlag
+
+    const intuitApi = new IntuitAPI(qbTokenInfo)
+
+    const depositToAccountRef = useBankDepositFlow
+      ? await intuitApi.getUndepositedFundsAccountId()
+      : undefined
+
     const qbPaymentPayload = {
       TotalAmt: invoiceAmount,
       CustomerRef: {
         value: existingCustomer.qbCustomerId,
       },
+      ...(depositToAccountRef && {
+        DepositToAccountRef: { value: depositToAccountRef },
+      }),
       Line: [
         {
           Amount: invoiceAmount,
@@ -931,7 +951,6 @@ export class InvoiceService extends BaseService {
         },
       ],
     }
-    const intuitApi = new IntuitAPI(qbTokenInfo)
     const paymentService = new PaymentService(this.user)
 
     const customerDisplayName =

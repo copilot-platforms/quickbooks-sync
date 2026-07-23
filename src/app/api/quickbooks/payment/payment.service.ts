@@ -21,6 +21,8 @@ import {
 } from '@/db/schema/qbPaymentSync'
 import { WhereClause } from '@/type/common'
 import {
+  QBDepositCreatePayloadSchema,
+  QBDepositCreatePayloadType,
   QBPaymentCreatePayloadSchema,
   QBPaymentCreatePayloadType,
   QBPurchaseCreatePayloadSchema,
@@ -34,6 +36,7 @@ import { addSyncBreadcrumb } from '@/utils/sentry'
 import dayjs from 'dayjs'
 import { z } from 'zod'
 import httpStatus from 'http-status'
+import CustomLogger from '@/utils/logger'
 
 export class PaymentService extends BaseService {
   private syncLogService: SyncLogService
@@ -193,6 +196,72 @@ export class PaymentService extends BaseService {
       await intuitApi.deletePurchase(deletePayload)
       throw error
     }
+  }
+
+  async createBankDepositForPayment(
+    intuitApi: IntuitAPI,
+    opts: {
+      lines: Array<{ qbPaymentId: string; amount: number }>
+      feeTotal: number
+      bankAccountRef: string
+      expenseAccountRef: string
+      txnDate: string
+      privateNote: string
+    },
+  ): Promise<string> {
+    addSyncBreadcrumb('Creating batched bank deposit in QBO', {
+      privateNote: opts.privateNote,
+      lineCount: opts.lines.length,
+      feeTotal: opts.feeTotal,
+    })
+
+    const paymentLines: Required<QBDepositCreatePayloadType>['Line'] =
+      opts.lines.map((line) => ({
+        Amount: line.amount,
+        LinkedTxn: [
+          {
+            TxnId: line.qbPaymentId,
+            TxnType: 'Payment' as const,
+            TxnLineId: '0',
+          },
+        ],
+      }))
+
+    // feeTotal is always >= 0 (caller rejects negative): 0 = no fee line.
+    if (opts.feeTotal > 0) {
+      paymentLines.push({
+        Amount: -opts.feeTotal,
+        DetailType: 'DepositLineDetail' as const,
+        DepositLineDetail: {
+          AccountRef: { value: opts.expenseAccountRef },
+        },
+        Description: 'Stripe processing fees',
+      })
+    }
+
+    const depositPayload: QBDepositCreatePayloadType = {
+      DepositToAccountRef: { value: opts.bankAccountRef },
+      PrivateNote: opts.privateNote,
+      TxnDate: opts.txnDate,
+      Line: paymentLines,
+    }
+
+    const parsedPayload = QBDepositCreatePayloadSchema.parse(depositPayload)
+    const res = await intuitApi.createDeposit(parsedPayload)
+
+    CustomLogger.info({
+      obj: {
+        depositId: res.Deposit?.Id,
+        lineCount: opts.lines.length,
+        feeTotal: opts.feeTotal,
+      },
+      message: `PaymentService#createBankDepositForPayment | Batched bank deposit created (${opts.privateNote})`,
+    })
+    addSyncBreadcrumb('Batched bank deposit created in QBO', {
+      depositId: res.Deposit?.Id,
+    })
+
+    return res.Deposit.Id
   }
 
   async webhookPaymentSucceeded({
