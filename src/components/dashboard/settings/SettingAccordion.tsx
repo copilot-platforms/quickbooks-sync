@@ -44,6 +44,9 @@ export default function SettingAccordion({
     isLoading,
     changeSettings,
     showButton: showInvoiceButton,
+    bankAccountOptions,
+    bankAccountsError,
+    canSave,
   } = useInvoiceDetailSettings()
 
   const {
@@ -86,6 +89,8 @@ export default function SettingAccordion({
           settingState={settingState}
           changeSettings={changeSettings}
           isLoading={isLoading}
+          bankAccountOptions={bankAccountOptions}
+          bankAccountsError={bankAccountsError}
         />
       ),
     },
@@ -166,6 +171,7 @@ export default function SettingAccordion({
                       }
                       variant="primary"
                       prefixIcon="Check"
+                      disabled={!canSave}
                       onClick={submitInvoiceSettings}
                     />
                   </>
