@@ -24,6 +24,7 @@ export default function AccountSelect({
 
   useClickOutside(dropdownRef, () => setIsOpen(false), [buttonRef])
 
+  const loading = options === undefined
   const disabled = !options || options.length === 0
   const selected = options?.find((o) => o.id === value)
   // Defends against an account being deleted in QBO between load and save —
@@ -57,7 +58,11 @@ export default function AccountSelect({
               </span>
             ) : (
               <span className="text-gray-400">
-                {disabled ? 'No matching accounts in QuickBooks' : placeholder}
+                {loading
+                  ? 'Loading accounts…'
+                  : disabled
+                    ? 'No matching accounts in QuickBooks'
+                    : placeholder}
               </span>
             )}
           </div>
