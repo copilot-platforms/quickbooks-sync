@@ -86,7 +86,7 @@ export const useProductMappingSettings = () => {
     if (!productSetting || !intialSettingState) return
     const showButton = !equal(intialSettingState, productSetting)
     setSettingShowConfirm(showButton)
-  }, [productSetting])
+  }, [productSetting, intialSettingState])
 
   useEffect(() => {
     if (setting && setting?.setting) {
@@ -104,7 +104,7 @@ export const useProductMappingSettings = () => {
           false,
       }))
     }
-  }, [setting])
+  }, [setting, setAppParams])
   // End of checkbox settings
 
   const tableMappingSubmit = async () => {
@@ -287,17 +287,18 @@ function formatQBItemForListing(
     : undefined
 }
 
+const emptyMappedItem = {
+  name: null,
+  description: '',
+  productId: null,
+  qbItemId: null,
+  qbSyncToken: null,
+  isExcluded: true,
+}
+
 export const useProductTableSetting = (
   setMappingItems: (mapProducts: ProductMappingItemType[]) => void,
 ) => {
-  const emptyMappedItem = {
-    name: null,
-    description: '',
-    productId: null,
-    qbItemId: null,
-    qbSyncToken: null,
-    isExcluded: true,
-  }
   const { token, setAppParams, syncFlag } = useApp()
   const { data: products } = useSwrHelper(
     `/api/quickbooks/product/flatten?token=${token}`,
@@ -366,7 +367,7 @@ export const useProductTableSetting = (
       }
       setMappingItems(newMap)
     }
-  }, [products, mappedItems, quickbooksItems])
+  }, [products, mappedItems, quickbooksItems, setAppParams, setMappingItems])
 
   const handleCopilotProductCreate = () => {
     const payload = {
@@ -385,9 +386,16 @@ export const useProductTableSetting = (
     }
   }, [products])
 
+  // Memoized so its reference is stable across unrelated re-renders —
+  // downstream useMapItem depends on this list.
+  const formattedQuickbooksItems = useMemo(
+    () => formatQBItemForListing(quickbooksItems),
+    [quickbooksItems],
+  )
+
   return {
     products: formattedProducts,
-    quickbooksItems: formatQBItemForListing(quickbooksItems),
+    quickbooksItems: formattedQuickbooksItems,
     handleCopilotProductCreate,
     hasLongProductName,
   }
@@ -401,28 +409,18 @@ export const useMapItem = (
   const [currentlyMapped, setCurrentlyMapped] = useState<
     { name: string } | undefined
   >()
-  const checkIfMappedItemExists = () => {
-    const currentMapItem = mappingItems?.find((item) => {
-      return item.productId === productId && item.qbItemId
-    })
-    const currentQbItem = qbItems?.find((item) => {
-      return item.id === currentMapItem?.qbItemId
-    })
-
-    let itemToReturn: { name: string } | undefined
-    const itemName = currentQbItem?.name || currentMapItem?.name
-
-    if (itemName) {
-      itemToReturn = { name: itemName }
-    }
-
-    setCurrentlyMapped(itemToReturn)
-    return itemToReturn
-  }
 
   useEffect(() => {
-    if (mappingItems) checkIfMappedItemExists()
-  }, [mappingItems])
+    if (!mappingItems) return
+    const currentMapItem = mappingItems.find(
+      (item) => item.productId === productId && item.qbItemId,
+    )
+    const currentQbItem = qbItems?.find(
+      (item) => item.id === currentMapItem?.qbItemId,
+    )
+    const itemName = currentQbItem?.name || currentMapItem?.name
+    setCurrentlyMapped(itemName ? { name: itemName } : undefined)
+  }, [mappingItems, productId, qbItems])
 
   return {
     currentlyMapped,
@@ -482,7 +480,7 @@ export const useInvoiceDetailSettings = () => {
     if (!settingState || !intialSettingState) return
     const showButton = !equal(intialSettingState, settingState)
     setShowButton(showButton)
-  }, [settingState])
+  }, [settingState, intialSettingState])
 
   useEffect(() => {
     if (setting && setting?.setting) {
@@ -501,7 +499,7 @@ export const useInvoiceDetailSettings = () => {
           setting.setting.initialProductSettingMap,
       }))
     }
-  }, [setting])
+  }, [setting, setAppParams])
 
   const submitInvoiceSettings = async () => {
     setShowButton(false)
