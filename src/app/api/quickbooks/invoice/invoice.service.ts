@@ -481,6 +481,21 @@ export class InvoiceService extends BaseService {
     return { value: serviceItemRef }
   }
 
+  // Batched-deposit mode routes the payment through Undeposited Funds so the
+  // payout deposit can later link and sweep it into the bank. Returns
+  // undefined when batching is off, letting QBO use its default account.
+  private async resolveDepositToAccountRef(
+    intuitApi: IntuitAPI,
+  ): Promise<string | undefined> {
+    const settingService = new SettingService(this.user)
+    const setting = await settingService.getOneByPortalId([
+      'bankDepositFeeFlag',
+    ])
+    return setting?.bankDepositFeeFlag
+      ? await intuitApi.getUndepositedFundsAccountId()
+      : undefined
+  }
+
   /**
    * Pre-flights QBO for invoices whose DocNumber starts with the Assembly
    * invoice number and returns the lowest free slot (`<n>`, `<n>-1`, …).
@@ -838,11 +853,20 @@ export class InvoiceService extends BaseService {
      */
     if (invoiceResource.status === InvoiceStatus.PAID) {
       const paymentService = new PaymentService(this.user)
+      // Same batched-deposit routing as invoice.paid: a paid-on-create
+      // payment must land in Undeposited Funds so the payout deposit can
+      // sweep it, otherwise it deposits straight to the bank and the batched
+      // deposit can't link it.
+      const depositToAccountRef =
+        await this.resolveDepositToAccountRef(intuitApiService)
       const qbPaymentPayload = {
         TotalAmt: totalWithTax,
         CustomerRef: {
           value: customerRefValue,
         },
+        ...(depositToAccountRef && {
+          DepositToAccountRef: { value: depositToAccountRef },
+        }),
         Line: [
           {
             Amount: totalWithTax,
@@ -938,21 +962,8 @@ export class InvoiceService extends BaseService {
 
     const invoiceAmount = Number(z.string().parse(invoiceLog.amount)) / 100
 
-    // Batched-deposit mode routes the payment through Undeposited Funds so the
-    // payout deposit can later link and sweep it into the bank.
-    const settingService = new SettingService(this.user)
-    const setting = await settingService.getOneByPortalId([
-      'absorbedFeeFlag',
-      'bankDepositFeeFlag',
-    ])
-    const useBankDepositFlow =
-      setting?.absorbedFeeFlag && setting?.bankDepositFeeFlag
-
     const intuitApi = new IntuitAPI(qbTokenInfo)
-
-    const depositToAccountRef = useBankDepositFlow
-      ? await intuitApi.getUndepositedFundsAccountId()
-      : undefined
+    const depositToAccountRef = await this.resolveDepositToAccountRef(intuitApi)
 
     const qbPaymentPayload = {
       TotalAmt: invoiceAmount,
