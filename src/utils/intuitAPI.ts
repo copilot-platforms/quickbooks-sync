@@ -1052,18 +1052,32 @@ export default class IntuitAPI {
    * Queries by AccountSubType first (survives user renames), falls back to name.
    */
   async getUndepositedFundsAccountId(): Promise<string> {
+    CustomLogger.info({
+      message:
+        'IntuitAPI#getUndepositedFundsAccountId | Looking up Undeposited Funds account',
+    })
     const rawResult = await this.customQuery(
-      `SELECT Id FROM Account WHERE AccountSubType = 'UndepositedFunds' AND Active = true maxresults 1`,
+      `SELECT ${QB_ACCOUNT_COLUMNS.join(', ')} FROM Account WHERE AccountSubType = 'UndepositedFunds' AND Active = true maxresults 1`,
     )
     const undepositedAccount = QBAccountQueryResponseSchema.parse(
       rawResult ?? {},
     ).Account?.[0]
     if (undepositedAccount?.Id) {
+      CustomLogger.info({
+        obj: { account: undepositedAccount },
+        message:
+          'IntuitAPI#getUndepositedFundsAccountId | Found Undeposited Funds account',
+      })
       return undepositedAccount.Id
     }
 
     const byName = await this.getAnAccount('Undeposited Funds')
     if (byName?.Id) {
+      CustomLogger.info({
+        obj: { account: byName },
+        message:
+          'IntuitAPI#getUndepositedFundsAccountId | Found Undeposited Funds account by name',
+      })
       return byName.Id
     }
 
