@@ -861,10 +861,8 @@ export class InvoiceService extends BaseService {
      */
     if (invoiceResource.status === InvoiceStatus.PAID) {
       const paymentService = new PaymentService(this.user)
-      // Same batched-deposit routing as invoice.paid: a paid-on-create
-      // payment must land in Undeposited Funds so the payout deposit can
-      // sweep it, otherwise it deposits straight to the bank and the batched
-      // deposit can't link it.
+      // Same routing as invoice.paid: batched → Undeposited Funds so the
+      // payout deposit can sweep it later.
       const depositToAccountRef = await this.resolveDepositToAccountRef(
         intuitApiService,
         isBatchedDeposit,

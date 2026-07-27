@@ -470,8 +470,7 @@ export class WebhookService extends BaseService {
     }
   }
 
-  // Writes the FAILED absorbed-fee sync log shared by the no-mapping and
-  // QB-error paths of handlePaymentSucceeded.
+  // Shared FAILED absorbed-fee log for the no-mapping and QB-error paths.
   private async logAbsorbedFeeFailure(opts: {
     copilotId: string
     feeAmount: string
@@ -522,8 +521,7 @@ export class WebhookService extends BaseService {
     const { id: paymentId, invoiceId } = resource.data
     const platformFee = feeAmount.paidByPlatform
 
-    // Absorbed-fee flag gates this handler; read it before any fetch so an
-    // off-flag portal never calls out to Copilot.
+    // Gate on the absorbed-fee flag before any fetch (off-flag → no Copilot call).
     const settingService = new SettingService(this.user)
     const setting = await settingService.getOneByPortalId(['absorbedFeeFlag'])
     if (!setting?.absorbedFeeFlag) {
@@ -534,11 +532,8 @@ export class WebhookService extends BaseService {
     }
 
     const syncLogService = new SyncLogService(this.user)
-    // Cheap duplicate short-circuit: any prior claim row (PENDING/SUCCESS/
-    // FAILED) means this event was already taken, so skip the sleep + Copilot
-    // fetch. Deliberately status-blind, mirroring claimWebhookEvent below — a
-    // redelivery never reprocesses; recovering a FAILED attempt is the resync
-    // cron's job, not the webhook's.
+    // Cheap duplicate short-circuit before the sleep + Copilot fetch. Status-
+    // blind like claimWebhookEvent; FAILED recovery is the resync cron's job.
     const existingPaymentLog =
       await syncLogService.getOneByCopilotIdAndEventType({
         copilotId: paymentId,
@@ -562,8 +557,7 @@ export class WebhookService extends BaseService {
         `Invoice not found in Assembly for invoice id: ${invoiceId}`,
       )
 
-    // Fetch the invoice-sync row before claiming so the frozen batched defer
-    // (below) can return with zero sync-log rows written.
+    // Fetch before claiming so the batched defer below writes zero rows.
     const invService = new InvoiceService(this.user)
     const invoiceSync = await invService.getInvoiceByNumber(invoice.number, [
       'id',
@@ -573,8 +567,7 @@ export class WebhookService extends BaseService {
     ])
 
     if (invoiceSync?.isBatchedDeposit) {
-      // Frozen batched intent: the payout deposit books the fee. Defer before
-      // claiming so no stale PENDING row is left behind.
+      // Frozen batched: the payout books the fee. Defer before claiming.
       console.info(
         'WebhookService#handlePaymentSucceeded | Batched-deposit mode (frozen); deferring to payout event',
       )
@@ -593,8 +586,7 @@ export class WebhookService extends BaseService {
       return
     }
 
-    // Handled post-claim so the update goes against the row just claimed above,
-    // instead of racing another redelivery's insert.
+    // Post-claim so the update targets the row just claimed, not a racing insert.
     if (!invoiceSync) {
       await this.logAbsorbedFeeFailure({
         copilotId: paymentId,
@@ -653,10 +645,8 @@ export class WebhookService extends BaseService {
     const syncLogService = new SyncLogService(this.user)
     const copilotInvoiceIds = lineItems.map((line) => line.copilotInvoiceId)
 
-    // Resolve the frozen per-invoice intent before claiming. A payout whose
-    // invoices are all frozen non-batched books nothing, so skip it with zero
-    // sync-log rows — claiming first would leave a PENDING row that later flips
-    // to a spurious FAILED.
+    // Resolve intent before claiming: an all-non-batched payout books nothing,
+    // so skip with zero rows (claiming would leave a PENDING that flips FAILED).
     const paymentIdByInvoice =
       await syncLogService.getSuccessfulPaidPaymentIds(copilotInvoiceIds)
     const resolvedIntents = copilotInvoiceIds.map((id) =>
@@ -718,11 +708,8 @@ export class WebhookService extends BaseService {
         )
       }
 
-      // An invoice is unresolved when it has no SUCCESS INVOICE/PAID sync log
-      // yet (payment unprocessed or failed). webhookInvoicePaid throws without
-      // an invoice-sync row, so a SUCCESS PAID log always has its join match —
-      // a miss here is a missing payment, not a dropped row. Fail the whole
-      // payout (v1: manual recovery, no partial deposit).
+      // A SUCCESS PAID log always has an invoice-sync row (webhookInvoicePaid
+      // throws otherwise), so a miss here is a missing payment. Fail the payout.
       const unresolved = copilotInvoiceIds.filter(
         (id) => !paymentIdByInvoice.has(id),
       )
@@ -733,9 +720,8 @@ export class WebhookService extends BaseService {
         )
       }
 
-      // All-non-batched already skipped before the claim, so any non-batched
-      // invoice here means a mixed payout — unsupported in v1. Every id
-      // resolved above (unresolved check), so get() is defined.
+      // All-non-batched skipped pre-claim; a non-batched invoice here = mixed.
+      // get() is non-null — every id passed the unresolved check above.
       const allBatched = copilotInvoiceIds.every(
         (id) => paymentIdByInvoice.get(id)!.isBatchedDeposit,
       )
