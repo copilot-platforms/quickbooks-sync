@@ -534,9 +534,11 @@ export class WebhookService extends BaseService {
     }
 
     const syncLogService = new SyncLogService(this.user)
-    // Cheap duplicate short-circuit: a redelivered event already has a
-    // SUCCEEDED claim row, so skip the sleep + Copilot fetch. The atomic
-    // claim below still guards the first-delivery race.
+    // Cheap duplicate short-circuit: any prior claim row (PENDING/SUCCESS/
+    // FAILED) means this event was already taken, so skip the sleep + Copilot
+    // fetch. Deliberately status-blind, mirroring claimWebhookEvent below — a
+    // redelivery never reprocesses; recovering a FAILED attempt is the resync
+    // cron's job, not the webhook's.
     const existingPaymentLog =
       await syncLogService.getOneByCopilotIdAndEventType({
         copilotId: paymentId,
@@ -545,7 +547,7 @@ export class WebhookService extends BaseService {
       })
     if (existingPaymentLog) {
       console.info(
-        'WebhookService#handlePaymentSucceeded | Already processed (payment/succeeded); skipping',
+        `WebhookService#handlePaymentSucceeded | Already claimed (payment/${EventType.SUCCEEDED}, copilotId=${paymentId}); skipping`,
       )
       return
     }
