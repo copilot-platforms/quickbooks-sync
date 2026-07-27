@@ -519,6 +519,9 @@ export class WebhookService extends BaseService {
     // Only a platform-absorbed fee books a QBO expense; nothing to do otherwise.
     if (!feeAmount?.paidByPlatform || feeAmount.paidByPlatform <= 0) return
 
+    const { id: paymentId, invoiceId } = resource.data
+    const platformFee = feeAmount.paidByPlatform
+
     // Absorbed-fee flag gates this handler; read it before any fetch so an
     // off-flag portal never calls out to Copilot.
     const settingService = new SettingService(this.user)
@@ -536,7 +539,7 @@ export class WebhookService extends BaseService {
     // claim below still guards the first-delivery race.
     const existingPaymentLog =
       await syncLogService.getOneByCopilotIdAndEventType({
-        copilotId: resource.data.id,
+        copilotId: paymentId,
         eventType: EventType.SUCCEEDED,
         entityType: EntityType.PAYMENT,
       })
@@ -550,11 +553,11 @@ export class WebhookService extends BaseService {
     if (opts.delayMs) await sleep(opts.delayMs)
 
     const copilotApp = new CopilotAPI(this.user.token)
-    const invoice = await copilotApp.getInvoice(resource.data.invoiceId)
+    const invoice = await copilotApp.getInvoice(invoiceId)
     if (!invoice)
       throw new APIError(
         httpStatus.NOT_FOUND,
-        `Invoice not found in Assembly for invoice id: ${resource.data.invoiceId}`,
+        `Invoice not found in Assembly for invoice id: ${invoiceId}`,
       )
 
     // Fetch the invoice-sync row before claiming so the frozen batched defer
@@ -577,13 +580,13 @@ export class WebhookService extends BaseService {
     }
 
     const { claimed } = await syncLogService.claimWebhookEvent({
-      copilotId: resource.data.id,
+      copilotId: paymentId,
       eventType: EventType.SUCCEEDED,
       entityType: EntityType.PAYMENT,
     })
     if (!claimed) {
       console.info(
-        `WebhookService#handlePaymentSucceeded | Already claimed (payment/${EventType.SUCCEEDED}, copilotId=${resource.data.id}), skipping`,
+        `WebhookService#handlePaymentSucceeded | Already claimed (payment/${EventType.SUCCEEDED}, copilotId=${paymentId}), skipping`,
       )
       return
     }
@@ -592,9 +595,9 @@ export class WebhookService extends BaseService {
     // instead of racing another redelivery's insert.
     if (!invoiceSync) {
       await this.logAbsorbedFeeFailure({
-        copilotId: resource.data.id,
-        feeAmount: feeAmount.paidByPlatform.toFixed(2),
-        errorMessage: `No invoice found in invoice sync table for invoice id: ${resource.data.invoiceId}`,
+        copilotId: paymentId,
+        feeAmount: platformFee.toFixed(2),
+        errorMessage: `No invoice found in invoice sync table for invoice id: ${invoiceId}`,
         shouldRetry: true,
       })
       return
@@ -613,16 +616,16 @@ export class WebhookService extends BaseService {
       CustomLogger.error({ message: 'Webhook handler failed', obj: error })
       const errorWithCode = getMessageAndCodeFromError(error)
       await this.logAbsorbedFeeFailure({
-        copilotId: resource.data.id,
+        copilotId: paymentId,
         invoiceNumber: invoice.number,
-        feeAmount: feeAmount.paidByPlatform.toFixed(2),
+        feeAmount: platformFee.toFixed(2),
         errorMessage: errorWithCode.message,
         errorCode: errorWithCode.code?.toString(),
         shouldRetry: getShouldRetryForCategory(errorWithCode),
         category: getCategory(errorWithCode),
       })
       console.error(
-        `WebhookService#handlePaymentSucceeded :: Error | Portal Id: ${this.user.workspaceId} | Payment: ${resource.data.id}`,
+        `WebhookService#handlePaymentSucceeded :: Error | Portal Id: ${this.user.workspaceId} | Payment: ${paymentId}`,
       )
       return
     }
@@ -644,6 +647,7 @@ export class WebhookService extends BaseService {
       data: { payout, lineItems },
     } = parsedPayout.data
 
+    const payoutId = payout.id
     const syncLogService = new SyncLogService(this.user)
     const copilotInvoiceIds = lineItems.map((line) => line.copilotInvoiceId)
 
@@ -658,19 +662,19 @@ export class WebhookService extends BaseService {
     )
     if (resolvedIntents.every((intent) => intent && !intent.isBatchedDeposit)) {
       console.info(
-        `WebhookService#handlePayoutReconciliationCompleted | Payout ${payout.id}: all invoices non-batched, nothing to deposit`,
+        `WebhookService#handlePayoutReconciliationCompleted | Payout ${payoutId}: all invoices non-batched, nothing to deposit`,
       )
       return
     }
 
     const { claimed } = await syncLogService.claimWebhookEvent({
-      copilotId: payout.id,
+      copilotId: payoutId,
       entityType: EntityType.PAYOUT,
       eventType: EventType.SETTLED,
     })
     if (!claimed) {
       console.info(
-        `WebhookService#handlePayoutReconciliationCompleted | Already claimed (payout/${EventType.SETTLED}, copilotId=${payout.id}), skipping`,
+        `WebhookService#handlePayoutReconciliationCompleted | Already claimed (payout/${EventType.SETTLED}, copilotId=${payoutId}), skipping`,
       )
       return
     }
@@ -692,7 +696,7 @@ export class WebhookService extends BaseService {
       if (lineItems.some((line) => line.grossAmount < 0)) {
         throw new APIError(
           httpStatus.BAD_REQUEST,
-          `Payout ${payout.id} contains refund lines; batched deposit unsupported in v1`,
+          `Payout ${payoutId} contains refund lines; batched deposit unsupported in v1`,
         )
       }
 
@@ -701,19 +705,21 @@ export class WebhookService extends BaseService {
       if (feeCents < 0) {
         throw new APIError(
           httpStatus.BAD_REQUEST,
-          `Payout ${payout.id} has a negative aggregate fee (${feeCents}); unsupported in v1`,
+          `Payout ${payoutId} has a negative aggregate fee (${feeCents}); unsupported in v1`,
         )
       }
 
       if (new Set(copilotInvoiceIds).size !== copilotInvoiceIds.length) {
         throw new APIError(
           httpStatus.BAD_REQUEST,
-          `Payout ${payout.id} contains duplicate invoice line items`,
+          `Payout ${payoutId} contains duplicate invoice line items`,
         )
       }
 
-      // A voided/deleted invoice soft-deletes its qb_invoice_sync row, which
-      // drops it from the join above and surfaces here — failing the whole
+      // An invoice is unresolved when it has no SUCCESS INVOICE/PAID sync log
+      // yet (payment unprocessed or failed). webhookInvoicePaid throws without
+      // an invoice-sync row, so a SUCCESS PAID log always has its join match —
+      // a miss here is a missing payment, not a dropped row. Fail the whole
       // payout (v1: manual recovery, no partial deposit).
       const unresolved = copilotInvoiceIds.filter(
         (id) => !paymentIdByInvoice.has(id),
@@ -721,7 +727,7 @@ export class WebhookService extends BaseService {
       if (unresolved.length > 0) {
         throw new APIError(
           httpStatus.NOT_FOUND,
-          `Payout ${payout.id}: no SUCCESS INVOICE/PAID sync log for invoices [${unresolved.join(', ')}]`,
+          `Payout ${payoutId}: no SUCCESS INVOICE/PAID sync log for invoices [${unresolved.join(', ')}]`,
         )
       }
 
@@ -734,14 +740,14 @@ export class WebhookService extends BaseService {
       if (!allBatched) {
         throw new APIError(
           httpStatus.BAD_REQUEST,
-          `Payout ${payout.id} mixes batched and non-batched invoices; unsupported`,
+          `Payout ${payoutId} mixes batched and non-batched invoices; unsupported`,
         )
       }
 
       if (grossCents - feeCents !== payout.netAmount) {
         throw new APIError(
           httpStatus.BAD_REQUEST,
-          `Payout ${payout.id}: deposit total ${grossCents - feeCents} != payout net ${payout.netAmount}`,
+          `Payout ${payoutId}: deposit total ${grossCents - feeCents} != payout net ${payout.netAmount}`,
         )
       }
 
@@ -786,7 +792,7 @@ export class WebhookService extends BaseService {
           txnDate: new Date(payout.arrivalDate * 1000)
             .toISOString()
             .split('T')[0],
-          privateNote: `Stripe payout ${payout.id}`,
+          privateNote: `Stripe payout ${payoutId}`,
         },
       )
 
@@ -795,7 +801,7 @@ export class WebhookService extends BaseService {
         entityType: EntityType.PAYOUT,
         eventType: EventType.SETTLED,
         status: LogStatus.SUCCESS,
-        copilotId: payout.id,
+        copilotId: payoutId,
         quickbooksId: depositId,
         amount: payout.netAmount.toFixed(2),
         feeAmount: feeCents.toFixed(2),
@@ -814,7 +820,7 @@ export class WebhookService extends BaseService {
         entityType: EntityType.PAYOUT,
         eventType: EventType.SETTLED,
         status: LogStatus.FAILED,
-        copilotId: payout.id,
+        copilotId: payoutId,
         amount: payout.netAmount.toFixed(2),
         feeAmount: feeCents.toFixed(2),
         remark: 'Stripe payout batched deposit',
@@ -827,7 +833,7 @@ export class WebhookService extends BaseService {
         category: getCategory(errorWithCode),
       })
       console.error(
-        `WebhookService#handlePayoutReconciliationCompleted :: Error | Portal Id: ${this.user.workspaceId} | Payout: ${payout.id}`,
+        `WebhookService#handlePayoutReconciliationCompleted :: Error | Portal Id: ${this.user.workspaceId} | Payout: ${payoutId}`,
       )
       return
     }
