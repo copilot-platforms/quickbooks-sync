@@ -3,7 +3,6 @@ import { eq } from 'drizzle-orm'
 
 import { db } from '@/db'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
-import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 
 import { paymentSucceededPayload } from '@test/fixtures/paymentSucceeded.webhook'
 import {
@@ -27,23 +26,17 @@ describe('POST /api/quickbooks/webhook — payment.succeeded (Copilot returns no
     await seedQBInvoiceSync()
 
     const res = await postWebhook(paymentSucceededPayload)
-    // The not-found throw escapes the inner try/catch (which only wraps the QB
-    // calls) and propagates to withErrorHandler, which surfaces it as 404.
+    // The not-found throw happens before the claim (Copilot fetch now runs
+    // pre-claim so the frozen batched-defer check can read the invoice-sync
+    // row first) and propagates to withErrorHandler, which surfaces it as 404.
     expect(res.status).toBe(404)
 
-    // No FAILED log is written — the throw happens before the outer catch block
-    // that writes sync logs for QB-layer errors. The claimed PENDING row is the
-    // only row in the table.
+    // No row at all is written — the throw happens before claimWebhookEvent.
     const logs = await db
       .select()
       .from(QBSyncLog)
       .where(eq(QBSyncLog.copilotId, TEST_COPILOT_PAYMENT_ID))
-    expect(logs).toHaveLength(1)
-    expect(logs[0]).toMatchObject({
-      entityType: EntityType.PAYMENT,
-      eventType: EventType.SUCCEEDED,
-      status: LogStatus.PENDING,
-    })
+    expect(logs).toHaveLength(0)
 
     expect(apis.intuit.createPurchase).not.toHaveBeenCalled()
     expect(apis.intuit.deletePurchase).not.toHaveBeenCalled()

@@ -21,6 +21,7 @@ export const TEST_INCOME_ACCOUNT_REF = '100'
 export const TEST_ASSET_ACCOUNT_REF = '101'
 export const TEST_EXPENSE_ACCOUNT_REF = '102'
 export const TEST_BANK_ACCOUNT_REF = '103'
+export const TEST_UNDEPOSITED_FUNDS_REF = '150'
 export const TEST_INTERNAL_USER_ID = 'test-internal-user-id'
 export const TEST_WEBHOOK_TOKEN = 'test-token-xyz'
 
@@ -185,4 +186,36 @@ export async function seedInvoiceCreatedLog(overrides: SyncLogOverrides = {}) {
     .values({ ...baseInvoiceCreatedLog, ...overrides })
     .returning()
   return row
+}
+
+/**
+ * Seeds the two rows a payout needs per invoice: the qb_invoice_sync row
+ * (carrying the frozen `isBatchedDeposit`) and the INVOICE/PAID SUCCESS sync
+ * log (quickbooksId = QBO Payment ID). getSuccessfulPaidPaymentIds joins them
+ * by (portalId, invoiceNumber).
+ */
+export async function seedPaidInvoiceForPayout(opts: {
+  copilotInvoiceId: string
+  invoiceNumber: string
+  paymentId: string
+  isBatchedDeposit: boolean
+}) {
+  await db.insert(QBInvoiceSync).values({
+    portalId: TEST_PORTAL_ID,
+    invoiceNumber: opts.invoiceNumber,
+    qbInvoiceId: TEST_QB_INVOICE_ID,
+    qbSyncToken: '0',
+    recipientId: TEST_CLIENT_ID,
+    status: InvoiceStatus.PAID,
+    isBatchedDeposit: opts.isBatchedDeposit,
+  })
+  await db.insert(QBSyncLog).values({
+    portalId: TEST_PORTAL_ID,
+    entityType: EntityType.INVOICE,
+    eventType: EventType.PAID,
+    status: LogStatus.SUCCESS,
+    copilotId: opts.copilotInvoiceId,
+    invoiceNumber: opts.invoiceNumber,
+    quickbooksId: opts.paymentId,
+  })
 }

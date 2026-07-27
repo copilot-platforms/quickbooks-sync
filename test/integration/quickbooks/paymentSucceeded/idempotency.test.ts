@@ -47,6 +47,8 @@ describe('POST /api/quickbooks/webhook — payment.succeeded (same webhook deliv
     expect(logs).toHaveLength(1)
     expect(logs[0].status).toBe(LogStatus.SUCCESS)
 
+    // A replay finds the existing SUCCEEDED claim row and short-circuits
+    // before the sleep + Copilot fetch, so no external call is made.
     expect(apis.copilot.getInvoice).not.toHaveBeenCalled()
     expect(apis.intuit.createPurchase).not.toHaveBeenCalled()
     expect(apis.intuit.deletePurchase).not.toHaveBeenCalled()
