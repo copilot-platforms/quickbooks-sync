@@ -190,6 +190,13 @@
       "when": 1784628005402,
       "tag": "20260721100005_extend_oneshot_index_payout",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1784884542846,
+      "tag": "20260724091542_add_is_batched_deposit",
+      "breakpoints": true
     }
   ]
 }

@@ -17,6 +17,7 @@ import {
   QBSyncLogUpdateSchemaType,
   QBSyncLogWithEntityType,
 } from '@/db/schema/qbSyncLogs'
+import { QBInvoiceSync } from '@/db/schema/qbInvoiceSync'
 import { WhereClause } from '@/type/common'
 import { orderMap } from '@/utils/drizzle'
 import CustomLogger from '@/utils/logger'
@@ -381,20 +382,30 @@ export class SyncLogService extends BaseService {
   }
 
   /**
-   * Maps Copilot invoice IDs → QBO Payment IDs from this portal's
-   * INVOICE/PAID/SUCCESS rows (quickbooksId holds the Payment ID there).
+   * Maps Copilot invoice IDs → QBO Payment ID + frozen batched-deposit intent
+   * from this portal's INVOICE/PAID/SUCCESS rows (quickbooksId holds the
+   * Payment ID there), joined against qb_invoice_sync for the intent flag.
    */
   async getSuccessfulPaidPaymentIds(
     copilotInvoiceIds: string[],
-  ): Promise<Map<string, string>> {
+  ): Promise<Map<string, { paymentId: string; isBatchedDeposit: boolean }>> {
     if (copilotInvoiceIds.length === 0) return new Map()
 
     const rows = await this.db
       .select({
         copilotId: QBSyncLog.copilotId,
         quickbooksId: QBSyncLog.quickbooksId,
+        isBatchedDeposit: QBInvoiceSync.isBatchedDeposit,
       })
       .from(QBSyncLog)
+      .innerJoin(
+        QBInvoiceSync,
+        and(
+          eq(QBInvoiceSync.portalId, QBSyncLog.portalId),
+          eq(QBInvoiceSync.invoiceNumber, QBSyncLog.invoiceNumber),
+          isNull(QBInvoiceSync.deletedAt),
+        ),
+      )
       .where(
         and(
           eq(QBSyncLog.portalId, this.user.workspaceId),
@@ -406,10 +417,16 @@ export class SyncLogService extends BaseService {
         ),
       )
 
-    const paymentIdByInvoice = new Map<string, string>()
+    const paymentIdByInvoice = new Map<
+      string,
+      { paymentId: string; isBatchedDeposit: boolean }
+    >()
     for (const row of rows) {
       if (row.quickbooksId)
-        paymentIdByInvoice.set(row.copilotId, row.quickbooksId)
+        paymentIdByInvoice.set(row.copilotId, {
+          paymentId: row.quickbooksId,
+          isBatchedDeposit: row.isBatchedDeposit,
+        })
     }
     return paymentIdByInvoice
   }

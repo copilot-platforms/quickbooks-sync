@@ -44,5 +44,4 @@ next-env.d.ts
 .trigger
 
 # local decision notes (not published)
-/docs
 /supabase/snippets
