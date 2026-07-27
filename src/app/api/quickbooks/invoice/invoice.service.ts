@@ -481,17 +481,23 @@ export class InvoiceService extends BaseService {
     return { value: serviceItemRef }
   }
 
-  // Batched-deposit mode routes the payment through Undeposited Funds so the
-  // payout deposit can later link and sweep it into the bank. Returns
-  // undefined when batching is off, letting QBO use its default account.
-  private async resolveDepositToAccountRef(
-    intuitApi: IntuitAPI,
-  ): Promise<string | undefined> {
+  // Reads the live batched-deposit setting. Called only at the freeze point
+  // (row creation); everything else reads the frozen row value.
+  private async readBankDepositFeeFlag(): Promise<boolean> {
     const settingService = new SettingService(this.user)
     const setting = await settingService.getOneByPortalId([
       'bankDepositFeeFlag',
     ])
-    return setting?.bankDepositFeeFlag
+    return setting?.bankDepositFeeFlag ?? false
+  }
+
+  // Undeposited Funds when the invoice's frozen intent is batched, else
+  // undefined (QBO default). No live setting read.
+  private async resolveDepositToAccountRef(
+    intuitApi: IntuitAPI,
+    isBatchedDeposit: boolean,
+  ): Promise<string | undefined> {
+    return isBatchedDeposit
       ? await intuitApi.getUndepositedFundsAccountId()
       : undefined
   }
@@ -805,6 +811,7 @@ export class InvoiceService extends BaseService {
       invoiceRes = await intuitApiService.createInvoice(buildPayload(docNumber))
     }
 
+    const isBatchedDeposit = await this.readBankDepositFeeFlag()
     const invoicePayload = {
       portalId: this.user.workspaceId,
       invoiceNumber: invoiceResource.number,
@@ -814,6 +821,7 @@ export class InvoiceService extends BaseService {
       recipientId: recipientInfo.recipientId,
       customerId: existingCustomerMapId, // foreign key to customer mapping
       status: invoiceResource.status,
+      isBatchedDeposit,
     }
     const inserted = await this.createQBInvoice(invoicePayload, ['id'])
 
@@ -857,8 +865,10 @@ export class InvoiceService extends BaseService {
       // payment must land in Undeposited Funds so the payout deposit can
       // sweep it, otherwise it deposits straight to the bank and the batched
       // deposit can't link it.
-      const depositToAccountRef =
-        await this.resolveDepositToAccountRef(intuitApiService)
+      const depositToAccountRef = await this.resolveDepositToAccountRef(
+        intuitApiService,
+        isBatchedDeposit,
+      )
       const qbPaymentPayload = {
         TotalAmt: totalWithTax,
         CustomerRef: {
@@ -908,6 +918,7 @@ export class InvoiceService extends BaseService {
       'qbInvoiceId',
       'status',
       'customerId',
+      'isBatchedDeposit',
     ])
 
     if (!invoiceSync) {
@@ -963,7 +974,10 @@ export class InvoiceService extends BaseService {
     const invoiceAmount = Number(z.string().parse(invoiceLog.amount)) / 100
 
     const intuitApi = new IntuitAPI(qbTokenInfo)
-    const depositToAccountRef = await this.resolveDepositToAccountRef(intuitApi)
+    const depositToAccountRef = await this.resolveDepositToAccountRef(
+      intuitApi,
+      invoiceSync.isBatchedDeposit,
+    )
 
     const qbPaymentPayload = {
       TotalAmt: invoiceAmount,
@@ -1437,6 +1451,7 @@ export class InvoiceService extends BaseService {
         recipientId: recipientInfo.recipientId,
         customerId: customerMapId,
         status,
+        isBatchedDeposit: await this.readBankDepositFeeFlag(),
       },
       ['id'],
     )

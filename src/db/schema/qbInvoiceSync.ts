@@ -28,6 +28,7 @@ export const QBInvoiceSync = table(
     qbSyncToken: t.varchar('qb_sync_token', { length: 100 }),
     recipientId: t.uuid('recipient_id'),
     status: invoiceStatusEnum('status').default(InvoiceStatus.OPEN).notNull(),
+    isBatchedDeposit: t.boolean('is_batched_deposit').notNull().default(false),
     ...timestamps,
   },
   (table) => [
