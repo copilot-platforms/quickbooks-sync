@@ -26,10 +26,11 @@ describe('payment.succeeded with bankDepositFeeFlag on — no per-payment deposi
     expect(apis.intuit.createDeposit).not.toHaveBeenCalled()
     expect(apis.intuit.createPurchase).not.toHaveBeenCalled()
 
+    // Handler returns before claiming, so no claim row exists at all.
     const logs = await db
       .select()
       .from(QBSyncLog)
       .where(eq(QBSyncLog.copilotId, TEST_COPILOT_PAYMENT_ID))
-    expect(logs.filter((l) => l.status === 'success')).toHaveLength(0)
+    expect(logs).toHaveLength(0)
   })
 })

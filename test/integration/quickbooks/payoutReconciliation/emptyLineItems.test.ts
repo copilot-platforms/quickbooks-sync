@@ -34,6 +34,8 @@ describe('payout — no line items on the payload', () => {
     expect(res.status).toBe(200)
 
     expect(apis.intuit.createDeposit).not.toHaveBeenCalled()
+    // Parse fails before any QBO round-trip, so account verification never runs.
+    expect(apis.intuit.getAnAccount).not.toHaveBeenCalled()
 
     // The schema's `.min(1)` on lineItems fails the safeParse before the
     // handler ever calls claimWebhookEvent, so no row is written at all —
