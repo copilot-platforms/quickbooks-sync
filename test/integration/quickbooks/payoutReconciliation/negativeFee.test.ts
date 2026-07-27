@@ -77,6 +77,8 @@ describe('payout — the total fee across line items is negative', () => {
     expect(res.status).toBe(200)
 
     expect(apis.intuit.createDeposit).not.toHaveBeenCalled()
+    // Guard trips before any QBO round-trip, so account verification never runs.
+    expect(apis.intuit.getAnAccount).not.toHaveBeenCalled()
 
     const logs = await db
       .select()
@@ -88,6 +90,8 @@ describe('payout — the total fee across line items is negative', () => {
       entityType: EntityType.PAYOUT,
       eventType: EventType.SETTLED,
       status: LogStatus.FAILED,
+      // Payout FAILED rows are terminal by design — never retryable.
+      shouldRetry: false,
     })
     // Pins the abort to the negative-fee guard specifically — not the refund,
     // unresolved-line, sum-mismatch, or bankAccountRef guards.
