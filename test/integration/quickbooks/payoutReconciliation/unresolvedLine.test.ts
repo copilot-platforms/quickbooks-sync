@@ -8,6 +8,7 @@ import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 import { payoutPayload } from '@test/fixtures/payout.webhook'
 import {
   seedHealthyPortal,
+  seedPaidInvoiceForPayout,
   TEST_PORTAL_ID,
   TEST_COPILOT_INVOICE_ID,
   TEST_BANK_ACCOUNT_REF,
@@ -29,18 +30,14 @@ describe('payout — one invoice has no PAID sync log', () => {
       },
       setting: { absorbedFeeFlag: true, bankDepositFeeFlag: true },
     })
-    // Only the first invoice has a PAID sync log; inv-cop-0002 is missing one,
-    // so the handler can't resolve it to a QBO payment id.
-    await db.insert(QBSyncLog).values([
-      {
-        portalId: TEST_PORTAL_ID,
-        copilotId: TEST_COPILOT_INVOICE_ID,
-        entityType: EntityType.INVOICE,
-        eventType: EventType.PAID,
-        status: LogStatus.SUCCESS,
-        quickbooksId: 'qbpay_A',
-      },
-    ])
+    // Only the first invoice is fully synced; inv-cop-0002 has no PAID sync
+    // log / invoice-sync row, so the handler can't resolve it to a payment id.
+    await seedPaidInvoiceForPayout({
+      copilotInvoiceId: TEST_COPILOT_INVOICE_ID,
+      invoiceNumber: 'INV-A',
+      paymentId: 'qbpay_A',
+      isBatchedDeposit: true,
+    })
 
     const res = await postWebhook(payoutPayload)
     expect(res.status).toBe(200)

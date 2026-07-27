@@ -5,42 +5,37 @@ import { db } from '@/db'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 
-import {
-  payoutReconciliationPayload,
-  TEST_PAYOUT_ID,
-  TEST_COPILOT_INVOICE_ID_A,
-  TEST_COPILOT_INVOICE_ID_B,
-} from '@test/fixtures/payoutReconciliation.webhook'
+import { payoutPayload } from '@test/fixtures/payout.webhook'
 import {
   seedHealthyPortal,
   seedPaidInvoiceForPayout,
+  TEST_COPILOT_INVOICE_ID,
   TEST_BANK_ACCOUNT_REF,
 } from '@test/helpers/seed'
-import { setupPayoutReconciliationTest } from '@test/helpers/payoutReconciliationTestSetup'
+import { setupPaymentSucceededTest } from '@test/helpers/paymentSucceededTestSetup'
 import { postWebhook } from '@test/helpers/webhook'
 
-describe('POST /api/quickbooks/webhook — payout.reconciliation_completed (mixed batched + non-batched)', () => {
-  const apis = setupPayoutReconciliationTest()
+describe('payout — invoices froze a mix of batched and non-batched', () => {
+  const apis = setupPaymentSucceededTest()
 
   it('rejects the payout without booking a deposit and logs it FAILED (no retry)', async () => {
     await seedHealthyPortal({
       portal: { bankAccountRef: TEST_BANK_ACCOUNT_REF },
     })
-    // One invoice froze batched, the other non-batched — unsupported in v1.
     await seedPaidInvoiceForPayout({
-      copilotInvoiceId: TEST_COPILOT_INVOICE_ID_A,
+      copilotInvoiceId: TEST_COPILOT_INVOICE_ID,
       invoiceNumber: 'INV-A',
-      paymentId: 'qb-pay-A',
+      paymentId: 'qbpay_A',
       isBatchedDeposit: true,
     })
     await seedPaidInvoiceForPayout({
-      copilotInvoiceId: TEST_COPILOT_INVOICE_ID_B,
+      copilotInvoiceId: 'inv-cop-0002',
       invoiceNumber: 'INV-B',
-      paymentId: 'qb-pay-B',
+      paymentId: 'qbpay_B',
       isBatchedDeposit: false,
     })
 
-    const res = await postWebhook(payoutReconciliationPayload)
+    const res = await postWebhook(payoutPayload)
     expect(res.status).toBe(200)
 
     expect(apis.intuit.createDeposit).not.toHaveBeenCalled()
@@ -52,7 +47,7 @@ describe('POST /api/quickbooks/webhook — payout.reconciliation_completed (mixe
         and(
           eq(QBSyncLog.entityType, EntityType.PAYOUT),
           eq(QBSyncLog.eventType, EventType.SETTLED),
-          eq(QBSyncLog.copilotId, TEST_PAYOUT_ID),
+          eq(QBSyncLog.copilotId, 'po_test_1'),
         ),
       )
     expect(payoutLog.status).toBe(LogStatus.FAILED)
