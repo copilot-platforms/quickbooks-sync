@@ -46,6 +46,8 @@ describe('payout — one invoice has no PAID sync log', () => {
     expect(res.status).toBe(200)
 
     expect(apis.intuit.createDeposit).not.toHaveBeenCalled()
+    // Guard trips before any QBO round-trip, so account verification never runs.
+    expect(apis.intuit.getAnAccount).not.toHaveBeenCalled()
 
     const logs = await db
       .select()
@@ -57,6 +59,8 @@ describe('payout — one invoice has no PAID sync log', () => {
       entityType: EntityType.PAYOUT,
       eventType: EventType.SETTLED,
       status: LogStatus.FAILED,
+      // Payout FAILED rows are terminal by design — never retryable.
+      shouldRetry: false,
     })
     // Pins the abort to the unresolved-line guard specifically — not the
     // refund guard, the sum-mismatch guard, or the bankAccountRef guard.

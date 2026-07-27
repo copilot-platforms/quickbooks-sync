@@ -83,7 +83,8 @@ describe('POST /api/quickbooks/webhook — payout.reconciliation_completed (batc
       entityType: EntityType.PAYOUT,
       eventType: EventType.SETTLED,
       status: LogStatus.SUCCESS,
-      quickbooksId: expect.any(String),
+      // Deterministic: createBankDepositForPayment returns res.Deposit.Id.
+      quickbooksId: 'qb-deposit-1',
     })
   })
 })

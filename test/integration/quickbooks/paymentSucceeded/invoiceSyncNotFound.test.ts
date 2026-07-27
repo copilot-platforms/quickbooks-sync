@@ -36,5 +36,7 @@ describe('POST /api/quickbooks/webhook — payment.succeeded (no local invoice m
 
     expect(apis.intuit.createPurchase).not.toHaveBeenCalled()
     expect(apis.intuit.deletePurchase).not.toHaveBeenCalled()
+    // Lookup miss throws before any QBO round-trip, so account verification never runs.
+    expect(apis.intuit.getAnAccount).not.toHaveBeenCalled()
   })
 })

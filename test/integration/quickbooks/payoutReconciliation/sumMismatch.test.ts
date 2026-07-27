@@ -60,6 +60,8 @@ describe('payout — reported net amount does not match the line items', () => {
     expect(res.status).toBe(200)
 
     expect(apis.intuit.createDeposit).not.toHaveBeenCalled()
+    // Guard trips before any QBO round-trip, so account verification never runs.
+    expect(apis.intuit.getAnAccount).not.toHaveBeenCalled()
 
     const logs = await db
       .select()
@@ -71,6 +73,8 @@ describe('payout — reported net amount does not match the line items', () => {
       entityType: EntityType.PAYOUT,
       eventType: EventType.SETTLED,
       status: LogStatus.FAILED,
+      // Payout FAILED rows are terminal by design — never retryable.
+      shouldRetry: false,
     })
     // Pins the abort to the sum-mismatch guard specifically — not the
     // unresolved-line guard, the refund guard, or the bankAccountRef guard.
