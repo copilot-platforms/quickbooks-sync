@@ -1,0 +1,1 @@
+ALTER TABLE "qb_invoice_sync" ADD COLUMN "is_batched_deposit" boolean DEFAULT false NOT NULL;
