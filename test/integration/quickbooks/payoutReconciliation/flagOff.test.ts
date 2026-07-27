@@ -40,6 +40,8 @@ describe('payout — bank deposit fee flag is off', () => {
     expect(res.status).toBe(200)
 
     expect(apis.intuit.createDeposit).not.toHaveBeenCalled()
+    // Flag-off no-op returns before any QBO round-trip.
+    expect(apis.intuit.getAnAccount).not.toHaveBeenCalled()
 
     const logs = await db
       .select()

@@ -47,5 +47,7 @@ describe('POST /api/quickbooks/webhook — payment.succeeded (Copilot returns no
 
     expect(apis.intuit.createPurchase).not.toHaveBeenCalled()
     expect(apis.intuit.deletePurchase).not.toHaveBeenCalled()
+    // Throw happens before any QBO round-trip, so account verification never runs.
+    expect(apis.intuit.getAnAccount).not.toHaveBeenCalled()
   })
 })

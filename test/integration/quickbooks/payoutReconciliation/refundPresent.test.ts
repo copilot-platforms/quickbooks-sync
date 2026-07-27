@@ -79,6 +79,8 @@ describe('payout — a line item is a refund (negative gross amount)', () => {
     expect(res.status).toBe(200)
 
     expect(apis.intuit.createDeposit).not.toHaveBeenCalled()
+    // Guard trips before any QBO round-trip, so account verification never runs.
+    expect(apis.intuit.getAnAccount).not.toHaveBeenCalled()
 
     const logs = await db
       .select()
@@ -90,6 +92,8 @@ describe('payout — a line item is a refund (negative gross amount)', () => {
       entityType: EntityType.PAYOUT,
       eventType: EventType.SETTLED,
       status: LogStatus.FAILED,
+      // Payout FAILED rows are terminal by design — never retryable.
+      shouldRetry: false,
     })
     // Pins the abort to the refund guard specifically — not the
     // unresolved-line guard, the sum-mismatch guard, or the bankAccountRef guard.
