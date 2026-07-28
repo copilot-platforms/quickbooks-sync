@@ -723,7 +723,7 @@ export class WebhookService extends BaseService {
       // All-non-batched skipped pre-claim; a non-batched invoice here = mixed.
       // get() is non-null — every id passed the unresolved check above.
       const allBatched = copilotInvoiceIds.every(
-        (id) => paymentIdByInvoice.get(id)!.isBatchedDeposit,
+        (id) => paymentIdByInvoice.get(id)?.isBatchedDeposit,
       )
       if (!allBatched) {
         throw new APIError(
