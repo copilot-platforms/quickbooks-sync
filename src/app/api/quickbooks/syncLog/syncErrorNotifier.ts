@@ -5,7 +5,10 @@ import {
   NotificationContext,
 } from '@/app/api/core/types/notification'
 import { NotificationService } from '@/app/api/notification/notification.service'
-import { UserActionableErrorCodes } from '@/constant/intuitErrorCode'
+import {
+  AppActionableErrorCodes,
+  UserActionableErrorCodes,
+} from '@/constant/intuitErrorCode'
 import { QBSyncLogSelectSchemaType } from '@/db/schema/qbSyncLogs'
 import { getPortalConnection } from '@/db/service/token.service'
 
@@ -18,7 +21,11 @@ export function getActionForErrorCode(
   errorCode: string | null | undefined,
 ): NotificationActions | null {
   if (!errorCode) return null
-  return UserActionableErrorCodes[errorCode] ?? null
+  return (
+    UserActionableErrorCodes[errorCode] ??
+    AppActionableErrorCodes[errorCode] ??
+    null
+  )
 }
 
 /**
@@ -71,6 +78,12 @@ export class SyncErrorNotifier extends BaseService {
       productName: log.productName ?? undefined,
       qbItemName: log.qbItemName ?? undefined,
       errorMessage: log.errorMessage ?? undefined,
+      // Mixed-payout rows stash the affected invoice numbers in `remark`; surface
+      // them for the body while copilotId stays the ref.
+      invoiceNumbers:
+        action === NotificationActions.QB_PAYOUT_MIXED_INTENT
+          ? (log.remark ?? undefined)
+          : undefined,
     }
     const portal = await getPortalConnection(this.user.workspaceId)
 

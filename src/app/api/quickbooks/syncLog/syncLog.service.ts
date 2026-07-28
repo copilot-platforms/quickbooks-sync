@@ -388,7 +388,12 @@ export class SyncLogService extends BaseService {
    */
   async getSuccessfulPaidPaymentIds(
     copilotInvoiceIds: string[],
-  ): Promise<Map<string, { paymentId: string; isBatchedDeposit: boolean }>> {
+  ): Promise<
+    Map<
+      string,
+      { paymentId: string; isBatchedDeposit: boolean; invoiceNumber: string }
+    >
+  > {
     if (copilotInvoiceIds.length === 0) return new Map()
 
     const rows = await this.db
@@ -396,6 +401,7 @@ export class SyncLogService extends BaseService {
         copilotId: QBSyncLog.copilotId,
         quickbooksId: QBSyncLog.quickbooksId,
         isBatchedDeposit: QBInvoiceSync.isBatchedDeposit,
+        invoiceNumber: QBSyncLog.invoiceNumber,
       })
       .from(QBSyncLog)
       .innerJoin(
@@ -419,13 +425,14 @@ export class SyncLogService extends BaseService {
 
     const paymentIdByInvoice = new Map<
       string,
-      { paymentId: string; isBatchedDeposit: boolean }
+      { paymentId: string; isBatchedDeposit: boolean; invoiceNumber: string }
     >()
     for (const row of rows) {
       if (row.quickbooksId)
         paymentIdByInvoice.set(row.copilotId, {
           paymentId: row.quickbooksId,
           isBatchedDeposit: row.isBatchedDeposit,
+          invoiceNumber: row.invoiceNumber ?? '',
         })
     }
     return paymentIdByInvoice
