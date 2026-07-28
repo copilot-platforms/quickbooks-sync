@@ -10,6 +10,7 @@ export enum NotificationActions {
   QB_TXN_LINK_FAILED = 'qb_txn_link_failed',
   QB_ITEM_INCOME_ACCOUNT_MISSING = 'qb_item_income_account_missing',
   QB_INVALID_ACCOUNT_TYPE = 'qb_invalid_account_type',
+  QB_PAYOUT_MIXED_INTENT = 'qb_payout_mixed_intent',
 }
 
 /**
@@ -25,6 +26,9 @@ export interface NotificationContext {
   eventType?: string
   entityKey?: string
   invoiceNumber?: string
+  // Comma-joined invoice numbers for a multi-invoice failure (mixed payout),
+  // where the single invoiceNumber above can't hold them all.
+  invoiceNumbers?: string
   customerName?: string
   productName?: string
   qbItemName?: string
