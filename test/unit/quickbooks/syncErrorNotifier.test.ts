@@ -42,9 +42,15 @@ import {
   getEntityKey,
 } from '@/app/api/quickbooks/syncLog/syncErrorNotifier'
 import {
+  AppActionableErrorCodes,
+  PAYOUT_MIXED_INTENT_CODE,
   QBOErrorCodes,
   UserActionableErrorCodes,
 } from '@/constant/intuitErrorCode'
+import {
+  getIEmailNotificationDetail,
+  getInProductNotificationDetail,
+} from '@/app/api/notification/notification.helper'
 
 const baseLog: QBSyncLogSelectSchemaType = {
   id: 'log-1',
@@ -71,6 +77,7 @@ const baseLog: QBSyncLogSelectSchemaType = {
   category: 'qb_api_error' as never,
   shouldRetry: false,
   attempt: 0,
+  shouldRetry: true,
   createdAt: new Date(),
   updatedAt: new Date(),
   deletedAt: null,
@@ -82,6 +89,14 @@ describe('getActionForErrorCode', () => {
   // mapping change here will fail this test loudly.
   it.each(Object.entries(UserActionableErrorCodes))(
     'maps registry code %s to action %s',
+    (code, expectedAction) => {
+      expect(getActionForErrorCode(code)).toBe(expectedAction)
+    },
+  )
+
+  // Self-extending over the app-level sentinel registry, mirroring the QBO one.
+  it.each(Object.entries(AppActionableErrorCodes))(
+    'maps app sentinel code %s to action %s',
     (code, expectedAction) => {
       expect(getActionForErrorCode(code)).toBe(expectedAction)
     },
@@ -223,6 +238,43 @@ describe('SyncErrorNotifier#notify', () => {
       expect(action).toBe(NotificationActions.QB_STALE_OBJECT)
     },
   )
+
+  it('dispatches the mixed-payout notification for a FAILED payout with the sentinel code', async () => {
+    const notifier = new SyncErrorNotifier(user)
+
+    await notifier.notify({
+      ...baseLog,
+      entityType: 'payout' as never,
+      eventType: 'settled' as never,
+      errorCode: PAYOUT_MIXED_INTENT_CODE,
+      quickbooksId: null,
+      invoiceNumber: null,
+      copilotId: 'po_test_1',
+      // Webhook stashes the affected invoice numbers in remark for this action.
+      remark: 'INV-A, INV-B',
+      errorMessage:
+        'Payout po_test_1 mixes batched and non-batched invoices; unsupported',
+    })
+
+    expect(sendNotificationToIU).toHaveBeenCalledTimes(1)
+    const [, action, ctx] = sendNotificationToIU.mock.calls[0]
+    expect(action).toBe(NotificationActions.QB_PAYOUT_MIXED_INTENT)
+    // copilotId stays the ref; the invoice list rides in invoiceNumbers.
+    expect(ctx).toMatchObject({
+      entityType: 'payout',
+      entityKey: 'po_test_1',
+      invoiceNumbers: 'INV-A, INV-B',
+    })
+
+    // Close the seam: the ctx extracted from `remark` must render the invoice
+    // list in the real copy (both channels), with the payout id as the ref.
+    const inProduct = getInProductNotificationDetail(action, ctx)
+    const email = getIEmailNotificationDetail(action, ctx)
+    for (const body of [inProduct.body, email.body]) {
+      expect(body).toContain('ref po_test_1')
+      expect(body).toContain('No deposit was created for invoices INV-A, INV-B')
+    }
+  })
 
   it('dispatches a notification for a FAILED row with a user-actionable code', async () => {
     const notifier = new SyncErrorNotifier(user)
