@@ -82,6 +82,38 @@ describe('getInProductNotificationDetail', () => {
     expect(detail.body).not.toContain('payment completion')
   })
 
+  it('renders payout reconciliation with the payout id as ref and names the affected invoices', () => {
+    const ctx: NotificationContext = {
+      entityType: 'payout',
+      eventType: 'settled',
+      entityKey: 'po_test_1',
+      invoiceNumbers: 'INV-A, INV-B',
+    }
+    const detail = getInProductNotificationDetail(
+      NotificationActions.QB_PAYOUT_MIXED_INTENT,
+      ctx,
+    )
+    expect(detail.body).toContain('during payout reconciliation, ref po_test_1')
+    expect(detail.body).not.toContain('ref Stripe payout')
+    expect(detail.body).toContain(
+      'No deposit was created for invoices INV-A, INV-B',
+    )
+  })
+
+  it('omits the invoice list from the payout body when no invoice numbers are present', () => {
+    const ctx: NotificationContext = {
+      entityType: 'payout',
+      eventType: 'settled',
+      entityKey: 'po_test_1',
+    }
+    const detail = getInProductNotificationDetail(
+      NotificationActions.QB_PAYOUT_MIXED_INTENT,
+      ctx,
+    )
+    expect(detail.body).toContain('No deposit was created, so nothing')
+    expect(detail.body).not.toContain('for invoices')
+  })
+
   it('5010 (invoice-only after suppression) warns that the failure is final', () => {
     const ctx: NotificationContext = {
       entityType: 'invoice',
