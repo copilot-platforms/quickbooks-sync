@@ -59,6 +59,7 @@ describe('SyncLogService.getSuccessfulPaidPaymentIds', () => {
     expect(result.get('inv_a')).toEqual({
       paymentId: 'qbpay_a',
       isBatchedDeposit: true,
+      invoiceNumber: 'INV-A',
     })
     expect(result.has('inv_b')).toBe(false) // FAILED excluded
     expect(result.has('inv_c')).toBe(false) // other portal excluded

@@ -71,6 +71,9 @@ export function createMockCopilotAPI(overrides: CopilotAPIOverrides = {}) {
       id: TEST_COPILOT_INVOICE_ID,
       number: TEST_INVOICE_NUMBER,
     }),
+    // Deferred SyncErrorNotifier dispatch calls these; empty IU list = no-op.
+    getInternalUsers: vi.fn().mockResolvedValue({ data: [] }),
+    createNotification: vi.fn().mockResolvedValue({ id: 'notif-1' }),
     ...overrides,
   }
 }
@@ -153,9 +156,6 @@ export function createMockIntuitAPI(overrides: IntuitAPIOverrides = {}) {
     }),
     createPurchase: vi.fn().mockResolvedValue({
       Purchase: { Id: TEST_QB_PURCHASE_ID, SyncToken: '0' },
-    }),
-    createDeposit: vi.fn().mockResolvedValue({
-      Deposit: { Id: 'qb-deposit-1', SyncToken: '0' },
     }),
     deletePurchase: vi.fn().mockResolvedValue({
       Purchase: { Id: TEST_QB_PURCHASE_ID, status: 'Deleted' },
