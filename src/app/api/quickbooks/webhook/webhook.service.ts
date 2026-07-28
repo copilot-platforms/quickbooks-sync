@@ -36,7 +36,13 @@ import { addSyncBreadcrumb } from '@/utils/sentry'
 import { and, eq } from 'drizzle-orm'
 import httpStatus from 'http-status'
 import { AccountTypeObj } from '@/constant/qbConnection'
+import { PAYOUT_MIXED_INTENT_CODE } from '@/constant/intuitErrorCode'
 import { TokenService } from '@/app/api/quickbooks/token/token.service'
+
+// A payout that mixes batched and non-batched invoices. Thrown so the single
+// FAILED-log write in the catch can tag it with the routable sentinel code
+// (a plain APIError would land as "400" and skip the IU notification).
+class MixedPayoutIntentError extends Error {}
 
 export class WebhookService extends BaseService {
   async handleWebhookEvent(
@@ -726,8 +732,7 @@ export class WebhookService extends BaseService {
         (id) => paymentIdByInvoice.get(id)?.isBatchedDeposit,
       )
       if (!allBatched) {
-        throw new APIError(
-          httpStatus.BAD_REQUEST,
+        throw new MixedPayoutIntentError(
           `Payout ${payoutId} mixes batched and non-batched invoices; unsupported`,
         )
       }
@@ -802,7 +807,18 @@ export class WebhookService extends BaseService {
         message: 'Payout reconciliation handler failed',
         obj: error,
       })
+      const isMixed = error instanceof MixedPayoutIntentError
       const errorWithCode = getMessageAndCodeFromError(error)
+      // Mixed intent stashes the affected invoice numbers in `remark` (a payout
+      // spans multiple invoices, so they don't fit the single invoiceNumber col).
+      const affectedInvoiceNumbers = copilotInvoiceIds
+        .map((id) => paymentIdByInvoice.get(id)?.invoiceNumber)
+        .filter(Boolean)
+        .join(', ')
+      // Single FAILED-log write. Mixed intent gets the routable sentinel so
+      // SyncErrorNotifier alerts IUs; everything else keeps its derived code.
+      // No qbItemName — it would outrank copilotId (the payout id) in the
+      // notification's entity reference.
       await syncLogService.updateOrCreateQBSyncLog({
         portalId: this.user.workspaceId,
         entityType: EntityType.PAYOUT,
@@ -811,14 +827,19 @@ export class WebhookService extends BaseService {
         copilotId: payoutId,
         amount: payout.netAmount.toFixed(2),
         feeAmount: feeCents.toFixed(2),
-        remark: 'Stripe payout batched deposit',
-        qbItemName: 'Stripe payout',
+        remark:
+          isMixed && affectedInvoiceNumbers
+            ? affectedInvoiceNumbers
+            : 'Stripe payout batched deposit',
         errorMessage: errorWithCode.message,
-        errorCode: errorWithCode.code?.toString(),
-        // Terminal: no PAYOUT resync path yet, so retrying only burns
-        // attempts to a misleading alert. Recovery is manual for now.
+        errorCode: isMixed
+          ? PAYOUT_MIXED_INTENT_CODE
+          : errorWithCode.code?.toString(),
+        // Terminal: no PAYOUT resync path, so retrying only burns attempts.
         shouldRetry: false,
-        category: getCategory(errorWithCode),
+        category: isMixed
+          ? FailedRecordCategoryType.OTHERS
+          : getCategory(errorWithCode),
       })
       console.error(
         `WebhookService#handlePayoutReconciliationCompleted :: Error | Portal Id: ${this.user.workspaceId} | Payout: ${payoutId}`,
