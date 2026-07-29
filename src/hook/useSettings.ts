@@ -442,6 +442,7 @@ export const useInvoiceDetailSettings = () => {
     initialInvoiceSetting,
   )
   const [showButton, setShowButton] = useState(false)
+  const [showBankDepositWarning, setShowBankDepositWarning] = useState(false)
   const [intialSettingState, setIntialSettingState] = useState<
     InvoiceSettingType | undefined
   >()
@@ -522,10 +523,29 @@ export const useInvoiceDetailSettings = () => {
     setSettingState(intialSettingState || initialInvoiceSetting)
   }
 
+  // Warn only when the bank-deposit flag actually changed vs the saved value.
+  const bankDepositFlagChanged =
+    !!intialSettingState &&
+    settingState.bankDepositFeeFlag !== intialSettingState.bankDepositFeeFlag
+
+  const requestInvoiceSettingsSave = () => {
+    if (bankDepositFlagChanged) {
+      setShowBankDepositWarning(true)
+      return
+    }
+    submitInvoiceSettings()
+  }
+
+  const confirmBankDepositChange = () => {
+    setShowBankDepositWarning(false)
+    submitInvoiceSettings()
+  }
+
+  const cancelBankDepositChange = () => setShowBankDepositWarning(false)
+
   return {
     settingState,
     changeSettings,
-    submitInvoiceSettings,
     cancelInvoiceSettings,
     error,
     isLoading,
@@ -533,6 +553,10 @@ export const useInvoiceDetailSettings = () => {
     bankAccountOptions,
     bankAccountsError,
     canSave,
+    showBankDepositWarning,
+    requestInvoiceSettingsSave,
+    confirmBankDepositChange,
+    cancelBankDepositChange,
   }
 }
 
