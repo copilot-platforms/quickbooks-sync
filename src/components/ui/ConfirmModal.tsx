@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useId } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from 'copilot-design-system'
 
@@ -24,16 +24,39 @@ export default function ConfirmModal({
 }: ConfirmModalProps) {
   const titleId = useId()
   const descId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  // Keep the latest onCancel without re-running the focus effect each render.
+  const onCancelRef = useRef(onCancel)
+  onCancelRef.current = onCancel
 
-  // Wire Escape-to-cancel while open.
+  // On open: focus into the dialog, trap Tab, and restore focus on close.
   useEffect(() => {
     if (!open) return
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    const focusables = Array.from(
+      dialogRef.current?.querySelectorAll<HTMLElement>('button') ?? [],
+    )
+    focusables[0]?.focus()
+
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel()
+      if (e.key === 'Escape') return onCancelRef.current()
+      if (e.key !== 'Tab' || focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
     }
     document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open, onCancel])
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      previouslyFocused?.focus()
+    }
+  }, [open])
 
   if (!open) return null
 
@@ -43,6 +66,7 @@ export default function ConfirmModal({
       onClick={onCancel}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
