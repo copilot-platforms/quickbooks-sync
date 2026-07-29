@@ -25,12 +25,14 @@ export interface NotificationContext {
   entityType?: string
   eventType?: string
   entityKey?: string
-  invoiceNumber?: string
+  // Nullable string fields mirror their nullable qb_sync_logs columns, so
+  // callers can pass log values directly. Consumers treat null/undefined alike.
+  invoiceNumber?: string | null
   // Comma-joined invoice numbers for a multi-invoice failure (mixed payout),
   // where the single invoiceNumber above can't hold them all.
-  invoiceNumbers?: string
-  customerName?: string
-  productName?: string
-  qbItemName?: string
-  errorMessage?: string
+  invoiceNumbers?: string | null
+  customerName?: string | null
+  productName?: string | null
+  qbItemName?: string | null
+  errorMessage?: string | null
 }
