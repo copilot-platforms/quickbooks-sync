@@ -249,14 +249,14 @@ export const NotificationCopy: Record<
       const forInvoices = ctx?.invoiceNumbers
         ? ` for invoices ${ctx.invoiceNumbers}`
         : ''
-      return `A Stripe payout${ref} could not be recorded in QuickBooks because it mixes invoices set to batch into a bank deposit with invoices that are not — this happens when the bank-deposit setting changed between a payment and its payout. No deposit was created${forInvoices}, so nothing was double-booked. Record this payout's deposit manually in QuickBooks. This will not retry automatically.`
+      return `A Stripe payout${ref} could not be recorded in QuickBooks because it mixes invoices set to batch into a bank deposit with invoices that are not — this happens when the bank-deposit setting changed between a payment and its payout. No deposit was created${forInvoices}, so nothing was double-booked. Record this payout's deposit manually in QuickBooks. This will not be retried automatically.`
     },
     emailSubject: 'QuickBooks sync failed: payout needs manual reconciliation',
     emailBody: (ref, ctx) => {
       const forInvoices = ctx?.invoiceNumbers
         ? ` for invoices ${ctx.invoiceNumbers}`
         : ''
-      return `A Stripe payout${ref} could not be recorded in QuickBooks because it mixes invoices set to batch into a bank deposit with invoices that are not. This happens when the bank-deposit setting changed between a payment and its payout. No deposit was created${forInvoices}, so nothing was double-booked. Record this payout's deposit manually in QuickBooks. This payout will not retry automatically.`
+      return `A Stripe payout${ref} could not be recorded in QuickBooks because it mixes invoices set to batch into a bank deposit with invoices that are not. This happens when the bank-deposit setting changed between a payment and its payout. No deposit was created${forInvoices}, so nothing was double-booked. Record this payout's deposit manually in QuickBooks. This payout will not be retried automatically.`
     },
   },
 

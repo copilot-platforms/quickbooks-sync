@@ -73,16 +73,16 @@ export class SyncErrorNotifier extends BaseService {
       entityType: log.entityType,
       eventType: log.eventType,
       entityKey: getEntityKey(log),
-      invoiceNumber: log.invoiceNumber ?? undefined,
-      customerName: log.customerName ?? undefined,
-      productName: log.productName ?? undefined,
-      qbItemName: log.qbItemName ?? undefined,
-      errorMessage: log.errorMessage ?? undefined,
+      invoiceNumber: log.invoiceNumber,
+      customerName: log.customerName,
+      productName: log.productName,
+      qbItemName: log.qbItemName,
+      errorMessage: log.errorMessage,
       // Mixed-payout rows stash the affected invoice numbers in `remark`; surface
       // them for the body while copilotId stays the ref.
       invoiceNumbers:
         action === NotificationActions.QB_PAYOUT_MIXED_INTENT
-          ? (log.remark ?? undefined)
+          ? log.remark
           : undefined,
     }
     const portal = await getPortalConnection(this.user.workspaceId)
