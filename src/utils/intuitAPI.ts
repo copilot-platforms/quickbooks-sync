@@ -16,6 +16,7 @@ import {
   QBDepositCreatePayloadType,
   QBDepositResponseSchema,
   QBDepositResponseType,
+  QBDepositQueryResponseSchema,
   QBDeletePayloadType,
   QBDestructiveInvoicePayloadSchema,
   QBItemRowType,
@@ -1006,6 +1007,42 @@ export default class IntuitAPI {
     return parsed
   }
 
+  // Read all pages so we don't miss a deposit on a busy day. Miss one and
+  // resync makes a duplicate deposit that QBO won't let us delete. maxPages is
+  // just a safety cap — hitting it would need 50k deposits in a single day.
+  async _getDepositsByTxnDate(
+    txnDate: string,
+  ): Promise<Array<{ Id: string; PrivateNote?: string }>> {
+    CustomLogger.info({
+      obj: { txnDate },
+      message: `IntuitAPI#getDepositsByTxnDate | start for realmId: ${this.tokens.intuitRealmId}.`,
+    })
+
+    const pageSize = 1000
+    const maxPages = 50
+    const deposits: Array<{ Id: string; PrivateNote?: string }> = []
+    let startPosition = 1
+
+    for (let pages = 0; pages < maxPages; pages++) {
+      const query = `select Id, PrivateNote, TxnDate from Deposit where TxnDate = '${escapeForQBQuery(txnDate)}' STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
+      const response = await this.customQuery(query)
+      if (!response) return deposits
+
+      const envelope = QBDepositQueryResponseSchema.parse(response)
+      const page = envelope.Deposit ?? []
+      deposits.push(...page)
+
+      if (page.length < pageSize) return deposits
+      startPosition += pageSize
+    }
+
+    CustomLogger.error({
+      obj: { txnDate, maxPages },
+      message: `IntuitAPI#getDepositsByTxnDate | pagination cap (${maxPages} pages) hit for realmId: ${this.tokens.intuitRealmId} — result truncated at ${deposits.length} deposits.`,
+    })
+    return deposits
+  }
+
   async _deletePurchase(
     payload: QBDeletePayloadType,
   ): Promise<QBPurchaseDeleteResponseType> {
@@ -1134,5 +1171,6 @@ export default class IntuitAPI {
   deletePayment = this.wrapWithRetry(this._deletePayment)
   deletePurchase = this.wrapWithRetry(this._deletePurchase)
   createDeposit = this.wrapWithRetry(this._createDeposit)
+  getDepositsByTxnDate = this._getDepositsByTxnDate.bind(this)
   getCompanyInfo = this._getCompanyInfo.bind(this)
 }
