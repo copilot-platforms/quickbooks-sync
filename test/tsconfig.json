@@ -1,5 +1,6 @@
 {
   "extends": "../tsconfig.json",
-  "include": ["**/*.ts"],
+  // intuit-oauth ambient shim the root config loads; needed for src/config.
+  "include": ["../src/type/intuit.d.ts", "**/*.ts"],
   "exclude": ["node_modules"]
 }

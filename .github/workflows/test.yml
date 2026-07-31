@@ -3,6 +3,27 @@ name: CI
 on: pull_request
 
 jobs:
+  typecheck:
+    name: Typecheck tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: yarn
+          cache-dependency-path: './yarn.lock'
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Typecheck test files
+        run: yarn typecheck:test
+
   run-tests:
     name: Run tests
     runs-on: ubuntu-latest
