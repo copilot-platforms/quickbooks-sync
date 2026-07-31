@@ -73,7 +73,8 @@ describe('payout — configured bank account no longer exists in QuickBooks', ()
       entityType: EntityType.PAYOUT,
       eventType: EventType.SETTLED,
       status: LogStatus.FAILED,
-      shouldRetry: false,
+      // Not permanent: it works again once the user picks a bank account.
+      shouldRetry: true,
     })
     // Pins the abort to restoreAccountRef's Bank-type throw specifically —
     // a deleted bank account is never auto-restored/created.
