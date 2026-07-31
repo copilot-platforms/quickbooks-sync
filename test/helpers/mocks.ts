@@ -142,6 +142,8 @@ export function createMockIntuitAPI(overrides: IntuitAPIOverrides = {}) {
     createDeposit: vi.fn().mockResolvedValue({
       Deposit: { Id: 'qb-deposit-1', SyncToken: '0' },
     }),
+    // Payout resync checks for an existing deposit first — none by default.
+    getDepositsByTxnDate: vi.fn().mockResolvedValue([]),
     // Handler ignores the response; it just needs the call to succeed (OUT-3921).
     voidInvoice: vi.fn().mockResolvedValue({
       Invoice: { Id: TEST_QB_INVOICE_ID, SyncToken: '1' },
