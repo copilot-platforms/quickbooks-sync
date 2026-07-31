@@ -27,7 +27,6 @@ import {
   getValidQbTokens,
   QBReconnectRequiredError,
 } from '@/utils/tokenRefresh'
-import { after } from 'next/server'
 
 export class AuthService extends BaseService {
   async getAuthUrl(
@@ -169,7 +168,7 @@ export class AuthService extends BaseService {
         connectionStatus: ConnectionStatus.SUCCESS,
       })
 
-      after(async () => {
+      afterIfAvailable(async () => {
         if (existingToken) {
           console.info('Not initial process. Starting the re-sync process')
           this.user.qbConnection = {

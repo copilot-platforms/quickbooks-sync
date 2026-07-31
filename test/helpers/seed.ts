@@ -10,6 +10,7 @@ import { QBSetting, QBSettingCreateSchema } from '@/db/schema/qbSettings'
 import { QBCustomers } from '@/db/schema/qbCustomers'
 import { QBInvoiceSync } from '@/db/schema/qbInvoiceSync'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
+import { QBPayoutSync } from '@/db/schema/qbPayoutSync'
 import { InvoiceStatus } from '@/app/api/core/types/invoice'
 import { EntityType, EventType, LogStatus } from '@/app/api/core/types/log'
 
@@ -217,5 +218,43 @@ export async function seedPaidInvoiceForPayout(opts: {
     copilotId: opts.copilotInvoiceId,
     invoiceNumber: opts.invoiceNumber,
     quickbooksId: opts.paymentId,
+  })
+}
+
+// A failed, retryable payout sync log plus its qb_payout_sync row —
+// the state the resync cron picks up.
+export async function seedFailedPayout(opts: {
+  payoutId: string
+  lineItems: Array<{
+    copilotInvoiceId: string
+    grossAmount: number
+    feeAmount: number
+  }>
+  netAmount: number
+  feeCents: number
+  arrivalDate: number
+  qbDepositId?: string
+  errorMessage?: string
+}) {
+  await db.insert(QBPayoutSync).values({
+    portalId: TEST_PORTAL_ID,
+    payoutId: opts.payoutId,
+    lineItems: opts.lineItems,
+    netAmount: opts.netAmount,
+    feeAmount: opts.feeCents,
+    arrivalDate: opts.arrivalDate,
+    qbDepositId: opts.qbDepositId ?? null,
+  })
+  await db.insert(QBSyncLog).values({
+    portalId: TEST_PORTAL_ID,
+    entityType: EntityType.PAYOUT,
+    eventType: EventType.SETTLED,
+    status: LogStatus.FAILED,
+    copilotId: opts.payoutId,
+    // Cents-as-string, matching what the webhook writes for a payout log.
+    amount: opts.netAmount.toFixed(2),
+    feeAmount: opts.feeCents.toFixed(2),
+    errorMessage: opts.errorMessage ?? 'QuickBooks timed out',
+    shouldRetry: true,
   })
 }
