@@ -24,7 +24,8 @@
     "cmd:sync-missed-products": "tsx src/cmd/syncMissedProducts/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "typecheck:test": "tsc --noEmit -p test/tsconfig.json"
   },
   "dependencies": {
     "@assembly-js/node-sdk": "^4.2.2",

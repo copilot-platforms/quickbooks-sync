@@ -52,6 +52,7 @@ const baseTokens: IntuitAPITokensType = {
   assetAccountRef: 'asset',
   serviceItemRef: 'service',
   clientFeeRef: 'client-fee',
+  bankAccountRef: 'bank',
 }
 
 // Builds a customer row in the shape QBO returns inside `QueryResponse.Customer`.

@@ -44,7 +44,7 @@ describe('POST /api/quickbooks/webhook — invoice.created (lazy item creation f
       .where(
         eq(
           QBProductSync.productId,
-          invoiceCreatedPayload.data.lineItems[0].productId,
+          invoiceCreatedPayload.data.lineItems[0].productId!,
         ),
       )
     expect(rows).toHaveLength(1)
