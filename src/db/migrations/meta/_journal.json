@@ -197,6 +197,13 @@
       "when": 1784884542846,
       "tag": "20260724091542_add_is_batched_deposit",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1785322751721,
+      "tag": "20260729105911_add_qb_payout_sync_table",
+      "breakpoints": true
     }
   ]
 }

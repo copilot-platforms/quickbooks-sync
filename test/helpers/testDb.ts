@@ -20,7 +20,8 @@ export async function truncateAllTestTables() {
       qb_payment_sync,
       qb_product_sync,
       qb_settings,
-      qb_portal_connections
+      qb_portal_connections,
+      qb_payout_sync
     RESTART IDENTITY CASCADE
   `)
 }
