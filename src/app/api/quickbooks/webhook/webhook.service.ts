@@ -10,6 +10,11 @@ import {
 import { WebhookEvents } from '@/app/api/core/types/webhook'
 import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { PaymentService } from '@/app/api/quickbooks/payment/payment.service'
+import {
+  MixedPayoutIntentError,
+  getShouldRetryForPayout,
+} from '@/app/api/quickbooks/payout/payout.errors'
+import { PayoutService } from '@/app/api/quickbooks/payout/payout.service'
 import { ProductService } from '@/app/api/quickbooks/product/product.service'
 import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
@@ -28,21 +33,14 @@ import {
 import { validateAccessToken } from '@/utils/auth'
 import { AssemblyAPI } from '@/utils/assemblyAPI'
 import { ErrorMessageAndCode, getMessageAndCodeFromError } from '@/utils/error'
-import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
+import { IntuitAPITokensType } from '@/utils/intuitAPI'
 import CustomLogger from '@/utils/logger'
 import { sleep } from '@/utils/sleep'
 import { getCategory, getShouldRetryForCategory } from '@/utils/synclog'
 import { addSyncBreadcrumb } from '@/utils/sentry'
 import { and, eq } from 'drizzle-orm'
 import httpStatus from 'http-status'
-import { AccountTypeObj } from '@/constant/qbConnection'
 import { PAYOUT_MIXED_INTENT_CODE } from '@/constant/intuitErrorCode'
-import { TokenService } from '@/app/api/quickbooks/token/token.service'
-
-// A payout that mixes batched and non-batched invoices. Thrown so the single
-// FAILED-log write in the catch can tag it with the routable sentinel code
-// (a plain APIError would land as "400" and skip the IU notification).
-class MixedPayoutIntentError extends Error {}
 
 export class WebhookService extends BaseService {
   async handleWebhookEvent(
@@ -599,6 +597,7 @@ export class WebhookService extends BaseService {
         feeAmount: platformFee.toFixed(2),
         errorMessage: `No invoice found in invoice sync table for invoice id: ${invoiceId}`,
         shouldRetry: true,
+        invoiceNumber: invoice.number,
       })
       return
     }
@@ -649,6 +648,7 @@ export class WebhookService extends BaseService {
 
     const payoutId = payout.id
     const syncLogService = new SyncLogService(this.user)
+    const payoutService = new PayoutService(this.user)
     const copilotInvoiceIds = lineItems.map((line) => line.copilotInvoiceId)
 
     // Resolve intent before claiming: an all-non-batched payout books nothing,
@@ -665,6 +665,20 @@ export class WebhookService extends BaseService {
       return
     }
 
+    // Add up the fee here so the payout row, the success log, and the
+    // failure log can all use it.
+    const feeCents = lineItems.reduce((sum, line) => sum + line.feeAmount, 0)
+
+    // Save the payout details first so a failed attempt can be rebuilt on
+    // resync. Runs before the claim, so a re-sent payout just updates the row.
+    const payoutRow = await payoutService.upsertPayoutSync({
+      payoutId,
+      lineItems,
+      netAmount: payout.netAmount,
+      feeCents,
+      arrivalDate: payout.arrivalDate,
+    })
+
     const { claimed } = await syncLogService.claimWebhookEvent({
       copilotId: payoutId,
       entityType: EntityType.PAYOUT,
@@ -677,116 +691,11 @@ export class WebhookService extends BaseService {
       return
     }
 
-    // Computed before the try so the FAILED-log path can record the amounts.
-    const { grossCents, feeCents } = lineItems.reduce(
-      (acc, line) => {
-        acc.grossCents += line.grossAmount
-        acc.feeCents += line.feeAmount
-        return acc
-      },
-      { grossCents: 0, feeCents: 0 },
-    )
-
     try {
-      validateAccessToken(qbTokenInfo)
-
-      // v1: refunds unsupported — a negative line means QBO cannot link to a Payment.
-      if (lineItems.some((line) => line.grossAmount < 0)) {
-        throw new APIError(
-          httpStatus.BAD_REQUEST,
-          `Payout ${payoutId} contains refund lines; batched deposit unsupported in v1`,
-        )
-      }
-
-      // A negative total fee would drop the fee line and unbalance the
-      // deposit. Abort instead (fee credits arrive with refund support).
-      if (feeCents < 0) {
-        throw new APIError(
-          httpStatus.BAD_REQUEST,
-          `Payout ${payoutId} has a negative aggregate fee (${feeCents}); unsupported in v1`,
-        )
-      }
-
-      if (new Set(copilotInvoiceIds).size !== copilotInvoiceIds.length) {
-        throw new APIError(
-          httpStatus.BAD_REQUEST,
-          `Payout ${payoutId} contains duplicate invoice line items`,
-        )
-      }
-
-      // A SUCCESS PAID log always has an invoice-sync row (webhookInvoicePaid
-      // throws otherwise), so a miss here is a missing payment. Fail the payout.
-      const unresolved = copilotInvoiceIds.filter(
-        (id) => !paymentIdByInvoice.has(id),
-      )
-      if (unresolved.length > 0) {
-        throw new APIError(
-          httpStatus.NOT_FOUND,
-          `Payout ${payoutId}: no SUCCESS INVOICE/PAID sync log for invoices [${unresolved.join(', ')}]`,
-        )
-      }
-
-      // All-non-batched skipped pre-claim; a non-batched invoice here = mixed.
-      // get() is non-null — every id passed the unresolved check above.
-      const allBatched = copilotInvoiceIds.every(
-        (id) => paymentIdByInvoice.get(id)?.isBatchedDeposit,
-      )
-      if (!allBatched) {
-        throw new MixedPayoutIntentError(
-          `Payout ${payoutId} mixes batched and non-batched invoices; unsupported`,
-        )
-      }
-
-      if (grossCents - feeCents !== payout.netAmount) {
-        throw new APIError(
-          httpStatus.BAD_REQUEST,
-          `Payout ${payoutId}: deposit total ${grossCents - feeCents} != payout net ${payout.netAmount}`,
-        )
-      }
-
-      // Fail fast on the free local check before any QBO round-trip.
-      const bankAccountRef = qbTokenInfo.bankAccountRef
-      if (!bankAccountRef) {
-        throw new APIError(
-          httpStatus.BAD_REQUEST,
-          `Bank account ref is not configured for portal ${this.user.workspaceId}. Please select a bank account in the QuickBooks integration settings.`,
-        )
-      }
-
-      const intuitApi = new IntuitAPI(qbTokenInfo)
-      const tokenService = new TokenService(this.user)
-      // Reactivates an archived bank account; a deleted one throws.
-      const verifiedBankAccountRef =
-        await tokenService.checkAndUpdateAccountStatus(
-          AccountTypeObj.Bank,
-          qbTokenInfo.intuitRealmId,
-          intuitApi,
-          bankAccountRef,
-        )
-      const expenseAccountRef = await tokenService.checkAndUpdateAccountStatus(
-        AccountTypeObj.Expense,
-        qbTokenInfo.intuitRealmId,
-        intuitApi,
-        qbTokenInfo.expenseAccountRef,
-      )
-
-      const paymentService = new PaymentService(this.user)
-      const depositId = await paymentService.createBankDepositForPayment(
-        intuitApi,
-        {
-          lines: lineItems.map((line) => ({
-            qbPaymentId: paymentIdByInvoice.get(line.copilotInvoiceId)
-              ?.paymentId as string,
-            amount: line.grossAmount / 100,
-          })),
-          feeTotal: feeCents / 100,
-          bankAccountRef: verifiedBankAccountRef,
-          expenseAccountRef,
-          txnDate: new Date(payout.arrivalDate * 1000)
-            .toISOString()
-            .split('T')[0],
-          privateNote: `Stripe payout ${payoutId}`,
-        },
+      const { depositId } = await payoutService.reconcile(
+        payoutRow,
+        qbTokenInfo,
+        { runIdempotencyCheck: false },
       )
 
       await syncLogService.updateOrCreateQBSyncLog({
@@ -795,7 +704,7 @@ export class WebhookService extends BaseService {
         eventType: EventType.SETTLED,
         status: LogStatus.SUCCESS,
         copilotId: payoutId,
-        quickbooksId: depositId,
+        quickbooksId: depositId ?? undefined,
         amount: payout.netAmount.toFixed(2),
         feeAmount: feeCents.toFixed(2),
         remark: 'Stripe payout batched deposit',
@@ -835,8 +744,7 @@ export class WebhookService extends BaseService {
         errorCode: isMixed
           ? PAYOUT_MIXED_INTENT_CODE
           : errorWithCode.code?.toString(),
-        // Terminal: no PAYOUT resync path, so retrying only burns attempts.
-        shouldRetry: false,
+        shouldRetry: getShouldRetryForPayout(error),
         category: isMixed
           ? FailedRecordCategoryType.OTHERS
           : getCategory(errorWithCode),

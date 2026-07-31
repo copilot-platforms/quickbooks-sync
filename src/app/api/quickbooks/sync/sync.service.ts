@@ -26,6 +26,13 @@ import { captureMessage } from '@sentry/nextjs'
 import { AccountTypeObj } from '@/constant/qbConnection'
 import { ErrorMessageAndCode, getMessageAndCodeFromError } from '@/utils/error'
 import { getCategory, getShouldRetryForCategory } from '@/utils/synclog'
+import { PayoutService } from '@/app/api/quickbooks/payout/payout.service'
+import {
+  MixedPayoutIntentError,
+  TerminalPayoutError,
+  getShouldRetryForPayout,
+} from '@/app/api/quickbooks/payout/payout.errors'
+import { PAYOUT_MIXED_INTENT_CODE } from '@/constant/intuitErrorCode'
 
 export const runtime = 'nodejs'
 
@@ -254,6 +261,12 @@ export class SyncService extends BaseService {
         )
       }
 
+      // Batched deposit: the payout books this fee, so there's no expense to create here. Delete the log
+      if (invoiceSync.isBatchedDeposit) {
+        await this.syncLogService.deleteQBSyncLog(record.id)
+        return
+      }
+
       const intuitApi = new IntuitAPI(qbTokenInfo)
       const tokenService = new TokenService(this.user)
       const assetAccountRef = await tokenService.checkAndUpdateAccountStatus(
@@ -303,6 +316,80 @@ export class SyncService extends BaseService {
       await this.updateFailedSyncLog(
         record.id,
         getMessageAndCodeFromError(error),
+      )
+    }
+  }
+
+  private async processPayoutSync(
+    record: QBSyncLogSelectSchemaType,
+    qbTokenInfo: IntuitAPITokensType,
+  ) {
+    const payoutService = new PayoutService(this.user)
+    try {
+      // Claim the row before any QBO work: flip FAILED -> PENDING in one
+      // atomic update. If another resync run (12h cron vs OAuth-reconnect)
+      // already claimed it, this matches zero rows and we skip — otherwise
+      // both runs could create a second, undeletable bank deposit.
+      const claimed = await this.syncLogService.updateQBSyncLog(
+        { status: LogStatus.PENDING },
+        and(
+          eq(QBSyncLog.id, record.id),
+          eq(QBSyncLog.status, LogStatus.FAILED),
+        ) as WhereClause,
+      )
+      if (!claimed) {
+        CustomLogger.info({
+          message:
+            'SyncService#processPayoutSync | Already claimed by another run, skipping',
+          obj: { copilotId: record.copilotId },
+        })
+        return
+      }
+
+      const payoutRow = await payoutService.getPayoutSync(record.copilotId)
+      if (!payoutRow) {
+        // No saved payout data, so we can't rebuild the deposit. Stop trying.
+        throw new TerminalPayoutError(
+          `No qb_payout_sync row for payout ${record.copilotId}`,
+        )
+      }
+
+      const { depositId } = await payoutService.reconcile(
+        payoutRow,
+        qbTokenInfo,
+        {
+          runIdempotencyCheck: true,
+        },
+      )
+
+      await this.syncLogService.updateQBSyncLog(
+        {
+          status: LogStatus.SUCCESS,
+          quickbooksId: depositId ?? undefined,
+          errorMessage: '',
+        },
+        eq(QBSyncLog.id, record.id),
+      )
+    } catch (error: unknown) {
+      CustomLogger.error({
+        message: 'SyncService#processPayoutSync',
+        obj: { error },
+      })
+      const isMixed = error instanceof MixedPayoutIntentError
+      const errorWithCode = getMessageAndCodeFromError(error)
+      await this.syncLogService.updateQBSyncLog(
+        {
+          status: LogStatus.FAILED,
+          errorMessage: errorWithCode.message,
+          errorCode: isMixed
+            ? PAYOUT_MIXED_INTENT_CODE
+            : errorWithCode.code?.toString(),
+          shouldRetry: getShouldRetryForPayout(error),
+          category: isMixed
+            ? FailedRecordCategoryType.OTHERS
+            : getCategory(errorWithCode),
+        },
+        eq(QBSyncLog.id, record.id),
       )
     }
   }
@@ -401,17 +488,6 @@ export class SyncService extends BaseService {
     const authService = new AuthService(this.user)
 
     for (const log of logs) {
-      // TODO: no PAYOUT resync path yet — skip so terminal payout rows don't
-      // burn attempts to a misleading alert. Auto-recovery is a follow-up.
-      if (log.entityType === EntityType.PAYOUT) {
-        CustomLogger.info({
-          message:
-            'SyncService#intiateSync | Skipping payout log (no resync path)',
-          obj: { copilotId: log.copilotId, workspaceId: this.user.workspaceId },
-        })
-        continue
-      }
-
       // check and update attempt for failed logs
       const resyncAttemtps = await this.checkAndUpdateAttempt(log)
       if (resyncAttemtps.maxAttempts) {
@@ -473,6 +549,15 @@ export class SyncService extends BaseService {
             message: 'SyncService#intiateSync | Product re-sync started',
           })
           await this.processProductSync(log, qbTokenInfo, log.eventType)
+          break
+
+        case EntityType.PAYOUT:
+          if (log.eventType === EventType.SETTLED) {
+            CustomLogger.info({
+              message: 'SyncService#intiateSync | Payout re-sync started',
+            })
+            await this.processPayoutSync(log, qbTokenInfo)
+          }
           break
 
         default:
