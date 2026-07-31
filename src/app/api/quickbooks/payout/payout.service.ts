@@ -18,9 +18,15 @@ import { PayoutLineItem } from '@/type/dto/webhook.dto'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import { AccountTypeObj } from '@/constant/qbConnection'
 import { validateAccessToken } from '@/utils/auth'
+import User from '@/app/api/core/models/User.model'
 
 export class PayoutService extends BaseService {
-  private syncLogService = new SyncLogService(this.user)
+  private syncLogService: SyncLogService
+
+  constructor(user: User) {
+    super(user)
+    this.syncLogService = new SyncLogService(user)
+  }
 
   // Same (portalId, payoutId) updates the same row, so a re-sent payout
   // never makes a duplicate.
