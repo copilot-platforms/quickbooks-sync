@@ -135,6 +135,13 @@ export type PaymentSucceededResponseType = z.infer<
   typeof PaymentSucceededResponseSchema
 >
 
+export const PayoutLineItemSchema = z.object({
+  copilotInvoiceId: z.string(),
+  grossAmount: z.number(),
+  feeAmount: z.number(),
+})
+export type PayoutLineItem = z.infer<typeof PayoutLineItemSchema>
+
 export const PayoutReconciliationCompletedSchema = z.object({
   eventType: z.literal(WebhookEvents.PAYOUT_RECONCILIATION_COMPLETED),
   eventTime: z.string().optional(),
@@ -146,15 +153,7 @@ export const PayoutReconciliationCompletedSchema = z.object({
       netAmount: z.number(),
       status: z.string(),
     }),
-    lineItems: z
-      .array(
-        z.object({
-          copilotInvoiceId: z.string(),
-          grossAmount: z.number(),
-          feeAmount: z.number(),
-        }),
-      )
-      .min(1),
+    lineItems: z.array(PayoutLineItemSchema).min(1),
   }),
 })
 export type PayoutReconciliationCompletedType = z.infer<
