@@ -32,6 +32,7 @@ const baseTokens: IntuitAPITokensType = {
   assetAccountRef: 'asset',
   serviceItemRef: 'service',
   clientFeeRef: 'client-fee',
+  bankAccountRef: 'bank',
 }
 
 type Row = {

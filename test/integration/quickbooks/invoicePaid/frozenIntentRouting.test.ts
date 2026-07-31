@@ -21,7 +21,6 @@ describe('POST /api/quickbooks/webhook — invoice.paid routes off the frozen in
     await seedQBInvoiceSync({
       customerId: customer.id,
       isBatchedDeposit: true,
-      status: 'open',
     })
     await seedInvoiceCreatedLog()
 
@@ -41,7 +40,6 @@ describe('POST /api/quickbooks/webhook — invoice.paid routes off the frozen in
     await seedQBInvoiceSync({
       customerId: customer.id,
       isBatchedDeposit: false,
-      status: 'open',
     })
     await seedInvoiceCreatedLog()
 

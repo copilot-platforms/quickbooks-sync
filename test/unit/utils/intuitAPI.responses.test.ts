@@ -35,6 +35,7 @@ const baseTokens: IntuitAPITokensType = {
   assetAccountRef: 'asset',
   serviceItemRef: 'service',
   clientFeeRef: 'client-fee',
+  bankAccountRef: 'bank',
 }
 
 function makeApi() {
@@ -361,7 +362,6 @@ describe('IntuitAPI POST-based writes', () => {
     const api = makeApi()
     const result = await api.createItem({
       Name: 'Widget',
-      UnitPrice: 25,
       Type: 'Service' as never,
       Taxable: false,
     })
