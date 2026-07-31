@@ -25,24 +25,28 @@ export default function ConfirmModal({
   const titleId = useId()
   const descId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
-  // Keep the latest onCancel without re-running the focus effect each render.
-  const onCancelRef = useRef(onCancel)
-  onCancelRef.current = onCancel
 
-  // On open: focus into the dialog, trap Tab, and restore focus on close.
+  // On open, focus into the dialog; on close, restore focus to the opener.
   useEffect(() => {
     if (!open) return
     const previouslyFocused = document.activeElement as HTMLElement | null
-    const focusables = Array.from(
-      dialogRef.current?.querySelectorAll<HTMLElement>('button') ?? [],
-    )
-    focusables[0]?.focus()
+    const buttons = dialogRef.current?.querySelectorAll<HTMLElement>('button')
+    buttons?.[0]?.focus()
+    return () => previouslyFocused?.focus()
+  }, [open])
 
+  // Escape cancels; Tab is trapped between the dialog's buttons.
+  useEffect(() => {
+    if (!open) return
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') return onCancelRef.current()
-      if (e.key !== 'Tab' || focusables.length === 0) return
-      const first = focusables[0]
-      const last = focusables[focusables.length - 1]
+      if (e.key === 'Escape') return onCancel()
+      if (e.key !== 'Tab') return
+      const buttons = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>('button') ?? [],
+      )
+      if (buttons.length === 0) return
+      const first = buttons[0]
+      const last = buttons[buttons.length - 1]
       if (e.shiftKey && document.activeElement === first) {
         e.preventDefault()
         last.focus()
@@ -52,11 +56,8 @@ export default function ConfirmModal({
       }
     }
     document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      previouslyFocused?.focus()
-    }
-  }, [open])
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open, onCancel])
 
   if (!open) return null
 
