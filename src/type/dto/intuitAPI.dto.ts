@@ -287,6 +287,21 @@ export const QBDepositResponseSchema = z.object({
 })
 export type QBDepositResponseType = z.infer<typeof QBDepositResponseSchema>
 
+export const QBDepositQueryResponseSchema = z.object({
+  Deposit: z
+    .array(
+      z.object({
+        Id: z.string(),
+        PrivateNote: z.string().optional(),
+        TxnDate: z.string().optional(),
+      }),
+    )
+    .optional(),
+})
+export type QBDepositQueryResponseType = z.infer<
+  typeof QBDepositQueryResponseSchema
+>
+
 export const QBDeletePayloadSchema = z.object({
   SyncToken: z.string(),
   Id: z.string(),
