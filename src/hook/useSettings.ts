@@ -452,10 +452,13 @@ export const useInvoiceDetailSettings = () => {
     isLoading,
   } = useSwrHelper(`/api/quickbooks/setting?type=invoice&token=${token}`)
 
+  // AB gate from the settings GET; hides the bank deposit UI when off.
+  const bankDepositEnabled = setting?.bankDepositEnabled ?? false
+
   const { data: bankAccountsData, error: bankAccountsError } = useSwrHelper<{
     accounts: { Id: string; Name: string }[]
   }>(
-    isDisconnected
+    isDisconnected || !bankDepositEnabled
       ? null
       : `/api/quickbooks/setting/bank-account?token=${token}`,
     { suspense: false, revalidateOnMount: true },
@@ -550,6 +553,7 @@ export const useInvoiceDetailSettings = () => {
     error,
     isLoading,
     showButton,
+    bankDepositEnabled,
     bankAccountOptions,
     bankAccountsError,
     canSave,

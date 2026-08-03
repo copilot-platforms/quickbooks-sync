@@ -11,6 +11,7 @@ type InvoiceDetailProps = {
     value: InvoiceSettingType[K],
   ) => void
   isLoading: boolean
+  bankDepositEnabled: boolean
   bankAccountOptions: AccountOption[] | undefined
   bankAccountsError: unknown
 }
@@ -19,6 +20,7 @@ export default function InvoiceDetail({
   settingState,
   changeSettings,
   isLoading,
+  bankDepositEnabled,
   bankAccountOptions,
   bankAccountsError,
 }: InvoiceDetailProps) {
@@ -41,44 +43,49 @@ export default function InvoiceDetail({
             }
           />
         </div>
-        <div className="mb-5">
-          <Checkbox
-            label="Create bank deposits for automatic bank reconciliation"
-            description="When Stripe pays out, create a QuickBooks bank deposit that matches the net amount deposited to your bank (after fees), so the bank transaction matches automatically."
-            checked={settingState.bankDepositFeeFlag}
-            onChange={() =>
-              changeSettings(
-                'bankDepositFeeFlag',
-                !settingState.bankDepositFeeFlag,
-              )
-            }
-          />
-        </div>
-        {settingState.bankDepositFeeFlag && (
-          <div className="mb-5 ml-6">
-            {bankAccountsError ? (
-              <p className="text-xs text-red-600">
-                Could not load bank accounts. Reload to retry.
-              </p>
-            ) : (
-              <>
-                <AccountSelect
-                  label="Deposit bank account"
-                  description="The bank account Stripe payouts are deposited into. Used to create the matching QuickBooks bank deposit."
-                  value={settingState.bankAccountRef ?? ''}
-                  options={bankAccountOptions}
-                  placeholder="Select a deposit bank account"
-                  onChange={(id) => changeSettings('bankAccountRef', id)}
-                />
-                {bankAccountOptions !== undefined &&
-                  !settingState.bankAccountRef && (
-                    <p className="text-xs text-red-600">
-                      Select a deposit bank account to enable bank deposits.
-                    </p>
-                  )}
-              </>
+        {/* Bank deposit UI is gated behind the AB rollout allowlist. */}
+        {bankDepositEnabled && (
+          <>
+            <div className="mb-5">
+              <Checkbox
+                label="Create bank deposits for automatic bank reconciliation"
+                description="When Stripe pays out, create a QuickBooks bank deposit that matches the net amount deposited to your bank (after fees), so the bank transaction matches automatically."
+                checked={settingState.bankDepositFeeFlag}
+                onChange={() =>
+                  changeSettings(
+                    'bankDepositFeeFlag',
+                    !settingState.bankDepositFeeFlag,
+                  )
+                }
+              />
+            </div>
+            {settingState.bankDepositFeeFlag && (
+              <div className="mb-5 ml-6">
+                {bankAccountsError ? (
+                  <p className="text-xs text-red-600">
+                    Could not load bank accounts. Reload to retry.
+                  </p>
+                ) : (
+                  <>
+                    <AccountSelect
+                      label="Deposit bank account"
+                      description="The bank account Stripe payouts are deposited into. Used to create the matching QuickBooks bank deposit."
+                      value={settingState.bankAccountRef ?? ''}
+                      options={bankAccountOptions}
+                      placeholder="Select a deposit bank account"
+                      onChange={(id) => changeSettings('bankAccountRef', id)}
+                    />
+                    {bankAccountOptions !== undefined &&
+                      !settingState.bankAccountRef && (
+                        <p className="text-xs text-red-600">
+                          Select a deposit bank account to enable bank deposits.
+                        </p>
+                      )}
+                  </>
+                )}
+              </div>
             )}
-          </div>
+          </>
         )}
         <div className="mb-6">
           <Checkbox
