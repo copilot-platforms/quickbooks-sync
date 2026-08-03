@@ -53,6 +53,15 @@ export const externalFetchTimeoutMs = parsePositiveMs(
   30_000,
 )
 
+// Portal allowlist gating in-testing features (currently the bank deposit
+// flow). Empty/unset means the feature is available to all portals.
+export const abFeatureTestingPortals = (
+  process.env.AB_FEATURE_TESTING_PORTALS || ''
+)
+  .split(',')
+  .map((portalId) => portalId.trim())
+  .filter(Boolean)
+
 // Supabase
 export const supabaseProjectUrl =
   process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL || ''
