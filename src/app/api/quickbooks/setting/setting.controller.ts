@@ -1,6 +1,7 @@
 import authenticate from '@/app/api/core/utils/authenticate'
 import { SettingService } from '@/app/api/quickbooks/setting/setting.service'
 import { TokenService } from '@/app/api/quickbooks/token/token.service'
+import { isPortalInBankDepositABTest } from '@/utils/abTesting'
 import { db } from '@/db'
 import { QBPortalConnection } from '@/db/schema/qbPortalConnections'
 import { QBSetting } from '@/db/schema/qbSettings'
@@ -41,7 +42,12 @@ export async function getSettings(req: NextRequest) {
       ? (await getPortalConnection(user.workspaceId))?.bankAccountRef || null
       : null
 
-  return NextResponse.json({ setting, bankAccountRef })
+  const bankDepositEnabled =
+    parsedType.success && parsedType.data === SettingType.INVOICE
+      ? isPortalInBankDepositABTest(user.workspaceId)
+      : false
+
+  return NextResponse.json({ setting, bankAccountRef, bankDepositEnabled })
 }
 
 export async function updateSettings(req: NextRequest) {
@@ -54,17 +60,24 @@ export async function updateSettings(req: NextRequest) {
   const parsedType = z.nativeEnum(SettingType).parse(type)
 
   const parsed = SettingRequestSchema.parse(body)
-  const { bankAccountRef, ...settingFields } = parsed
+  const { bankAccountRef, bankDepositFeeFlag, ...settingFields } = parsed
+
+  // Bank deposit fields are only honored for invoice settings on AB-test
+  // portals; everyone else has the flag and bank account stripped from writes.
+  const isBankDepositAB =
+    parsedType === SettingType.INVOICE &&
+    isPortalInBankDepositABTest(user.workspaceId)
 
   const payload = {
     ...settingFields,
+    ...(isBankDepositAB && { bankDepositFeeFlag }),
     ...(parsedType === SettingType.INVOICE
       ? { initialInvoiceSettingMap: true }
       : { initialProductSettingMap: true }),
   }
 
   const writeBankAccountRef =
-    parsedType === SettingType.INVOICE && typeof bankAccountRef !== 'undefined'
+    isBankDepositAB && typeof bankAccountRef !== 'undefined'
 
   const setting = await db.transaction(async (tx) => {
     settingService.setTransaction(tx)
