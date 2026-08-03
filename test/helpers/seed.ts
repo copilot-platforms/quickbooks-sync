@@ -236,25 +236,28 @@ export async function seedFailedPayout(opts: {
   qbDepositId?: string
   errorMessage?: string
 }) {
-  await db.insert(QBPayoutSync).values({
-    portalId: TEST_PORTAL_ID,
-    payoutId: opts.payoutId,
-    lineItems: opts.lineItems,
-    netAmount: opts.netAmount,
-    feeAmount: opts.feeCents,
-    arrivalDate: opts.arrivalDate,
-    qbDepositId: opts.qbDepositId ?? null,
-  })
-  await db.insert(QBSyncLog).values({
-    portalId: TEST_PORTAL_ID,
-    entityType: EntityType.PAYOUT,
-    eventType: EventType.SETTLED,
-    status: LogStatus.FAILED,
-    copilotId: opts.payoutId,
-    // Cents-as-string, matching what the webhook writes for a payout log.
-    amount: opts.netAmount.toFixed(2),
-    feeAmount: opts.feeCents.toFixed(2),
-    errorMessage: opts.errorMessage ?? 'QuickBooks timed out',
-    shouldRetry: true,
-  })
+  // Independent tables, no FK between them — insert both at once.
+  await Promise.all([
+    db.insert(QBPayoutSync).values({
+      portalId: TEST_PORTAL_ID,
+      payoutId: opts.payoutId,
+      lineItems: opts.lineItems,
+      netAmount: opts.netAmount,
+      feeAmount: opts.feeCents,
+      arrivalDate: opts.arrivalDate,
+      qbDepositId: opts.qbDepositId ?? null,
+    }),
+    db.insert(QBSyncLog).values({
+      portalId: TEST_PORTAL_ID,
+      entityType: EntityType.PAYOUT,
+      eventType: EventType.SETTLED,
+      status: LogStatus.FAILED,
+      copilotId: opts.payoutId,
+      // Cents-as-string, matching what the webhook writes for a payout log.
+      amount: opts.netAmount.toFixed(2),
+      feeAmount: opts.feeCents.toFixed(2),
+      errorMessage: opts.errorMessage ?? 'QuickBooks timed out',
+      shouldRetry: true,
+    }),
+  ])
 }
