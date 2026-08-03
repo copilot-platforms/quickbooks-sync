@@ -19,6 +19,7 @@ import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import { AccountTypeObj } from '@/constant/qbConnection'
 import { validateAccessToken } from '@/utils/auth'
 import User from '@/app/api/core/models/User.model'
+import { isPortalInBankDepositABTest } from '@/utils/abTesting'
 
 export class PayoutService extends BaseService {
   private syncLogService: SyncLogService
@@ -84,6 +85,15 @@ export class PayoutService extends BaseService {
     qbTokenInfo: IntuitAPITokensType,
     opts: { runIdempotencyCheck: boolean },
   ): Promise<{ depositId: string | null }> {
+    // AB gate: covers both callers (payout webhook + resync cron). Only fires
+    // for an explicitly excluded portal (empty allowlist = all portals). Logged
+    // rather than silent so a rare mid-flight exclusion is visible in Sentry.
+    if (!isPortalInBankDepositABTest(this.user.workspaceId)) {
+      console.info(
+        `PayoutService#reconcile | AB gate off for portal ${this.user.workspaceId}; skipping deposit for payout ${row.payoutId}`,
+      )
+      return { depositId: null }
+    }
     validateAccessToken(qbTokenInfo)
 
     const payoutId = row.payoutId

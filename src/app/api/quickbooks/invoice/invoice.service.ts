@@ -49,6 +49,7 @@ import {
   InvoiceLineItemSchemaType,
   InvoiceResponseType,
 } from '@/type/dto/webhook.dto'
+import { isPortalInBankDepositABTest } from '@/utils/abTesting'
 import { bottleneck } from '@/utils/bottleneck'
 import { AssemblyAPI } from '@/utils/assemblyAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
@@ -484,6 +485,8 @@ export class InvoiceService extends BaseService {
   // Reads the live batched-deposit setting. Called only at the freeze point
   // (row creation); everything else reads the frozen row value.
   private async readBankDepositFeeFlag(): Promise<boolean> {
+    // AB gate: portals outside the allowlist never freeze as batched.
+    if (!isPortalInBankDepositABTest(this.user.workspaceId)) return false
     const settingService = new SettingService(this.user)
     const setting = await settingService.getOneByPortalId([
       'bankDepositFeeFlag',
