@@ -46,6 +46,13 @@ export function getEntityKey(log: QBSyncLogSelectSchemaType): string {
   )
 }
 
+type MixedPayoutInvoices = {
+  // Display-joined affected invoice numbers (from the log `remark`).
+  affectedInvoiceNumbers?: string
+  // Subset whose absorbed fee is already recorded in QBO.
+  invoiceNumbersWithFee?: string
+}
+
 export class SyncErrorNotifier extends BaseService {
   /**
    * Dispatches an IU notification for a freshly written FAILED sync log row
@@ -72,34 +79,14 @@ export class SyncErrorNotifier extends BaseService {
       return
     }
 
-    // Mixed-payout rows stash the affected invoices in `remark`; surface them,
-    // then flag which already have a recorded fee to warn against double-booking.
-    const affectedInvoiceNumbers =
-      action === NotificationActions.QB_PAYOUT_MIXED_INTENT ? log.remark : null
-    let invoiceNumbersWithFee: string | undefined
-    if (affectedInvoiceNumbers) {
-      try {
-        const affected = affectedInvoiceNumbers
-          .split(MIXED_INTENT_INVOICE_DELIMITER)
-          .filter(Boolean)
-        const withFee = await getInvoiceNumbersWithRecordedFee(
-          this.user.workspaceId,
-          affected,
-        )
-        const recorded = affected.filter((invoiceNumber) =>
-          withFee.has(invoiceNumber),
-        )
-        if (recorded.length)
-          invoiceNumbersWithFee = recorded.join(MIXED_INTENT_INVOICE_DELIMITER)
-      } catch (error) {
-        // A lookup blip must still let the terminal payout notification through.
-        CustomLogger.error({
-          message:
-            'SyncErrorNotifier | recorded-fee lookup failed; notifying without it',
-          obj: error,
-        })
-      }
-    }
+    // Only mixed-payout rows carry an affected-invoice list to resolve.
+    const {
+      affectedInvoiceNumbers,
+      invoiceNumbersWithFee,
+    }: MixedPayoutInvoices =
+      action !== NotificationActions.QB_PAYOUT_MIXED_INTENT
+        ? {}
+        : await this.resolveMixedPayoutInvoices(log.remark)
 
     const context: NotificationContext = {
       entityType: log.entityType,
@@ -110,7 +97,7 @@ export class SyncErrorNotifier extends BaseService {
       productName: log.productName,
       qbItemName: log.qbItemName,
       errorMessage: log.errorMessage,
-      invoiceNumbers: affectedInvoiceNumbers ?? undefined,
+      invoiceNumbers: affectedInvoiceNumbers,
       invoiceNumbersWithFee,
     }
     const portal = await getPortalConnection(this.user.workspaceId)
@@ -124,5 +111,35 @@ export class SyncErrorNotifier extends BaseService {
       action,
       context,
     )
+  }
+
+  // Resolve a mixed-payout `remark` into its affected invoices and the subset
+  // with a recorded fee; a lookup blip drops that detail, not the notification.
+  private async resolveMixedPayoutInvoices(
+    remark: string | null,
+  ): Promise<MixedPayoutInvoices> {
+    if (!remark) return {}
+    const affected = remark
+      .split(MIXED_INTENT_INVOICE_DELIMITER)
+      .filter(Boolean)
+    let invoiceNumbersWithFee: string | undefined
+    try {
+      const withFee = await getInvoiceNumbersWithRecordedFee(
+        this.user.workspaceId,
+        affected,
+      )
+      const recorded = affected.filter((invoiceNumber) =>
+        withFee.has(invoiceNumber),
+      )
+      if (recorded.length)
+        invoiceNumbersWithFee = recorded.join(MIXED_INTENT_INVOICE_DELIMITER)
+    } catch (error) {
+      CustomLogger.error({
+        message:
+          'SyncErrorNotifier | recorded-fee lookup failed; notifying without it',
+        obj: error,
+      })
+    }
+    return { affectedInvoiceNumbers: remark, invoiceNumbersWithFee }
   }
 }
