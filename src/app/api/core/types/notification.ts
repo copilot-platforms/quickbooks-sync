@@ -31,6 +31,9 @@ export interface NotificationContext {
   // Comma-joined invoice numbers for a multi-invoice failure (mixed payout),
   // where the single invoiceNumber above can't hold them all.
   invoiceNumbers?: string | null
+  // Subset of invoiceNumbers whose absorbed fee is already recorded in QBO, so a
+  // mixed-payout body can tell IUs which fees not to record a second time.
+  invoiceNumbersWithFee?: string | null
   customerName?: string | null
   productName?: string | null
   qbItemName?: string | null

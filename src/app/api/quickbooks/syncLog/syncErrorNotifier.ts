@@ -7,10 +7,13 @@ import {
 import { NotificationService } from '@/app/api/notification/notification.service'
 import {
   AppActionableErrorCodes,
+  MIXED_INTENT_INVOICE_DELIMITER,
   UserActionableErrorCodes,
 } from '@/constant/intuitErrorCode'
 import { QBSyncLogSelectSchemaType } from '@/db/schema/qbSyncLogs'
 import { getPortalConnection } from '@/db/service/token.service'
+import { getInvoiceNumbersWithRecordedFee } from '@/db/service/syncLog.service'
+import CustomLogger from '@/utils/logger'
 
 /**
  * Looks up the user-actionable notification action for a given QBO error code.
@@ -69,6 +72,35 @@ export class SyncErrorNotifier extends BaseService {
       return
     }
 
+    // Mixed-payout rows stash the affected invoices in `remark`; surface them,
+    // then flag which already have a recorded fee to warn against double-booking.
+    const affectedInvoiceNumbers =
+      action === NotificationActions.QB_PAYOUT_MIXED_INTENT ? log.remark : null
+    let invoiceNumbersWithFee: string | undefined
+    if (affectedInvoiceNumbers) {
+      try {
+        const affected = affectedInvoiceNumbers
+          .split(MIXED_INTENT_INVOICE_DELIMITER)
+          .filter(Boolean)
+        const withFee = await getInvoiceNumbersWithRecordedFee(
+          this.user.workspaceId,
+          affected,
+        )
+        const recorded = affected.filter((invoiceNumber) =>
+          withFee.has(invoiceNumber),
+        )
+        if (recorded.length)
+          invoiceNumbersWithFee = recorded.join(MIXED_INTENT_INVOICE_DELIMITER)
+      } catch (error) {
+        // A lookup blip must still let the terminal payout notification through.
+        CustomLogger.error({
+          message:
+            'SyncErrorNotifier | recorded-fee lookup failed; notifying without it',
+          obj: error,
+        })
+      }
+    }
+
     const context: NotificationContext = {
       entityType: log.entityType,
       eventType: log.eventType,
@@ -78,12 +110,8 @@ export class SyncErrorNotifier extends BaseService {
       productName: log.productName,
       qbItemName: log.qbItemName,
       errorMessage: log.errorMessage,
-      // Mixed-payout rows stash the affected invoice numbers in `remark`; surface
-      // them for the body while copilotId stays the ref.
-      invoiceNumbers:
-        action === NotificationActions.QB_PAYOUT_MIXED_INTENT
-          ? log.remark
-          : undefined,
+      invoiceNumbers: affectedInvoiceNumbers ?? undefined,
+      invoiceNumbersWithFee,
     }
     const portal = await getPortalConnection(this.user.workspaceId)
 

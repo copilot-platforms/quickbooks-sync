@@ -110,8 +110,31 @@ describe('getInProductNotificationDetail', () => {
       NotificationActions.QB_PAYOUT_MIXED_INTENT,
       ctx,
     )
-    expect(detail.body).toContain('No deposit was created, so nothing')
+    expect(detail.body).toContain(
+      'No deposit was created. The payments are already recorded',
+    )
     expect(detail.body).not.toContain('for invoices')
+    expect(detail.body).not.toContain('already recorded as expenses')
+  })
+
+  it('warns which invoice fees are already recorded so they are not booked twice', () => {
+    const ctx: NotificationContext = {
+      entityType: 'payout',
+      eventType: 'settled',
+      entityKey: 'po_test_1',
+      invoiceNumbers: 'INV-A, INV-B',
+      invoiceNumbersWithFee: 'INV-A',
+    }
+    const detail = getInProductNotificationDetail(
+      NotificationActions.QB_PAYOUT_MIXED_INTENT,
+      ctx,
+    )
+    expect(detail.body).toContain(
+      'No deposit was created for invoices INV-A, INV-B',
+    )
+    expect(detail.body).toContain(
+      'The Stripe fees for INV-A are already recorded as expenses in QuickBooks, so do not record those fees again',
+    )
   })
 
   it('5010 (invoice-only after suppression) warns that the failure is final', () => {

@@ -36,6 +36,16 @@ vi.mock('@/db/service/token.service', () => ({
   getPortalConnection: () => getPortalConnectionMock(),
 }))
 
+const getInvoiceNumbersWithRecordedFeeMock = vi
+  .fn()
+  .mockResolvedValue(new Set<string>())
+vi.mock('@/db/service/syncLog.service', () => ({
+  getInvoiceNumbersWithRecordedFee: (
+    portalId: string,
+    invoiceNumbers: string[],
+  ) => getInvoiceNumbersWithRecordedFeeMock(portalId, invoiceNumbers),
+}))
+
 import {
   SyncErrorNotifier,
   getActionForErrorCode,
@@ -189,6 +199,8 @@ describe('SyncErrorNotifier#notify', () => {
 
   beforeEach(() => {
     sendNotificationToIU.mockReset()
+    getInvoiceNumbersWithRecordedFeeMock.mockReset()
+    getInvoiceNumbersWithRecordedFeeMock.mockResolvedValue(new Set())
   })
 
   it('skips when status is not FAILED', async () => {
@@ -264,6 +276,8 @@ describe('SyncErrorNotifier#notify', () => {
       entityKey: 'po_test_1',
       invoiceNumbers: 'INV-A, INV-B',
     })
+    // No recorded-fee rows this run, so the warning field stays absent.
+    expect(ctx.invoiceNumbersWithFee).toBeUndefined()
 
     // Close the seam: the ctx extracted from `remark` must render the invoice
     // list in the real copy (both channels), with the payout id as the ref.
@@ -273,6 +287,88 @@ describe('SyncErrorNotifier#notify', () => {
       expect(body).toContain('ref po_test_1')
       expect(body).toContain('No deposit was created for invoices INV-A, INV-B')
     }
+  })
+
+  it('flags the invoices whose fees are already recorded so IUs do not book them twice', async () => {
+    // Only INV-A has a recorded absorbed-fee expense; INV-B was deferred.
+    getInvoiceNumbersWithRecordedFeeMock.mockResolvedValueOnce(
+      new Set(['INV-A']),
+    )
+    const notifier = new SyncErrorNotifier(user)
+
+    await notifier.notify({
+      ...baseLog,
+      entityType: 'payout' as never,
+      eventType: 'settled' as never,
+      errorCode: PAYOUT_MIXED_INTENT_CODE,
+      quickbooksId: null,
+      invoiceNumber: null,
+      copilotId: 'po_test_1',
+      remark: 'INV-A, INV-B',
+      errorMessage:
+        'Payout po_test_1 mixes batched and non-batched invoices; unsupported',
+    })
+
+    expect(getInvoiceNumbersWithRecordedFeeMock).toHaveBeenCalledWith(
+      'portal-1',
+      ['INV-A', 'INV-B'],
+    )
+    const [, action, ctx] = sendNotificationToIU.mock.calls[0]
+    expect(ctx).toMatchObject({
+      invoiceNumbers: 'INV-A, INV-B',
+      invoiceNumbersWithFee: 'INV-A',
+    })
+
+    const inProduct = getInProductNotificationDetail(action, ctx)
+    const email = getIEmailNotificationDetail(action, ctx)
+    for (const body of [inProduct.body, email.body]) {
+      expect(body).toContain(
+        'The Stripe fees for INV-A are already recorded as expenses in QuickBooks, so do not record those fees again',
+      )
+    }
+  })
+
+  it('lists recorded-fee invoices in remark order, not lookup order', async () => {
+    // Lookup returns them reversed; output must still follow the remark order.
+    getInvoiceNumbersWithRecordedFeeMock.mockResolvedValueOnce(
+      new Set(['INV-B', 'INV-A']),
+    )
+    const notifier = new SyncErrorNotifier(user)
+
+    await notifier.notify({
+      ...baseLog,
+      entityType: 'payout' as never,
+      eventType: 'settled' as never,
+      errorCode: PAYOUT_MIXED_INTENT_CODE,
+      copilotId: 'po_test_1',
+      remark: 'INV-A, INV-B',
+    })
+
+    const [, , ctx] = sendNotificationToIU.mock.calls[0]
+    expect(ctx.invoiceNumbersWithFee).toBe('INV-A, INV-B')
+  })
+
+  it('still dispatches the mixed-payout notification when the recorded-fee lookup throws', async () => {
+    // A lookup blip must not swallow this terminal, never-retried notification.
+    getInvoiceNumbersWithRecordedFeeMock.mockRejectedValueOnce(
+      new Error('db blip'),
+    )
+    const notifier = new SyncErrorNotifier(user)
+
+    await notifier.notify({
+      ...baseLog,
+      entityType: 'payout' as never,
+      eventType: 'settled' as never,
+      errorCode: PAYOUT_MIXED_INTENT_CODE,
+      copilotId: 'po_test_1',
+      remark: 'INV-A, INV-B',
+    })
+
+    expect(sendNotificationToIU).toHaveBeenCalledTimes(1)
+    const [, action, ctx] = sendNotificationToIU.mock.calls[0]
+    expect(action).toBe(NotificationActions.QB_PAYOUT_MIXED_INTENT)
+    expect(ctx).toMatchObject({ invoiceNumbers: 'INV-A, INV-B' })
+    expect(ctx.invoiceNumbersWithFee).toBeUndefined()
   })
 
   it('dispatches a notification for a FAILED row with a user-actionable code', async () => {
