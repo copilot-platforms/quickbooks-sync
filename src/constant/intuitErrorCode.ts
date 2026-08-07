@@ -63,6 +63,10 @@ export const UserActionableErrorCodes: Record<string, NotificationActions> = {
 // above. Written to qb_sync_logs.error_code so SyncErrorNotifier routes it.
 export const PAYOUT_MIXED_INTENT_CODE = 'payout_mixed_intent'
 
+// Packs the affected invoice numbers into a mixed-payout log's `remark`. Shared
+// so the writer's join and the notifier's split can't drift.
+export const MIXED_INTENT_INVOICE_DELIMITER = ', '
+
 // App-level (non-QBO) sentinel codes routed to IU notifications, consulted by
 // getActionForErrorCode alongside UserActionableErrorCodes.
 export const AppActionableErrorCodes: Record<string, NotificationActions> = {
