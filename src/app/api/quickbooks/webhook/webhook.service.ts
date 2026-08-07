@@ -40,7 +40,10 @@ import { getCategory, getShouldRetryForCategory } from '@/utils/synclog'
 import { addSyncBreadcrumb } from '@/utils/sentry'
 import { and, eq } from 'drizzle-orm'
 import httpStatus from 'http-status'
-import { PAYOUT_MIXED_INTENT_CODE } from '@/constant/intuitErrorCode'
+import {
+  MIXED_INTENT_INVOICE_DELIMITER,
+  PAYOUT_MIXED_INTENT_CODE,
+} from '@/constant/intuitErrorCode'
 
 export class WebhookService extends BaseService {
   async handleWebhookEvent(
@@ -723,7 +726,7 @@ export class WebhookService extends BaseService {
       const affectedInvoiceNumbers = copilotInvoiceIds
         .map((id) => paymentIdByInvoice.get(id)?.invoiceNumber)
         .filter(Boolean)
-        .join(', ')
+        .join(MIXED_INTENT_INVOICE_DELIMITER)
       // Single FAILED-log write. Mixed intent gets the routable sentinel so
       // SyncErrorNotifier alerts IUs; everything else keeps its derived code.
       // No qbItemName — it would outrank copilotId (the payout id) in the
