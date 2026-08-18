@@ -154,7 +154,7 @@ export const ClientRequestSchema = z.object({
   familyName: z.string(),
   email: z.string().email(),
   companyId: z.string().uuid().optional(),
-  // NOTE: customFields can also be passed as a JSON object, but CopilotAPI has its type defined to stringified JSON
+  // NOTE: customFields can also be passed as a JSON object, but AssemblyAPI has its type defined to stringified JSON
   customFields: z.string().optional(),
 })
 export type ClientRequest = z.infer<typeof ClientRequestSchema>
@@ -183,24 +183,22 @@ export type InternalUsersResponse = z.infer<typeof InternalUsersResponseSchema>
 export const NotificationRequestBodySchema = z.object({
   senderId: z.string(),
   recipientId: z.string(),
-  deliveryTargets: z
-    .object({
-      inProduct: z
-        .object({
-          title: z.string(),
-          body: z.string().optional(),
-        })
-        .optional(),
-      email: z
-        .object({
-          subject: z.string().optional(),
-          header: z.string().optional(),
-          title: z.string().optional(),
-          body: z.string().optional(),
-        })
-        .optional(),
-    })
-    .optional(),
+  deliveryTargets: z.object({
+    inProduct: z
+      .object({
+        title: z.string(),
+        body: z.string().optional(),
+      })
+      .optional(),
+    email: z
+      .object({
+        subject: z.string(),
+        header: z.string(),
+        title: z.string(),
+        body: z.string().optional(),
+      })
+      .optional(),
+  }),
 })
 
 export type NotificationRequestBody = z.infer<
