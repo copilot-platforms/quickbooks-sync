@@ -3,7 +3,7 @@ import { BaseService } from '@/app/api/core/services/base.service'
 import { withRetry } from '@/app/api/core/utils/withRetry'
 import { AuthService } from '@/app/api/quickbooks/auth/auth.service'
 import { StatusableError } from '@/type/CopilotApiError'
-import { CopilotAPI } from '@/utils/copilotAPI'
+import { AssemblyAPI } from '@/utils/assemblyAPI'
 import { and, eq } from 'drizzle-orm'
 import httpStatus from 'http-status'
 import { MAX_PRODUCT_LIST_LIMIT } from '@/app/api/core/constants/limit'
@@ -26,7 +26,7 @@ export class SyncMissedProductsService extends BaseService {
       )
 
       // 1. Get all the products for the portal
-      const copilotApi = new CopilotAPI(this.user.token)
+      const copilotApi = new AssemblyAPI(this.user.workspaceId)
       const allProducts = await copilotApi.getProducts({
         limit: MAX_PRODUCT_LIST_LIMIT,
       })

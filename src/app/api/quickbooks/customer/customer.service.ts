@@ -13,7 +13,7 @@ import {
 import { CompanyResponse, WhereClause } from '@/type/common'
 import { QBCustomerCreatePayloadType } from '@/type/dto/intuitAPI.dto'
 import { InvoiceCreatedResponseType } from '@/type/dto/webhook.dto'
-import { CopilotAPI } from '@/utils/copilotAPI'
+import { AssemblyAPI } from '@/utils/assemblyAPI'
 import IntuitAPI from '@/utils/intuitAPI'
 import { addSyncBreadcrumb } from '@/utils/sentry'
 import { replaceSpecialCharsForQB } from '@/utils/string'
@@ -145,7 +145,7 @@ export class CustomerService extends BaseService {
       )
     }
 
-    const copilot = new CopilotAPI(this.user.token)
+    const copilot = new AssemblyAPI(this.user.workspaceId)
     let client
 
     // get client and company info from copilot

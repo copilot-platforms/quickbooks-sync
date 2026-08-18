@@ -9,7 +9,7 @@ import {
   QBProductSync,
 } from '@/db/schema/qbProductSync'
 import { StatusableError } from '@/type/CopilotApiError'
-import { CopilotAPI } from '@/utils/copilotAPI'
+import { AssemblyAPI } from '@/utils/assemblyAPI'
 import IntuitAPI from '@/utils/intuitAPI'
 import { eq, isNotNull } from 'drizzle-orm'
 import { convert } from 'html-to-text'
@@ -38,7 +38,7 @@ export class BackfillProductInfoService extends BaseService {
       }
 
       // 2. get all products from assembly
-      const copilotApi = new CopilotAPI(this.user.token)
+      const copilotApi = new AssemblyAPI(this.user.workspaceId)
       const assemblyProducts = (
         await copilotApi.getProducts({ limit: MAX_PRODUCT_LIST_LIMIT })
       )?.data

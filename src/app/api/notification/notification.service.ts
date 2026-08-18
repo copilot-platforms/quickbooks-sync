@@ -9,7 +9,7 @@ import {
   getInProductNotificationDetail,
 } from '@/app/api/notification/notification.helper'
 import { InternalUsersResponse } from '@/type/common'
-import { CopilotAPI } from '@/utils/copilotAPI'
+import { AssemblyAPI } from '@/utils/assemblyAPI'
 import CustomLogger from '@/utils/logger'
 import { captureException, captureMessage } from '@sentry/nextjs'
 
@@ -41,7 +41,7 @@ export class NotificationService extends BaseService {
       this.user.token,
     )
     try {
-      const copilot = new CopilotAPI(this.user.token)
+      const copilot = new AssemblyAPI(this.user.workspaceId)
       // 1. get all parties that gets notification
       const parties = await this.getAllParties(copilot, action)
 
@@ -102,7 +102,7 @@ export class NotificationService extends BaseService {
   }
 
   async getAllParties(
-    copilot: CopilotAPI,
+    copilot: AssemblyAPI,
     action: NotificationActions,
   ): Promise<InternalUsersResponse | null> {
     if (IU_RECIPIENT_ACTIONS.has(action)) {

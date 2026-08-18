@@ -19,7 +19,7 @@ import {
   ProductCreatedResponseType,
   ProductUpdatedResponseType,
 } from '@/type/dto/webhook.dto'
-import { CopilotAPI } from '@/utils/copilotAPI'
+import { AssemblyAPI } from '@/utils/assemblyAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import {
   and,
@@ -327,7 +327,7 @@ export class ProductService extends BaseService {
    * their own UnitPrice, so the table is product-to-item only.
    */
   async getProductsForMapping(): Promise<ProductFlattenArrayResponseType> {
-    const copilot = new CopilotAPI(this.user.token)
+    const copilot = new AssemblyAPI(this.user.workspaceId)
     const products = await copilot.getProducts({
       limit: MAX_PRODUCT_LIST_LIMIT,
     })

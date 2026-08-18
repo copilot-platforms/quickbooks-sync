@@ -37,7 +37,7 @@ type RequestHandler = (req: NextRequest, params: any) => Promise<NextResponse>
  * });
  *
  * @throws {ZodError} Captures and handles validation errors and responds with status 400 and the issue detail.
- * @throws {CopilotApiError} Captures and handles CopilotAPI errors, uses the error status, and message if available.
+ * @throws {CopilotApiError} Captures and handles AssemblyAPI errors, uses the error status, and message if available.
  * @throws {APIError} Captures and handles APIError
  * @throws {AxiosError} Captures and handles AxiosError (Specially from Intuit SDK)
  */

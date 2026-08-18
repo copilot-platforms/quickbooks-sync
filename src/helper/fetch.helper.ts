@@ -35,7 +35,7 @@ const extractUpstreamDetail = (body: unknown): string | undefined => {
   return undefined
 }
 
-// Exported so other clients with their own fetch wrappers (e.g. CopilotAPI's
+// Exported so other clients with their own fetch wrappers (e.g. AssemblyAPI's
 // manualFetch) can produce consistently-shaped HttpFetchError instances
 // without duplicating the JSON/text body-parsing logic.
 export const buildHttpFetchError = async (
