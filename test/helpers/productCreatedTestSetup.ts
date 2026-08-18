@@ -2,14 +2,14 @@ import { beforeEach, afterEach, vi } from 'vitest'
 import { truncateAllTestTables } from '@test/helpers/testDb'
 import {
   installMockApis,
-  type MockCopilotAPI,
+  type MockAssemblyAPI,
   type MockIntuitAPI,
 } from '@test/helpers/mocks'
 
 type InstallOpts = Parameters<typeof installMockApis>[0]
 
 export interface ProductCreatedTestHandle {
-  copilot: MockCopilotAPI
+  copilot: MockAssemblyAPI
   intuit: MockIntuitAPI
 }
 

@@ -4,7 +4,7 @@ import { NotificationActions } from '@/app/api/core/types/notification'
 import { QBSyncLogSelectSchemaType } from '@/db/schema/qbSyncLogs'
 
 // Stub Sentry + logger before importing the SUT — its transitive imports pull
-// in CopilotAPI/IntuitAPI which try to construct real SDK clients at import time.
+// in AssemblyAPI/IntuitAPI which try to construct real SDK clients at import time.
 vi.mock('@sentry/nextjs', () => ({
   withScope: vi.fn(),
   captureMessage: vi.fn(),
@@ -69,6 +69,7 @@ const baseLog: QBSyncLogSelectSchemaType = {
   errorMessage: 'Closed accounting period',
   errorCode: String(QBOErrorCodes.CLOSED_PERIOD),
   category: 'qb_api_error' as never,
+  shouldRetry: false,
   attempt: 0,
   createdAt: new Date(),
   updatedAt: new Date(),

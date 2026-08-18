@@ -1,10 +1,8 @@
 import { vi, type Mock } from 'vitest'
-import { CopilotAPI } from '@/utils/copilotAPI'
+import { AssemblyAPI } from '@/utils/assemblyAPI'
 import IntuitAPI from '@/utils/intuitAPI'
 import {
   TEST_INCOME_ACCOUNT_REF,
-  TEST_INTERNAL_USER_ID,
-  TEST_PORTAL_ID,
   TEST_COPILOT_INVOICE_ID,
   TEST_INVOICE_NUMBER,
   TEST_QB_PURCHASE_ID,
@@ -22,22 +20,18 @@ type MockMethodOverrides<T> = {
     : never]?: Mock
 }
 
-type CopilotAPIOverrides = MockMethodOverrides<CopilotAPI>
+type AssemblyAPIOverrides = MockMethodOverrides<AssemblyAPI>
 type IntuitAPIOverrides = MockMethodOverrides<IntuitAPI>
 
 /**
- * Factory for a mocked CopilotAPI instance.
+ * Factory for a mocked AssemblyAPI instance.
  *
- * Tests mock the CopilotAPI module with `vi.mock('@/utils/copilotAPI')`, then
- * wire each `new CopilotAPI(token)` call to an object produced by this factory.
+ * Tests mock the AssemblyAPI module with `vi.mock('@/utils/assemblyAPI')`, then
+ * wire each `new AssemblyAPI(token)` call to an object produced by this factory.
  * Override any method via the `overrides` arg to tailor behavior per test.
  */
-export function createMockCopilotAPI(overrides: CopilotAPIOverrides = {}) {
+export function createMockAssemblyAPI(overrides: AssemblyAPIOverrides = {}) {
   return {
-    getTokenPayload: vi.fn().mockResolvedValue({
-      workspaceId: TEST_PORTAL_ID,
-      internalUserId: TEST_INTERNAL_USER_ID,
-    }),
     getProduct: vi.fn().mockResolvedValue({
       id: '2cf93cf0-45fa-485f-b584-03c2c38a3999',
       name: 'Test Product',
@@ -162,31 +156,31 @@ export function createMockIntuitAPI(overrides: IntuitAPIOverrides = {}) {
   }
 }
 
-export type MockCopilotAPI = ReturnType<typeof createMockCopilotAPI>
+export type MockAssemblyAPI = ReturnType<typeof createMockAssemblyAPI>
 export type MockIntuitAPI = ReturnType<typeof createMockIntuitAPI>
 
 /**
- * Wires the module-mocked CopilotAPI + IntuitAPI to shared instances and
+ * Wires the module-mocked AssemblyAPI + IntuitAPI to shared instances and
  * returns them so tests can assert on calls. Uses `function` (not arrow) so
  * the mock is callable with `new`.
  *
- * Caveat: one request may `new CopilotAPI(...)` several times (auth +
+ * Caveat: one request may `new AssemblyAPI(...)` several times (auth +
  * invoice flow) — all share this instance, so call counts sum across sites.
  */
 export function installMockApis(
   opts: {
-    copilot?: MockCopilotAPI
+    copilot?: MockAssemblyAPI
     intuit?: MockIntuitAPI
   } = {},
-): { copilot: MockCopilotAPI; intuit: MockIntuitAPI } {
-  const copilot = opts.copilot ?? createMockCopilotAPI()
+): { copilot: MockAssemblyAPI; intuit: MockIntuitAPI } {
+  const copilot = opts.copilot ?? createMockAssemblyAPI()
   const intuit = opts.intuit ?? createMockIntuitAPI()
 
-  vi.mocked(CopilotAPI).mockImplementation(function (
+  vi.mocked(AssemblyAPI).mockImplementation(function (
     this: unknown,
-  ): CopilotAPI {
-    return copilot as unknown as CopilotAPI
-  } as unknown as typeof CopilotAPI)
+  ): AssemblyAPI {
+    return copilot as unknown as AssemblyAPI
+  } as unknown as typeof AssemblyAPI)
 
   vi.mocked(IntuitAPI).mockImplementation(function (this: unknown): IntuitAPI {
     return intuit as unknown as IntuitAPI

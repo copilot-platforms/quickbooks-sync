@@ -5,13 +5,13 @@ import { QBCustomers } from '@/db/schema/qbCustomers'
 
 import invoiceCreatedPayload from '@test/fixtures/invoiceCreated.webhook'
 import { seedHealthyPortal, seedProductSync } from '@test/helpers/seed'
-import { createMockCopilotAPI } from '@test/helpers/mocks'
+import { createMockAssemblyAPI } from '@test/helpers/mocks'
 import { setupInvoiceCreatedTest } from '@test/helpers/invoiceCreatedTestSetup'
 import { postWebhook } from '@test/helpers/webhook'
 
 describe('POST /api/quickbooks/webhook — invoice.created (invoice belongs to a company and the "use company name" setting is on)', () => {
   const apis = setupInvoiceCreatedTest(() => ({
-    copilot: createMockCopilotAPI({
+    copilot: createMockAssemblyAPI({
       // Payload has companyId but no clientId, so any client lookup is wrong.
       getClient: vi.fn().mockResolvedValue(undefined),
       getCompany: vi.fn().mockResolvedValue({

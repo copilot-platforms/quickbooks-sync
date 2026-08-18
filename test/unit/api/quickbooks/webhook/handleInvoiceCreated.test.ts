@@ -35,11 +35,11 @@ vi.mock('@/utils/auth', () => ({
   refreshTokenExpireMessage: 'Refresh token is expired',
 }))
 
-// `@/utils/copilotAPI` pulls in `copilot-node-sdk`, which has an ESM directory
+// `@/utils/assemblyAPI` pulls in `copilot-node-sdk`, which has an ESM directory
 // import that breaks under Vitest's resolver. We don't exercise it here, so
 // stub it out completely.
-vi.mock('@/utils/copilotAPI', () => ({
-  CopilotAPI: vi.fn(),
+vi.mock('@/utils/assemblyAPI', () => ({
+  AssemblyAPI: vi.fn(),
 }))
 
 // `@/utils/intuitAPI` is imported transitively by `@/utils/error`
@@ -60,7 +60,7 @@ vi.mock('@/db', () => ({
 // `new SyncLogService(...)` requires a constructable mock — `vi.fn()` arrow
 // implementations aren't constructors, so we use a plain `function` factory.
 // See `docs/vitest-gotchas.md` and the same pattern in
-// `test/integration/setup.ts` for IntuitAPI/CopilotAPI.
+// `test/integration/setup.ts` for IntuitAPI/AssemblyAPI.
 const claimWebhookEvent = vi.fn()
 const updateOrCreateQBSyncLog = vi.fn()
 vi.mock('@/app/api/quickbooks/syncLog/syncLog.service', () => ({

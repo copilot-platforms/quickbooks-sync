@@ -32,8 +32,8 @@ vi.mock('@/utils/logger', () => ({
   default: { info: vi.fn(), error: vi.fn() },
 }))
 
-vi.mock('@/utils/copilotAPI', () => ({
-  CopilotAPI: vi.fn(),
+vi.mock('@/utils/assemblyAPI', () => ({
+  AssemblyAPI: vi.fn(),
 }))
 
 vi.mock('@/utils/intuitAPI', () => ({

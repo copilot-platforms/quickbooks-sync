@@ -1,14 +1,15 @@
 import { vi } from 'vitest'
+import { TEST_INTERNAL_USER_ID, TEST_PORTAL_ID } from '@test/helpers/seed'
 
 /**
  * Shared module mocks for all integration tests.
  *
  * Loaded via `setupFiles` in vitest.config.ts (integration project). Each
  * test file still configures per-test behavior in beforeEach via
- * `vi.mocked(CopilotAPI).mockImplementation(...)`.
+ * `vi.mocked(AssemblyAPI).mockImplementation(...)`.
  *
  * Why here instead of per-file:
- * - Explicit factory for CopilotAPI/IntuitAPI avoids evaluating the real
+ * - Explicit factory for AssemblyAPI/IntuitAPI avoids evaluating the real
  *   modules (copilot-node-sdk has an ESM directory-import that breaks).
  * - Sentry has to be stubbed because withRetry.ts calls
  *   `scope.addEventProcessor(...)` inside Sentry.withScope.
@@ -18,18 +19,32 @@ import { vi } from 'vitest'
  */
 
 type MockSingletons = {
-  CopilotAPI?: ReturnType<typeof vi.fn>
+  AssemblyAPI?: ReturnType<typeof vi.fn>
   IntuitAPI?: ReturnType<typeof vi.fn>
 }
 const g = globalThis as typeof globalThis & {
   __qbsync_test_mocks?: MockSingletons
 }
 g.__qbsync_test_mocks ??= {}
-g.__qbsync_test_mocks.CopilotAPI ??= vi.fn()
+g.__qbsync_test_mocks.AssemblyAPI ??= vi.fn()
 g.__qbsync_test_mocks.IntuitAPI ??= vi.fn()
 
-vi.mock('@/utils/copilotAPI', () => ({
-  CopilotAPI: g.__qbsync_test_mocks!.CopilotAPI!,
+vi.mock('@/utils/assemblyAPI', () => ({
+  AssemblyAPI: g.__qbsync_test_mocks!.AssemblyAPI!,
+}))
+
+// Token decode lives in a separate module (AssemblyTokenPayload) so it stays
+// out of the wholesale-mocked AssemblyAPI. Plain class — not vi.fn — so it
+// survives the clearAllMocks/restoreAllMocks that per-test setup helpers call.
+vi.mock('@/utils/assemblyTokenPayload', () => ({
+  AssemblyTokenPayload: class {
+    async getTokenPayload() {
+      return {
+        workspaceId: TEST_PORTAL_ID,
+        internalUserId: TEST_INTERNAL_USER_ID,
+      }
+    }
+  },
 }))
 
 vi.mock('@/utils/intuitAPI', () => ({
