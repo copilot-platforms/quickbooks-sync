@@ -28,12 +28,12 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@assembly-js/node-sdk": "^4.2.2",
     "@sentry/nextjs": "^9.13.0",
     "@supabase/supabase-js": "^2.49.4",
     "@trigger.dev/sdk": "4.4.4",
     "bottleneck": "^2.19.5",
     "copilot-design-system": "^2.0.10",
-    "copilot-node-sdk": "~3.16.0",
     "dayjs": "^1.11.13",
     "deep-equal": "^2.2.3",
     "drizzle-orm": "^0.42.0",
