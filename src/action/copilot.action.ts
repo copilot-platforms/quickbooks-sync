@@ -1,8 +1,6 @@
 import { Token } from '@/type/common'
-import { CopilotAPI } from '@/utils/copilotAPI'
+import { AssemblyTokenPayload } from '@/utils/assemblyTokenPayload'
 
 export async function getTokenPayload(token: string): Promise<Token | null> {
-  const copilotClient = new CopilotAPI(token)
-  const payload = await copilotClient.getTokenPayload()
-  return payload as Token
+  return await new AssemblyTokenPayload().getTokenPayload(token)
 }

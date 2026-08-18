@@ -1,4 +1,4 @@
-import { CopilotAPI } from '@/utils/copilotAPI'
+import { AssemblyTokenPayload } from '@/utils/assemblyTokenPayload'
 import { NextRequest } from 'next/server'
 import User from '@/app/api/core/models/User.model'
 import { z } from 'zod'
@@ -8,8 +8,8 @@ import httpStatus from 'http-status'
 import { withRetry } from '@/app/api/core/utils/withRetry'
 
 export const _authenticateWithToken = async (token: string): Promise<User> => {
-  const copilotClient = new CopilotAPI(token)
-  const payload = TokenSchema.safeParse(await copilotClient.getTokenPayload())
+  const tokenPayload = await new AssemblyTokenPayload().getTokenPayload(token)
+  const payload = TokenSchema.safeParse(tokenPayload)
 
   if (!payload.success) {
     throw new APIError(httpStatus.UNAUTHORIZED, 'Failed to authenticate token')
@@ -35,7 +35,7 @@ export const authenticateWithToken = (...args: unknown[]) =>
  * Token parser and authentication util
  *
  * `authenticate` takes in the current request, parses the "token" searchParam from it,
- * uses `CopilotAPI` to check if the user token is valid
+ * uses `AssemblyTokenPayload` to check if the user token is valid
  * and finally returns an instance of `User` that is associated with this request
  */
 const authenticate = async (req: NextRequest) => {
