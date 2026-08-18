@@ -11,13 +11,13 @@ import {
   seedQBInvoiceSync,
   TEST_COPILOT_PAYMENT_ID,
 } from '@test/helpers/seed'
-import { createMockCopilotAPI } from '@test/helpers/mocks'
+import { createMockAssemblyAPI } from '@test/helpers/mocks'
 import { setupPaymentSucceededTest } from '@test/helpers/paymentSucceededTestSetup'
 import { postWebhook } from '@test/helpers/webhook'
 
 describe('POST /api/quickbooks/webhook — payment.succeeded (Copilot returns no invoice)', () => {
   const apis = setupPaymentSucceededTest(() => ({
-    copilot: createMockCopilotAPI({
+    copilot: createMockAssemblyAPI({
       getInvoice: vi.fn().mockResolvedValue(undefined),
     }),
   }))

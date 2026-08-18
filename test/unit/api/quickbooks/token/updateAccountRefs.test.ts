@@ -14,15 +14,15 @@ vi.mock('@/utils/logger', () => ({
   default: { info: vi.fn(), error: vi.fn() },
 }))
 
-// Stub IntuitAPI + CopilotAPI so importing TokenService doesn't transitively
+// Stub IntuitAPI + AssemblyAPI so importing TokenService doesn't transitively
 // load copilot-node-sdk (which has an ESM directory-import that breaks under
 // vitest). See docs/vitest-gotchas.md.
 vi.mock('@/utils/intuitAPI', () => ({
   default: vi.fn(),
   IntuitAPIErrorMessage: '#IntuitAPIErrorMessage#',
 }))
-vi.mock('@/utils/copilotAPI', () => ({
-  CopilotAPI: vi.fn(),
+vi.mock('@/utils/assemblyAPI', () => ({
+  AssemblyAPI: vi.fn(),
 }))
 
 import { TokenService } from '@/app/api/quickbooks/token/token.service'

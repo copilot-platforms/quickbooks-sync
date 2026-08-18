@@ -105,7 +105,7 @@ describe('PATCH /api/quickbooks/accounts', () => {
   })
 
   it("cannot modify another portal's row (tenant isolation)", async () => {
-    // CopilotAPI mock always decrypts to TEST_PORTAL_ID, so this verifies the
+    // AssemblyAPI mock always decrypts to TEST_PORTAL_ID, so this verifies the
     // WHERE-clause scope works — not that a foreign token would be rejected.
     await seedHealthyPortal()
     const OTHER = 'other-portal-99999999'
