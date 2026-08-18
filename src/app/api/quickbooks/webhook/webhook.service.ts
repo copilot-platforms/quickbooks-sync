@@ -20,7 +20,7 @@ import {
   WebhookEventResponseType,
 } from '@/type/dto/webhook.dto'
 import { validateAccessToken } from '@/utils/auth'
-import { CopilotAPI } from '@/utils/copilotAPI'
+import { AssemblyAPI } from '@/utils/assemblyAPI'
 import { ErrorMessageAndCode, getMessageAndCodeFromError } from '@/utils/error'
 import { IntuitAPITokensType } from '@/utils/intuitAPI'
 import CustomLogger from '@/utils/logger'
@@ -509,7 +509,7 @@ export class WebhookService extends BaseService {
         return
       }
 
-      const copilotApp = new CopilotAPI(this.user.token)
+      const copilotApp = new AssemblyAPI(this.user.workspaceId)
       const invoice = await copilotApp.getInvoice(
         parsedPaymentSucceedResource.data.invoiceId,
       )

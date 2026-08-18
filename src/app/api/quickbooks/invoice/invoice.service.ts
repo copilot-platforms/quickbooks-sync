@@ -50,7 +50,7 @@ import {
   InvoiceResponseType,
 } from '@/type/dto/webhook.dto'
 import { bottleneck } from '@/utils/bottleneck'
-import { CopilotAPI } from '@/utils/copilotAPI'
+import { AssemblyAPI } from '@/utils/assemblyAPI'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
 import dayjs from 'dayjs'
 import { and, eq, isNull } from 'drizzle-orm'
@@ -74,12 +74,12 @@ type InvoiceItemRefAndDescriptionType = {
 }
 
 export class InvoiceService extends BaseService {
-  private copilot: CopilotAPI
+  private copilot: AssemblyAPI
   private syncLogService: SyncLogService
 
   constructor(user: User) {
     super(user)
-    this.copilot = new CopilotAPI(user.token)
+    this.copilot = new AssemblyAPI(user.workspaceId)
     this.syncLogService = new SyncLogService(user)
   }
 

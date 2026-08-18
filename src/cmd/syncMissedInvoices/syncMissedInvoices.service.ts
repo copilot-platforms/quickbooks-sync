@@ -6,7 +6,7 @@ import { AuthService } from '@/app/api/quickbooks/auth/auth.service'
 import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import { StatusableError } from '@/type/CopilotApiError'
-import { CopilotAPI } from '@/utils/copilotAPI'
+import { AssemblyAPI } from '@/utils/assemblyAPI'
 import CustomLogger from '@/utils/logger'
 import { and, eq, gte, or, sql } from 'drizzle-orm'
 import httpStatus from 'http-status'
@@ -32,7 +32,7 @@ export class SyncMissedInvoicesService extends BaseService {
       )
 
       // 2. Fetch all invoices from Copilot for this portal (single API call)
-      const copilotApi = new CopilotAPI(this.user.token)
+      const copilotApi = new AssemblyAPI(this.user.workspaceId)
       const allInvoices = await copilotApi.getInvoices(this.user.workspaceId)
       const allPayments = await copilotApi.getPayments()
 

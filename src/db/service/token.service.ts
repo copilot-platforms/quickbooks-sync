@@ -8,7 +8,7 @@ import {
 } from '@/db/schema/qbPortalConnections'
 import { QBSetting, QBSettingsSelectSchemaType } from '@/db/schema/qbSettings'
 import { WorkspaceResponse } from '@/type/common'
-import { CopilotAPI } from '@/utils/copilotAPI'
+import { AssemblyAPI } from '@/utils/assemblyAPI'
 import { IntuitAPITokensType } from '@/utils/intuitAPI'
 import { and, asc, eq, isNotNull, isNull, sql } from 'drizzle-orm'
 import httpStatus from 'http-status'
@@ -101,9 +101,9 @@ export const getPortalSettings = async (
 }
 
 export const getWorkspaceInfo = async (
-  token: string,
+  workspaceId: string,
 ): Promise<WorkspaceResponse> => {
-  return await new CopilotAPI(token).getWorkspace()
+  return await new AssemblyAPI(workspaceId).getWorkspace()
 }
 
 export const getPortalTokens = async (

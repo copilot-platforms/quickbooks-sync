@@ -3,7 +3,7 @@ import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
 import { InvoiceService } from '@/app/api/quickbooks/invoice/invoice.service'
 import { AuthService } from '@/app/api/quickbooks/auth/auth.service'
 import IntuitAPI, { IntuitAPITokensType } from '@/utils/intuitAPI'
-import { CopilotAPI } from '@/utils/copilotAPI'
+import { AssemblyAPI } from '@/utils/assemblyAPI'
 import {
   FailedRecordCategoryType,
   EntityType,
@@ -43,7 +43,7 @@ export class SyncService extends BaseService {
     record: QBSyncLogSelectSchemaType,
     qbTokenInfo: IntuitAPITokensType,
   ) {
-    const copilotApi = new CopilotAPI(this.user.token)
+    const copilotApi = new AssemblyAPI(this.user.workspaceId)
 
     try {
       // get invoice from Copilot API
@@ -74,7 +74,7 @@ export class SyncService extends BaseService {
     record: QBSyncLogSelectSchemaType,
     qbTokenInfo: IntuitAPITokensType,
   ) {
-    const copilotApi = new CopilotAPI(this.user.token)
+    const copilotApi = new AssemblyAPI(this.user.workspaceId)
 
     try {
       // get invoice from Copilot API
@@ -312,7 +312,7 @@ export class SyncService extends BaseService {
     qbTokenInfo: IntuitAPITokensType,
   ) {
     const productService = new ProductService(this.user)
-    const copilotApi = new CopilotAPI(this.user.token)
+    const copilotApi = new AssemblyAPI(this.user.workspaceId)
 
     const productResponse = await copilotApi.getProduct(
       z.string().parse(record.copilotId),
@@ -345,7 +345,7 @@ export class SyncService extends BaseService {
     qbTokenInfo: IntuitAPITokensType,
   ) {
     const productService = new ProductService(this.user)
-    const copilotApi = new CopilotAPI(this.user.token)
+    const copilotApi = new AssemblyAPI(this.user.workspaceId)
 
     try {
       const product = await copilotApi.getProduct(record.copilotId)

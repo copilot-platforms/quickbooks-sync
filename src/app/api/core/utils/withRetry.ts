@@ -159,7 +159,7 @@ export const withRetry = async <T>(
       factor: 4,
       onFailedAttempt: (error: FailedAttemptError) => {
         console.warn(
-          `CopilotAPI#withRetry | Attempt ${error.attemptNumber} failed. There are ${error.retriesLeft} retries left. Error:`,
+          `AssemblyAPI#withRetry | Attempt ${error.attemptNumber} failed. There are ${error.retriesLeft} retries left. Error:`,
           error,
         )
       },
