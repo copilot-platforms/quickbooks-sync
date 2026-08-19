@@ -1,4 +1,3 @@
-import { getTokenPayload } from '@/action/copilot.action'
 import {
   checkPortalConnection,
   reconnectIfCta,
@@ -9,6 +8,7 @@ import { SyncLogService } from '@/app/api/quickbooks/syncLog/syncLog.service'
 import { AppProvider } from '@/app/context/AppContext'
 import { SilentError } from '@/components/template/SilentError'
 import { getWorkspaceInfo } from '@/db/service/token.service'
+import { getAssemblyTokenPayload } from '@/utils/assemblyTokenPayload'
 import { z } from 'zod'
 
 export default async function Main({
@@ -27,7 +27,7 @@ export default async function Main({
     return <SilentError message="Failed to parse token" />
   }
 
-  const tokenPayload = await getTokenPayload(token)
+  const tokenPayload = await getAssemblyTokenPayload(token)
   if (!tokenPayload) {
     return <SilentError message="Not a valid token" />
   }
