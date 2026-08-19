@@ -7,7 +7,7 @@ import { copilotAPIKey } from '@/config'
 import { db } from '@/db'
 import { QBSyncLog } from '@/db/schema/qbSyncLogs'
 import { getAllActivePortalConnections } from '@/db/service/token.service'
-import { AssemblyTokenPayload } from '@/utils/assemblyTokenPayload'
+import { getAssemblyTokenPayload } from '@/utils/assemblyTokenPayload'
 import { encodePayload } from '@/utils/crypto'
 import CustomLogger from '@/utils/logger'
 import * as Sentry from '@sentry/nextjs'
@@ -29,9 +29,7 @@ export default class CronService {
       const token = encodePayload(copilotAPIKey, payload)
 
       // check if token is valid or not
-      const tokenPayload = await new AssemblyTokenPayload().getTokenPayload(
-        token,
-      )
+      const tokenPayload = await getAssemblyTokenPayload(token)
       CustomLogger.info({
         obj: { copilotApiCronToken: token, tokenPayload },
         message:
