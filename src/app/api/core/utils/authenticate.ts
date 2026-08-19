@@ -2,23 +2,21 @@ import { getAssemblyTokenPayload } from '@/utils/assemblyTokenPayload'
 import { NextRequest } from 'next/server'
 import User from '@/app/api/core/models/User.model'
 import { z } from 'zod'
-import { TokenSchema } from '@/type/common'
 import APIError from '@/app/api/core/exceptions/api'
 import httpStatus from 'http-status'
 import { withRetry } from '@/app/api/core/utils/withRetry'
 
 export const _authenticateWithToken = async (token: string): Promise<User> => {
   const tokenPayload = await getAssemblyTokenPayload(token)
-  const payload = TokenSchema.safeParse(tokenPayload)
 
-  if (!payload.success) {
+  if (!tokenPayload) {
     throw new APIError(httpStatus.UNAUTHORIZED, 'Failed to authenticate token')
   }
 
   // Access to IU and webhook events.
   if (
-    !payload.data.internalUserId &&
-    (payload.data.clientId || payload.data.companyId)
+    !tokenPayload.internalUserId &&
+    (tokenPayload.clientId || tokenPayload.companyId)
   ) {
     throw new APIError(
       httpStatus.UNAUTHORIZED,
@@ -26,7 +24,7 @@ export const _authenticateWithToken = async (token: string): Promise<User> => {
     )
   }
 
-  return new User(token, payload.data)
+  return new User(token, tokenPayload)
 }
 export const authenticateWithToken = (...args: unknown[]) =>
   withRetry(_authenticateWithToken, args)
