@@ -85,8 +85,8 @@ export class AssemblyAPI {
     return await resp.json()
   }
 
-  async getSDK() {
-    return await this.assembly
+  private getSDK() {
+    return this.assembly
   }
 
   // NOTE: Any method prefixed with _ is a API method that doesn't implement retry & delay
