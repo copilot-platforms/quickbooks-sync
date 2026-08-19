@@ -4,7 +4,7 @@ import { BackfillProductInfoService } from '@/cmd/backfillProductInfo/backfillPr
 import { copilotAPIKey } from '@/config'
 import { PortalConnectionWithSettingType } from '@/db/schema/qbPortalConnections'
 import { getAllActivePortalConnections } from '@/db/service/token.service'
-import { AssemblyTokenPayload } from '@/utils/assemblyTokenPayload'
+import { getAssemblyTokenPayload } from '@/utils/assemblyTokenPayload'
 import { encodePayload } from '@/utils/crypto'
 import CustomLogger from '@/utils/logger'
 
@@ -54,7 +54,7 @@ async function initiateProcess(connection: PortalConnectionWithSettingType) {
   }
   const token = encodePayload(copilotAPIKey, payload)
 
-  const tokenPayload = await new AssemblyTokenPayload().getTokenPayload(token)
+  const tokenPayload = await getAssemblyTokenPayload(token)
   CustomLogger.info({
     obj: { copilotApiCronToken: token, tokenPayload },
     message:

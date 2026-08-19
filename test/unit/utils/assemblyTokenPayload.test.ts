@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // fresh, per-call client whose getTokenPayload() resolves the payload derived
 // from THIS call's token (captured in a closure), never shared global state.
 // A staggered delay inside getTokenPayload forces concurrent calls to resolve
-// out of order — so any cross-call state leak in AssemblyTokenPayload would
+// out of order — so any cross-call state leak in getAssemblyTokenPayload would
 // surface as a mismatched workspaceId.
 vi.mock('@assembly-js/node-sdk', () => ({
   assemblyApi: vi.fn(async ({ token }: { token: string }) => {
@@ -22,22 +22,20 @@ vi.mock('@assembly-js/node-sdk', () => ({
 }))
 
 import { assemblyApi } from '@assembly-js/node-sdk'
-import { AssemblyTokenPayload } from '@/utils/assemblyTokenPayload'
+import { getAssemblyTokenPayload } from '@/utils/assemblyTokenPayload'
 
 // In this test a "token" is just a JSON string carrying the workspace it belongs
 // to and how long its decode should take.
 const makeToken = (workspaceId: string, delayMs: number) =>
   JSON.stringify({ workspaceId, delayMs })
 
-describe('AssemblyTokenPayload.getTokenPayload — concurrency isolation', () => {
+describe('getAssemblyTokenPayload — concurrency isolation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('returns the matching workspaceId for a single call', async () => {
-    const payload = await new AssemblyTokenPayload().getTokenPayload(
-      makeToken('ws-solo', 0),
-    )
+    const payload = await getAssemblyTokenPayload(makeToken('ws-solo', 0))
     expect(payload?.workspaceId).toBe('ws-solo')
   })
 
@@ -50,9 +48,7 @@ describe('AssemblyTokenPayload.getTokenPayload — concurrency isolation', () =>
 
     const results = await Promise.all(
       workspaceIds.map((workspaceId, i) =>
-        new AssemblyTokenPayload().getTokenPayload(
-          makeToken(workspaceId, (count - i) * 2),
-        ),
+        getAssemblyTokenPayload(makeToken(workspaceId, (count - i) * 2)),
       ),
     )
 
@@ -64,9 +60,9 @@ describe('AssemblyTokenPayload.getTokenPayload — concurrency isolation', () =>
 
   it('builds one independent SDK per call (no shared client)', async () => {
     await Promise.all([
-      new AssemblyTokenPayload().getTokenPayload(makeToken('ws-a', 6)),
-      new AssemblyTokenPayload().getTokenPayload(makeToken('ws-b', 3)),
-      new AssemblyTokenPayload().getTokenPayload(makeToken('ws-c', 0)),
+      getAssemblyTokenPayload(makeToken('ws-a', 6)),
+      getAssemblyTokenPayload(makeToken('ws-b', 3)),
+      getAssemblyTokenPayload(makeToken('ws-c', 0)),
     ])
 
     // assemblyApi is invoked once per call, each with that call's own token.

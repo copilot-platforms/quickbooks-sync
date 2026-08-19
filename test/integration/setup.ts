@@ -33,18 +33,14 @@ vi.mock('@/utils/assemblyAPI', () => ({
   AssemblyAPI: g.__qbsync_test_mocks!.AssemblyAPI!,
 }))
 
-// Token decode lives in a separate module (AssemblyTokenPayload) so it stays
-// out of the wholesale-mocked AssemblyAPI. Plain class — not vi.fn — so it
+// Token decode lives in a separate module (getAssemblyTokenPayload) so it stays
+// out of the wholesale-mocked AssemblyAPI. Plain fn — not vi.fn — so it
 // survives the clearAllMocks/restoreAllMocks that per-test setup helpers call.
 vi.mock('@/utils/assemblyTokenPayload', () => ({
-  AssemblyTokenPayload: class {
-    async getTokenPayload() {
-      return {
-        workspaceId: TEST_PORTAL_ID,
-        internalUserId: TEST_INTERNAL_USER_ID,
-      }
-    }
-  },
+  getAssemblyTokenPayload: async () => ({
+    workspaceId: TEST_PORTAL_ID,
+    internalUserId: TEST_INTERNAL_USER_ID,
+  }),
 }))
 
 vi.mock('@/utils/intuitAPI', () => ({
