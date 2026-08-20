@@ -206,9 +206,9 @@ export type NotificationRequestBody = z.infer<
 >
 
 export const NotificationCreatedResponseSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().uuid().optional(),
   appId: z.string().uuid().optional(),
-  createdAt: z.string().datetime(),
+  createdAt: z.string().datetime().optional(),
   event: z.string().optional(),
   object: z.string().optional(),
   recipientId: z.string().optional(),
