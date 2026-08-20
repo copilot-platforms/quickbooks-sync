@@ -70,9 +70,9 @@ Services extend `BaseService` (`src/app/api/core/services/base.service.ts`), whi
 
 - `this.db` — the **module-level Drizzle singleton** from `src/db/index.ts` (`DBClient.getInstance()`); `casing: 'snake_case'`.
 - `this.user` — the authenticated `User` for the request.
-- `setTransaction(tx)` / `unsetTransaction()` — swap `this.db` for a transaction handle inside a `db.transaction(...)` callback, then restore.
+- `setTransaction(tx)` / `unsetTransaction()` — swap `this.db` between the pool and a transaction handle. **Use `withTransaction(fn, services?)` rather than pairing these by hand.**
 
-**Pitfall (known, see `memory/project_unsetTransaction_bug.md`):** `unsetTransaction()` is sometimes called inside the transaction callback or skipped on error paths — across `BaseService` subclasses this leaves the singleton pointed at a closed tx. When introducing or modifying transactional code, audit that `setTransaction` / `unsetTransaction` are paired in `try/finally` and that nested service calls share the tx handle.
+**Transactions (full reasoning in `docs/baseservice-transactions.md`).** `this.db` is a mutable field so a service's whole method flow can join a tx without threading `tx` through every signature. `withTransaction(fn, services?)` runs `fn` in a transaction and restores `this` plus any passed `services` in a `finally` that _wraps_ it, so a throw or failed commit can't leave a service on a closed handle. **Footgun:** each `BaseService` has its own `this.db`, so a nested service (`this.syncLogService`, a `new TokenService`, …) that writes inside `fn` MUST be in the `services` array — TypeScript does **not** catch an omission, and an unbound service's writes silently run outside the tx (this was the pre-OUT-4081 `checkAndSuspendAccount` bug).
 
 The DB singleton is also why test helpers (`test/helpers/seed.ts`, `test/helpers/testDb.ts`) import `@/db` directly — see `docs/why-test-helpers-use-the-app-db-singleton.md`. Don't introduce a separate test-only Drizzle client; tests must read what the app writes.
 
@@ -88,7 +88,7 @@ The DB singleton is also why test helpers (`test/helpers/seed.ts`, `test/helpers
 
 ### Token refresh
 
-QBO access tokens expire in ~1h, refresh tokens in ~100 days. `src/utils/intuitAPI.ts` sends authenticated requests; `src/utils/tokenRefresh.ts` (`getValidQbTokens`) refreshes when stale. The `vercel.json` cron `/api/quickbooks/refresh-tokens` runs daily at 06:00 UTC to keep refresh tokens warm. There's a known silent-401 bug — expired tokens cause `null` returns from `getFetchWithHeader/postFetchWithHeaders`; the planned fix is auto-refresh inside those helpers (design at `docs/intuit-api-token-refresh.md`, summary in `memory/project_intuit_api_token_refresh.md`).
+QBO access tokens expire in ~1h, refresh tokens in ~100 days. `src/utils/intuitAPI.ts` sends authenticated requests; `src/utils/tokenRefresh.ts` (`getValidQbTokens`) refreshes when stale. The `vercel.json` cron `/api/quickbooks/refresh-tokens` runs daily at 06:00 UTC to keep refresh tokens warm. There's a known silent-401 bug — expired tokens cause `null` returns from `getFetchWithHeader/postFetchWithHeaders`; the planned fix is auto-refresh inside those helpers (summary in `memory/project_intuit_api_token_refresh.md`).
 
 ### Background work
 
@@ -112,11 +112,11 @@ Every `WHERE` clause that touches a portal-scoped table needs `portalId = this.u
 ## Testing
 
 - Two Vitest **projects** in `vitest.config.ts` — `unit` (mock-heavy, isolated) and `integration` (real Postgres via testcontainers). Run order is enforced via `sequence.groupOrder` (unit=0, integration=1).
-- Integration project is configured **`pool: 'forks'` + `fileParallelism: false` + `isolate: false`** so all integration tests share one Postgres container _and_ one app DB connection. Don't change these without reading `docs/vitest-gotchas.md` and `docs/why-test-helpers-use-the-app-db-singleton.md`.
+- Integration project is configured **`pool: 'forks'` + `fileParallelism: false` + `isolate: false`** so all integration tests share one Postgres container _and_ one app DB connection. Don't change these without reading `docs/why-test-helpers-use-the-app-db-singleton.md`.
 - `.env.test` is loaded by `test/integration/globalSetup.ts` with `override: true` so a developer's local `.env` can't leak into tests. `DATABASE_URL` is intentionally **not** in `.env.test` — globalSetup sets it from the container's URI before any worker imports `src/config`.
-- Module mocks for integration are in `test/integration/setup.ts` — `@/utils/copilotAPI`, `@/utils/intuitAPI`, and `@sentry/nextjs` must be mocked with **explicit factories** (and Intuit/Copilot mock implementations must use `function`, not `=>`, because the code does `new IntuitAPI(...)`). See `docs/vitest-gotchas.md` items 1–3.
+- Module mocks for integration are in `test/integration/setup.ts` — `@/utils/copilotAPI`, `@/utils/intuitAPI`, and `@sentry/nextjs` must be mocked with **explicit factories** (and Intuit/Copilot mock implementations must use `function`, not `=>`, because the code does `new IntuitAPI(...)`).
 - Test helpers in `test/helpers/`: `seed.ts` (`seedHealthyPortal`, `TEST_PORTAL_ID`, etc.), `webhook.ts` (`postWebhook` via `next-test-api-route-handler`), `testDb.ts` (`truncateAllTestTables`).
-- Test-data philosophy in `docs/test-data-dos-and-donts.md`: static fixtures for the thing under test, factories with explicit overrides for single-dimension variants, **no faker** in fixtures or assertions.
+- Test-data philosophy: static fixtures for the thing under test, factories with explicit overrides for single-dimension variants, **no faker** in fixtures or assertions.
 
 ## Path aliases
 
@@ -132,15 +132,12 @@ Configured in `tsconfig.json` and propagated to Vitest via `vite-tsconfig-paths`
 - Prettier: single quotes, no semis, trailing comma all (`.prettierrc`).
 - ESLint: `next/core-web-vitals` + TypeScript; `prefer-const` and `no-var` are errors; unused-var underscore prefix is exempt; `@typescript-eslint/no-explicit-any` is disabled (the codebase uses `any` deliberately at framework boundaries).
 - Tailwind v4 + `copilot-design-system`. UI surface is small (settings dashboard + OAuth callback) — most work happens in the API/service layer.
-- The `docs/` folder is **gitignored** (per `.gitignore`) and used for local decision notes — design docs, post-mortems, comparison tables. Save non-trivial tradeoff discussions there rather than in code comments or commit messages.
+- `docs/` holds **committed** decision docs (design notes, post-mortems, comparison tables); `private-local-docs/` is gitignored for local-only notes. Save non-trivial tradeoff discussions in `docs/` rather than in code comments or commit messages.
 
 ## Things to read before non-trivial changes
 
-- `docs/testcontainers-vs-local-supabase.md` — why integration tests use testcontainers, not the local Supabase stack.
 - `docs/why-test-helpers-use-the-app-db-singleton.md` — why test helpers import `@/db` and what would break if you opened a separate client.
-- `docs/vitest-gotchas.md` — the five real traps already hit in this project.
-- `docs/test-data-dos-and-donts.md` — the test-data rules.
-- `docs/intuit-api-token-refresh.md` — design for the silent-401 fix.
+- `docs/baseservice-transactions.md` — why `this.db` is mutable, how to use `withTransaction`, and the nested-service footgun.
 
 ## What this repo doesn't have
 
