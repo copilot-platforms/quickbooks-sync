@@ -215,53 +215,47 @@ export class ProductService extends BaseService {
       'initialProductSettingMap',
     ])
 
-    return await this.db.transaction(async (tx) => {
-      this.setTransaction(tx)
-      try {
-        if (!setting?.initialProductSettingMap) {
-          const formattedPayload = mappingItems.map((item) => {
-            return {
-              ...item,
-              portalId: this.user.workspaceId,
-            }
+    return await this.withTransaction(async () => {
+      if (!setting?.initialProductSettingMap) {
+        const formattedPayload = mappingItems.map((item) => {
+          return {
+            ...item,
+            portalId: this.user.workspaceId,
+          }
+        })
+        // Skip products already saved so a repeated save doesn't error.
+        await this.db
+          .insert(QBProductSync)
+          .values(formattedPayload)
+          .onConflictDoNothing({
+            target: [QBProductSync.portalId, QBProductSync.productId],
+            where: isNull(QBProductSync.deletedAt),
           })
-          // Skip products already saved so a repeated save doesn't error.
-          await this.db
-            .insert(QBProductSync)
-            .values(formattedPayload)
-            .onConflictDoNothing({
-              target: [QBProductSync.portalId, QBProductSync.productId],
-              where: isNull(QBProductSync.deletedAt),
-            })
-          return await this.getAll()
-        }
-
-        if (changedItemReference.length > 0) {
-          await Promise.all(
-            changedItemReference?.map(async (item) => {
-              const payload = {
-                portalId: this.user.workspaceId,
-                productId: item.id,
-                name: item.isExcluded ? null : item.qbItem?.name,
-                description: item.isExcluded ? null : item.description,
-                qbItemId: item.isExcluded ? null : item.qbItem?.id,
-                qbSyncToken: item.isExcluded ? null : item.qbItem?.syncToken,
-                copilotName: item.name,
-                isExcluded: item.isExcluded,
-              }
-              const conditions = and(
-                eq(QBProductSync.portalId, this.user.workspaceId),
-                eq(QBProductSync.productId, item.id),
-              ) as WhereClause
-              await this.updateOrCreateQBProduct(payload, conditions)
-            }),
-          )
-        }
-
         return await this.getAll()
-      } finally {
-        this.unsetTransaction()
       }
+
+      if (changedItemReference.length > 0) {
+        // Sequential: these writes share one tx connection (no concurrent queries).
+        for (const item of changedItemReference) {
+          const payload = {
+            portalId: this.user.workspaceId,
+            productId: item.id,
+            name: item.isExcluded ? null : item.qbItem?.name,
+            description: item.isExcluded ? null : item.description,
+            qbItemId: item.isExcluded ? null : item.qbItem?.id,
+            qbSyncToken: item.isExcluded ? null : item.qbItem?.syncToken,
+            copilotName: item.name,
+            isExcluded: item.isExcluded,
+          }
+          const conditions = and(
+            eq(QBProductSync.portalId, this.user.workspaceId),
+            eq(QBProductSync.productId, item.id),
+          ) as WhereClause
+          await this.updateOrCreateQBProduct(payload, conditions)
+        }
+      }
+
+      return await this.getAll()
     })
   }
 
@@ -488,77 +482,71 @@ export class ProductService extends BaseService {
     })
     const intuitApi = new IntuitAPI(qbTokenInfo)
 
-    await this.db.transaction(async (tx) => {
-      this.setTransaction(tx)
-      try {
-        const mappedProduct = await this.getOne(
-          // 01. if this product is already mapped to a QB item, do nothing.
-          and(
-            eq(QBProductSync.portalId, this.user.workspaceId),
-            eq(QBProductSync.productId, productResource.id),
-          ) as WhereClause,
-          ['id'],
-        )
+    await this.withTransaction(async () => {
+      const mappedProduct = await this.getOne(
+        // 01. if this product is already mapped to a QB item, do nothing.
+        and(
+          eq(QBProductSync.portalId, this.user.workspaceId),
+          eq(QBProductSync.productId, productResource.id),
+        ) as WhereClause,
+        ['id'],
+      )
 
-        addSyncBreadcrumb('Product mapping check', {
-          alreadyMapped: !!mappedProduct,
-        })
-        if (mappedProduct) {
-          console.info('Product already mapped to a QB item; skipping')
-          return
-        }
-
-        const qbItemName = truncateForQB(
-          replaceSpecialCharsForQB(productResource.name),
-        )
-        const productDescription = convert(productResource.description)
-
-        // check if item with name exists in QBO
-        let qbItem = await intuitApi.getAnItem(qbItemName, undefined, true)
-
-        if (!qbItem) {
-          const tokenService = new TokenService(this.user)
-          const incomeAccountRef =
-            await tokenService.checkAndUpdateAccountStatus(
-              AccountTypeObj.Income,
-              qbTokenInfo.intuitRealmId,
-              intuitApi,
-              qbTokenInfo.incomeAccountRef,
-            )
-          // create item in QB. No price at product.created time — invoice lines
-          // carry their own UnitPrice.
-          qbItem = await this.createItemInQB(
-            {
-              productName: z.string().parse(qbItemName),
-              incomeAccRefVal: z.string().parse(incomeAccountRef),
-              productDescription,
-            },
-            intuitApi,
-          )
-        }
-
-        // map product to the QB item
-        await this.createQBProduct({
-          portalId: this.user.workspaceId,
-          productId: productResource.id,
-          qbItemId: qbItem.Id,
-          qbSyncToken: qbItem.SyncToken,
-          name: qbItemName,
-          copilotName: productResource.name,
-          description: productDescription,
-        })
-
-        console.info(
-          'WebhookService#webhookProductCreated | Product created in QB',
-        )
-        await this.logSync(productResource.id, qbItem.Id, EventType.CREATED, {
-          productName: productResource.name,
-          qbItemName: qbItem.Name,
-        })
-      } finally {
-        this.unsetTransaction()
+      addSyncBreadcrumb('Product mapping check', {
+        alreadyMapped: !!mappedProduct,
+      })
+      if (mappedProduct) {
+        console.info('Product already mapped to a QB item; skipping')
+        return
       }
-    })
+
+      const qbItemName = truncateForQB(
+        replaceSpecialCharsForQB(productResource.name),
+      )
+      const productDescription = convert(productResource.description)
+
+      // check if item with name exists in QBO
+      let qbItem = await intuitApi.getAnItem(qbItemName, undefined, true)
+
+      if (!qbItem) {
+        const tokenService = new TokenService(this.user)
+        const incomeAccountRef = await tokenService.checkAndUpdateAccountStatus(
+          AccountTypeObj.Income,
+          qbTokenInfo.intuitRealmId,
+          intuitApi,
+          qbTokenInfo.incomeAccountRef,
+        )
+        // create item in QB. No price at product.created time — invoice lines
+        // carry their own UnitPrice.
+        qbItem = await this.createItemInQB(
+          {
+            productName: z.string().parse(qbItemName),
+            incomeAccRefVal: z.string().parse(incomeAccountRef),
+            productDescription,
+          },
+          intuitApi,
+        )
+      }
+
+      // map product to the QB item
+      await this.createQBProduct({
+        portalId: this.user.workspaceId,
+        productId: productResource.id,
+        qbItemId: qbItem.Id,
+        qbSyncToken: qbItem.SyncToken,
+        name: qbItemName,
+        copilotName: productResource.name,
+        description: productDescription,
+      })
+
+      console.info(
+        'WebhookService#webhookProductCreated | Product created in QB',
+      )
+      await this.logSync(productResource.id, qbItem.Id, EventType.CREATED, {
+        productName: productResource.name,
+        qbItemName: qbItem.Name,
+      })
+    }, [this.syncLogService])
   }
 
   async queryItemsFromQB(qbTokenInfo: IntuitAPITokensType, limit: number) {

@@ -1108,39 +1108,32 @@ export class InvoiceService extends BaseService {
       console.info(
         'InvoiceService#handleInvoiceDeleted | Invoice absent from QBO. Soft-deleting logs, marking local mapping as DELETED, and recording pre-soft-deleted DELETED event.',
       )
-      try {
-        await this.db.transaction(async (tx) => {
-          this.setTransaction(tx)
-          this.syncLogService.setTransaction(tx)
-          const now = new Date()
-          await this.syncLogService.softDeleteLogsByCopilotId(
-            payload.id,
-            EntityType.INVOICE,
-            now,
+      await this.withTransaction(async () => {
+        const now = new Date()
+        await this.syncLogService.softDeleteLogsByCopilotId(
+          payload.id,
+          EntityType.INVOICE,
+          now,
+        )
+        if (syncedInvoice) {
+          await this.updateQBInvoice(
+            { status: InvoiceStatus.DELETED },
+            eq(QBInvoiceSync.id, syncedInvoice.id),
+            ['id'],
           )
-          if (syncedInvoice) {
-            await this.updateQBInvoice(
-              { status: InvoiceStatus.DELETED },
-              eq(QBInvoiceSync.id, syncedInvoice.id),
-              ['id'],
-            )
-          }
-          await this.syncLogService.updateOrCreateQBSyncLog({
-            portalId: this.user.workspaceId,
-            entityType: EntityType.INVOICE,
-            eventType: EventType.DELETED,
-            status: LogStatus.SUCCESS,
-            copilotId: payload.id,
-            invoiceNumber: payload.number,
-            amount: payload.total ? payload.total.toFixed(2) : undefined,
-            syncAt: now,
-            deletedAt: now,
-          })
+        }
+        await this.syncLogService.updateOrCreateQBSyncLog({
+          portalId: this.user.workspaceId,
+          entityType: EntityType.INVOICE,
+          eventType: EventType.DELETED,
+          status: LogStatus.SUCCESS,
+          copilotId: payload.id,
+          invoiceNumber: payload.number,
+          amount: payload.total ? payload.total.toFixed(2) : undefined,
+          syncAt: now,
+          deletedAt: now,
         })
-      } finally {
-        this.unsetTransaction()
-        this.syncLogService.unsetTransaction()
-      }
+      }, [this.syncLogService])
       return
     }
 
