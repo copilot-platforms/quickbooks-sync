@@ -577,29 +577,22 @@ export class SyncService extends BaseService {
 
       // TODO: notify IU about the account suspension
 
-      await this.db.transaction(async (tx) => {
-        this.setTransaction(tx)
-        const tokenService = new TokenService(this.user)
-        const suspendAccount = tokenService.updateQBPortalConnection(
-          {
-            isSuspended: true,
-          },
+      const tokenService = new TokenService(this.user)
+      // Sequential: both writes share one tx connection (no concurrent queries).
+      await this.withTransaction(async () => {
+        await tokenService.updateQBPortalConnection(
+          { isSuspended: true },
           eq(QBPortalConnection.portalId, this.user.workspaceId),
           ['id'],
         )
-
-        const deleteLogs = this.syncLogService.updateQBSyncLog(
-          {
-            deletedAt: new Date(),
-          },
+        await this.syncLogService.updateQBSyncLog(
+          { deletedAt: new Date() },
           and(
             eq(QBSyncLog.portalId, this.user.workspaceId),
             eq(QBSyncLog.status, LogStatus.FAILED),
           ) as WhereClause,
         )
-        await Promise.all([suspendAccount, deleteLogs])
-        this.unsetTransaction()
-      })
+      }, [tokenService, this.syncLogService])
 
       CustomLogger.info({
         message: `SyncService#checkAndSuspendAccount | Suspended the account. Portal Id: ${this.user.workspaceId}`,
