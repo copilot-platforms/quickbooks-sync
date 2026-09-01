@@ -87,7 +87,6 @@ const baseLog: QBSyncLogSelectSchemaType = {
   category: 'qb_api_error' as never,
   shouldRetry: false,
   attempt: 0,
-  shouldRetry: true,
   createdAt: new Date(),
   updatedAt: new Date(),
   deletedAt: null,

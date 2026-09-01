@@ -17,7 +17,7 @@ vi.mock('@sentry/nextjs', () => ({
 }))
 // BaseService imports `@/db`, which initialises postgres at module load.
 vi.mock('@/db', () => ({ db: {}, client: {} }))
-vi.mock('@/utils/copilotAPI', () => ({ CopilotAPI: vi.fn() }))
+vi.mock('@/utils/assemblyAPI', () => ({ AssemblyAPI: vi.fn() }))
 vi.mock('@/utils/intuitAPI', () => ({ default: vi.fn() }))
 vi.mock('@/app/api/quickbooks/syncLog/syncLog.service', () => ({
   SyncLogService: vi.fn(function () {
