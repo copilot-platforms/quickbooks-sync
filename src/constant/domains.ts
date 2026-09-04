@@ -1,14 +1,15 @@
 import { copilotEnv } from '@/config'
 
 export const DASHBOARD_DOMAIN =
-  copilotEnv === 'production'
-    ? ['https://dashboard.assembly.com', 'https://dashboard.copilot.app']
-    : [
+  copilotEnv === '__SECRET_STAGING__'
+    ? [
         'https://dashboard.assembly-staging.com',
         'https://dashboard.copilot-staging.app',
         'https://dashboard.copilot-staging.com',
       ]
+    : ['https://dashboard.assembly.com', 'https://dashboard.copilot.app']
+
 export const API_DOMAIN =
-  copilotEnv === 'production'
-    ? 'https://api.copilot.app'
-    : 'https://api.copilot-staging.app'
+  copilotEnv === '__SECRET_STAGING__'
+    ? 'https://api.copilot-staging.app'
+    : 'https://api.copilot.app'
