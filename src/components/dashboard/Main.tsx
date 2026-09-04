@@ -77,6 +77,11 @@ export const Main = () => {
   const dashboardCallout: CalloutType =
     DashboardCallout(lastSyncTimestamp)[status]
 
+  // Block settings when disconnected or on a non-US QBO (disabled while checking)
+  const settingsDisabled = Boolean(
+    !portalConnectionStatus || nonUsCompanyChecking || nonUsCompany,
+  )
+
   return (
     <>
       {isLoading ? (
@@ -118,8 +123,12 @@ export const Main = () => {
               },
             })}
           />
-          <div className={!portalConnectionStatus ? 'opacity-25 relative' : ''}>
-            {!portalConnectionStatus && (
+          <div
+            className={settingsDisabled ? 'opacity-25 relative' : ''}
+            // inert blocks keyboard/AT too; spread so the attribute is absent when enabled
+            {...(settingsDisabled ? { inert: true } : {})}
+          >
+            {settingsDisabled && (
               <div className="absolute top-0 left-0 w-full h-full z-10"></div>
             )}
             <div className="mt-6 mb-2">
